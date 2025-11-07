@@ -432,6 +432,16 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
             data['Plan management type'] = find_value_after_label(['Plan management type', 'Plan management'])
         if not data.get('Plan manager name'):
             data['Plan manager name'] = find_value_after_label(['Plan manager name'])
+        
+        # Extract support items from Support Items Required section
+        for i in range(1, 20):
+            key = f'Support item ({i}) (Support Items Required)'
+            if not data.get(key):
+                # Look for "Support item (X)" label and get the value
+                label_pattern = f'Support item ({i})'
+                value = find_value_after_label([label_pattern])
+                if value:
+                    data[key] = value
         if not data.get('Plan manager postal address'):
             data['Plan manager postal address'] = find_value_after_label(['Plan manager postal address', 'Plan manager address'])
         if not data.get('Plan manager phone number'):
@@ -829,26 +839,23 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
     story.append(Paragraph("Support Items", support_items_heading_style))
     support_data = [['Category', 'Name', 'Number', 'Unit', 'Price']]
     
-    # Define some common support items to look up
-    common_support_items = [
-        "Assistance With Self-Care Activities - Standard - Weekday Daytime",
-        "Assistance With Self-Care Activities - Standard - Weekday Evening", 
-        "Assistance With Self-Care Activities - Standard - Saturday",
-        "Assistance With Self-Care Activities - Standard - Sunday",
-        "Assistance With Self-Care Activities - Standard - Public Holiday",
-        "Assistance with Personal Domestic Activities",
-        "Assistance With Self-Care Activities - Night-Time Sleepover",
-        "Assistance From Live-In Carer"
-    ]
+    # Extract support items from the PDF data - look for "Support item (X) (Support Items Required)"
+    support_items_from_pdf = []
+    for i in range(1, 20):  # Check up to 20 support items
+        key = f'Support item ({i}) (Support Items Required)'
+        item_name = csv_data.get(key, '').strip()
+        if item_name:
+            support_items_from_pdf.append((i, item_name))
     
-    for i, item_name in enumerate(common_support_items, 1):
+    # If no support items found in PDF, use empty list (don't show hardcoded items)
+    for item_num, item_name in support_items_from_pdf:
         item_details = lookup_support_item(ndis_items, item_name)
         support_data.append([
-            Paragraph(f'Support item ({i})', table_text_style),
+            Paragraph(f'Support item ({item_num})', table_text_style),
             Paragraph(item_name, table_text_style),
-            item_details['number'],
-            item_details['unit'],
-            item_details['wa_price']
+            item_details.get('number', ''),
+            item_details.get('unit', ''),
+            item_details.get('wa_price', '')
         ])
     
     support_table = Table(support_data, colWidths=[0.8*inch, 3*inch, 1.2*inch, 0.6*inch, 0.8*inch])
