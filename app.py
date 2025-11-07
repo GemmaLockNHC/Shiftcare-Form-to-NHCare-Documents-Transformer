@@ -159,11 +159,12 @@ def build_output_row(row):
     # Build display name from first name + surname
     display_name = " ".join([p for p in [first_name, surname] if p]).strip()
     
-    # Combine home phone and work phone with semicolon, but ONLY if they're valid phone numbers
+    # Combine home phone and work phone with semicolon
+    # Include phone numbers even if they don't pass validation (they might be test data or formatted differently)
     phone_numbers = []
-    if home_phone and is_valid_phone_number(home_phone):
+    if home_phone:
         phone_numbers.append(home_phone)
-    if work_phone and is_valid_phone_number(work_phone):
+    if work_phone:
         phone_numbers.append(work_phone)
     phone_number = ";".join(phone_numbers) if phone_numbers else ""
 
@@ -179,7 +180,7 @@ def build_output_row(row):
         "Address Unit/Apartment Number": "",
         "General Information": "",
         "Phone Number": phone_number,  # 'Home phone' and/or 'Work phone' (separated by ';') (Contact Details of the Client) → 'Phone Number'
-        "Mobile Number": mobile_phone if (mobile_phone and is_valid_phone_number(mobile_phone)) else "",  # 'Mobile phone' (Contact Details of the Client) → 'Mobile Number'
+        "Mobile Number": mobile_phone if mobile_phone else "",  # 'Mobile phone' (Contact Details of the Client) → 'Mobile Number'
         "Email": email_address,  # 'Email address' (Contact Details of the Client) → 'Email'
         "Marital Status": "",
         "Nationality": "",
