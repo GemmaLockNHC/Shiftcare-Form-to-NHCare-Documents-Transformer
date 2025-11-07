@@ -145,11 +145,12 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         # print("PDF Form Fields found:", list(fields.keys()))
         
         # Map form fields to CSV field names
+        # The PDF form field NAMES are simple like "First name", "Home address", etc.
+        # The VALUES in those fields are the actual data (might look like "First name (Details of the Client)" but treat as real data)
         def find_in_fields(*candidates):
-            # Try candidates in order - most specific first
+            # Try all candidates - match simple field names
             for cand in candidates:
                 cand_norm = normalize_key(cand)
-                # Try all field names
                 for key, val in fields.items():
                     key_norm = normalize_key(key)
                     value = str(val).strip()
@@ -160,48 +161,33 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                     if cand_norm == key_norm:
                         return value
                     
-                    # For section-specific searches, check if both the field name and section match
-                    if "details of the client" in cand_norm:
-                        field_part = cand_norm.replace("details of the client", "").strip()
-                        if "details of the client" in key_norm and field_part in key_norm:
-                            return value
-                    elif "contact details of the client" in cand_norm:
-                        field_part = cand_norm.replace("contact details of the client", "").strip()
-                        if "contact details of the client" in key_norm and field_part in key_norm:
-                            return value
-                    elif "emergency contact" in cand_norm:
-                        field_part = cand_norm.replace("emergency contact", "").strip()
-                        if "emergency contact" in key_norm and field_part in key_norm:
-                            return value
-                    # For generic searches (no section in candidate), match if candidate is in key
-                    # but avoid matching fields from other sections
-                    elif cand_norm in key_norm:
-                        # Don't match if it's clearly from a different section
-                        if ("emergency contact" not in key_norm and 
-                            "primary carer" not in key_norm and 
-                            "person signing" not in key_norm and
-                            "plan manager" not in key_norm):
-                            return value
+                    # Substring match - candidate is in the key
+                    if cand_norm in key_norm:
+                        return value
             return ""
         
-        # Map common field names - try with section names first, then without
-        # Details of the Client section
-        data['First name (Details of the Client)'] = find_in_fields("first name (details of the client)", "first name", "firstname")
-        data['Middle name (Details of the Client)'] = find_in_fields("middle name (details of the client)", "middle name", "middlename")
-        data['Surname (Details of the Client)'] = find_in_fields("surname (details of the client)", "surname", "family name", "last name", "lastname")
-        data['NDIS number (Details of the Client)'] = find_in_fields("ndis number (details of the client)", "ndis number", "ndis")
-        data['Date of birth (Details of the Client)'] = find_in_fields("date of birth (details of the client)", "date of birth", "dob", "birth date")
-        data['Gender (Details of the Client)'] = find_in_fields("gender (details of the client)", "gender")
+        # Details of the Client section - match simple field names like "First name"
+        data['First name (Details of the Client)'] = find_in_fields("first name", "firstname")
+        data['Middle name (Details of the Client)'] = find_in_fields("middle name", "middlename")
+        data['Surname (Details of the Client)'] = find_in_fields("surname", "family name", "last name", "lastname")
+        data['NDIS number (Details of the Client)'] = find_in_fields("ndis number", "ndis")
+        data['Date of birth (Details of the Client)'] = find_in_fields("date of birth", "dob", "birth date")
+        data['Gender (Details of the Client)'] = find_in_fields("gender")
         
-        # Contact Details of the Client section
-        data['Home address (Contact Details of the Client)'] = find_in_fields("home address (contact details of the client)", "home address", "address")
-        data['Home phone (Contact Details of the Client)'] = find_in_fields("home phone (contact details of the client)", "home phone", "homephone")
-        data['Work phone (Contact Details of the Client)'] = find_in_fields("work phone (contact details of the client)", "work phone", "workphone")
-        data['Mobile phone (Contact Details of the Client)'] = find_in_fields("mobile phone (contact details of the client)", "mobile phone", "mobile", "mobilephone")
-        data['Email address (Contact Details of the Client)'] = find_in_fields("email address (contact details of the client)", "email address", "email")
+        # Contact Details of the Client section - match simple field names like "Home address"
+        data['Home address (Contact Details of the Client)'] = find_in_fields("home address", "address")
+        data['Home phone (Contact Details of the Client)'] = find_in_fields("home phone", "homephone")
+        data['Work phone (Contact Details of the Client)'] = find_in_fields("work phone", "workphone")
+        data['Mobile phone (Contact Details of the Client)'] = find_in_fields("mobile phone", "mobile", "mobilephone")
+        data['Email address (Contact Details of the Client)'] = find_in_fields("email address", "email")
         
-        # Extract emergency contact fields
+        # Emergency contact - match simple field names, but need to distinguish from client fields
+        # Try emergency-specific names first, then fallback to simple names
         data['First name (Emergency contact)'] = find_in_fields("first name (emergency contact)", "emergency contact first name", "emergency first name")
+        if not data['First name (Emergency contact)']:
+            # If we found a "first name" field, check if there's an emergency-specific one
+            # For now, we'll rely on text extraction to get the right one
+            pass
         data['Surname (Emergency contact)'] = find_in_fields("surname (emergency contact)", "emergency contact surname", "emergency contact last name", "emergency surname", "emergency last name")
         data['Is the primary carer also the emergency contact for the participant?'] = find_in_fields("primary carer also emergency contact", "is primary carer emergency contact")
         
@@ -281,20 +267,16 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                     line_clean = line_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
                     pattern_clean = pattern_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
                     
-                    # Match if:
-                    # 1. Exact match (with or without section name)
-                    # 2. Pattern is at the start of the line (likely a label)
-                    # 3. Pattern is in the line and line doesn't contain excluded phrases
+                    # Match if the line is exactly the label (simple exact match)
+                    # The PDF has labels like "First name" on one line, value on next line
                     matches = (
                         pattern_lower == line_lower or
                         pattern_clean == line_clean or
-                        (line_lower.startswith(pattern_lower) and ':' in line) or
-                        (pattern_lower in line_lower and not any(x in line_lower for x in 
-                            ["formal support", "informal support", "plan manager", "primary carer"]))
+                        line_lower.startswith(pattern_lower)
                     )
                     
                     if matches:
-                        # Look for value on same line after colon
+                        # Look for value on same line after colon (if present)
                         if ':' in line:
                             parts = line.split(':', 1)
                             if len(parts) > 1 and parts[1].strip():
@@ -304,31 +286,44 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                                     ['first name', 'middle name', 'surname', 'details of', 'contact details']):
                                     return value
                         
-                        # Look for value on next line(s) - check up to 3 lines ahead
-                        for j in range(i + 1, min(i + 4, section_end)):
+                        # Look for value on next line(s) - check up to 5 lines ahead
+                        for j in range(i + 1, min(i + 6, section_end)):
                             next_line = lines[j].strip()
                             if not next_line:
                                 continue
+                            
+                            # Skip checkbox indicators (bullet points) - these are just visual markers
+                            if next_line in ['•', '●', '○', '☐', '☑', '✓']:
+                                continue
+                            
                             next_line_lower = normalize_key(next_line)
                             
                             # Skip if it's another section header
-                            if any(x in next_line_lower for x in ['details of the client', 'contact details of the client', 'emergency contact']):
-                                continue
+                            if any(x in next_line_lower for x in ['details of the client', 'contact details of the client', 'emergency contact', 'person signing the agreement']):
+                                break  # End of section, stop looking
                             
-                            # Skip if it looks like another field label (short and contains field name)
+                            # Skip if it's clearly another field label
+                            # Field labels are typically short and match known patterns
                             field_labels = ['first name', 'middle name', 'surname', 'ndis number', 'date of birth', 'gender',
                                            'home address', 'home phone', 'work phone', 'mobile phone', 'email address',
-                                           'preferred name', 'key code', 'postal address']
+                                           'preferred name', 'key code', 'postal address', 'preferred method of contact',
+                                           'relationship to client', 'if their home address']
                             is_field_label = False
                             for fl in field_labels:
-                                if fl in next_line_lower and len(next_line) < 40:
-                                    # Check if it's just a label (ends with colon or is very short)
-                                    if ':' in next_line or (len(next_line) < 25 and '(' not in next_line):
-                                        is_field_label = True
-                                        break
+                                # Check if next line is exactly a field label (not a value)
+                                # A field label is: exact match, or contains the label and is short
+                                if (fl == next_line_lower or 
+                                    (fl in next_line_lower and len(next_line) < 50 and ':' not in next_line and 
+                                     not any(x in next_line_lower for x in ['write', 'below', 'same as', 'postal address']))):
+                                    is_field_label = True
+                                    break
+                            
+                            # Also skip instruction text (long lines with words like "write", "below", etc.)
+                            if len(next_line) > 80 or any(x in next_line_lower for x in ['write', 'below', 'same as', 'if their']):
+                                continue
                             
                             if not is_field_label:
-                                # This looks like a value
+                                # This looks like a value - return it
                                 return next_line
             
             return ""
@@ -345,9 +340,16 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                             parts = lines[i].split(':', 1)
                             if len(parts) > 1 and parts[1].strip():
                                 return parts[1].strip()
-                        if i + 1 < len(lines):
-                            next_line = lines[i + 1].strip()
-                            if next_line and not any(x in normalize_key(next_line) for x in ['details', 'contact', 'information']):
+                        # Look for value on next line(s), skipping checkboxes
+                        for j in range(i + 1, min(i + 4, len(lines))):
+                            next_line = lines[j].strip()
+                            if not next_line:
+                                continue
+                            # Skip checkbox indicators
+                            if next_line in ['•', '●', '○', '☐', '☑', '✓']:
+                                continue
+                            next_line_lower = normalize_key(next_line)
+                            if next_line and not any(x in next_line_lower for x in ['details', 'contact', 'information']):
                                 return next_line
             return ""
         
@@ -1069,7 +1071,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
     middle_name = csv_data.get('Middle name (Details of the Client)', '').strip()
     surname = csv_data.get('Surname (Details of the Client)', '').strip()
     participant_name_parts = [p for p in [first_name, middle_name, surname] if p]
-    participant_name = ' '.join(participant_name_parts) if participant_name_parts else 'First name (Details of the Client)'
+    participant_name = ' '.join(participant_name_parts) if participant_name_parts else ''
     
     # Emergency Contact: First name + Surname (from Emergency contact)
     emergency_first = csv_data.get('First name (Emergency contact)', '').strip()
@@ -1077,18 +1079,31 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
     emergency_contact_parts = [p for p in [emergency_first, emergency_surname] if p]
     emergency_contact = ' '.join(emergency_contact_parts) if emergency_contact_parts else get_emergency_contact(csv_data)
     
+    # Get all values, using empty string if not found
+    home_address = csv_data.get('Home address (Contact Details of the Client)', '').strip()
+    home_phone = csv_data.get('Home phone (Contact Details of the Client)', '').strip()
+    mobile_phone = csv_data.get('Mobile phone (Contact Details of the Client)', '').strip()
+    email_address = csv_data.get('Email address (Contact Details of the Client)', '').strip()
+    dob = csv_data.get('Date of birth (Details of the Client)', '').strip() or csv_data.get('Date of birth', '').strip()
+    ndis_num = csv_data.get('NDIS number (Details of the Client)', '').strip() or csv_data.get('NDIS number', '').strip()
+    plan_start = csv_data.get('Plan start date', '').strip()
+    plan_end = csv_data.get('Plan end date', '').strip()
+    service_start = csv_data.get('Service start date', '').strip() or csv_data.get('Service start', '').strip()
+    service_end = csv_data.get('Service end date', '').strip() or csv_data.get('Service end', '').strip()
+    preferred_contact = csv_data.get('Preferred method of contact', '').strip()
+    
     participant_data = [
         ['Participant Name', Paragraph(participant_name, table_text_style)],
-        ['Date of Birth', csv_data.get('Date of birth (Details of the Client)', csv_data.get('Date of birth', 'Date of birth (Details of the Client)'))],
-        ['NDIS Number', csv_data.get('NDIS number (Details of the Client)', csv_data.get('NDIS number', 'NDIS number (Details of the Client)'))],
-        ['Plan Duration', f"{csv_data.get('Plan start date', 'Plan start date')} - {csv_data.get('Plan end date', 'Plan end date')}"],
-        ['Address', Paragraph(csv_data.get('Home address (Contact Details of the Client)', 'Home address (Contact Details of the Client)'), table_text_style)],
-        ['Home phone', csv_data.get('Home phone (Contact Details of the Client)', 'Home phone (Contact Details of the Client)')],
-        ['Mobile phone', csv_data.get('Mobile phone (Contact Details of the Client)', 'Mobile phone (Contact Details of the Client)')],
-        ['Email address', Paragraph(csv_data.get('Email address (Contact Details of the Client)', 'Email address (Contact Details of the Client)'), table_text_style)],
-        ['Preferred contact method', csv_data.get('Preferred method of contact', 'Preferred method of contact (Contact Details of the Client)')],
+        ['Date of Birth', dob],
+        ['NDIS Number', ndis_num],
+        ['Plan Duration', f"{plan_start} - {plan_end}" if (plan_start or plan_end) else ''],
+        ['Address', Paragraph(home_address, table_text_style)],
+        ['Home phone', home_phone],
+        ['Mobile phone', mobile_phone],
+        ['Email address', Paragraph(email_address, table_text_style)],
+        ['Preferred contact method', preferred_contact],
         ['Emergency Contact', Paragraph(emergency_contact, table_text_style)],
-        ['Service Agreement Duration', f"{csv_data.get('Service start date', csv_data.get('Service start', 'Service start date'))} - {csv_data.get('Service end date', csv_data.get('Service end', 'Service end date'))}"]
+        ['Service Agreement Duration', f"{service_start} - {service_end}" if (service_start or service_end) else '']
     ]
     
     participant_table = Table(participant_data, colWidths=[2.5*inch, 3*inch])
@@ -1206,51 +1221,63 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
 def get_emergency_contact(csv_data):
     """Get emergency contact based on the logic specified"""
     if csv_data.get('Is the primary carer also the emergency contact for the participant?', '').lower() == 'yes':
-        return f"{csv_data.get('First name (Primary carer)', 'First name (Primary carer)')} {csv_data.get('Surname (Primary carer)', 'Surname (Primary carer)')}"
+        first_name = csv_data.get('First name (Primary carer)', '').strip()
+        surname = csv_data.get('Surname (Primary carer)', '').strip()
+        name_parts = [p for p in [first_name, surname] if p]
+        return ' '.join(name_parts) if name_parts else ''
     else:
-        return f"{csv_data.get('First name (Emergency contact)', 'First name (Emergency contact)')} {csv_data.get('Surname (Emergency contact)', 'Surname (Emergency contact)')}"
+        first_name = csv_data.get('First name (Emergency contact)', '').strip()
+        surname = csv_data.get('Surname (Emergency contact)', '').strip()
+        name_parts = [p for p in [first_name, surname] if p]
+        return ' '.join(name_parts) if name_parts else ''
 
 def get_signatory_name(csv_data):
     """Get signatory name based on who is signing"""
-    person_signing = csv_data.get('Person signing the agreement', '')
-    if person_signing == 'Participant':
+    person_signing = csv_data.get('Person signing the agreement', '').strip()
+    if person_signing.lower() == 'participant':
         # Participant is the client - use First name + Middle name + Surname from Details of the Client
         first_name = csv_data.get('First name (Details of the Client)', '').strip()
         middle_name = csv_data.get('Middle name (Details of the Client)', '').strip()
         surname = csv_data.get('Surname (Details of the Client)', '').strip()
         name_parts = [p for p in [first_name, middle_name, surname] if p]
-        return ' '.join(name_parts) if name_parts else 'First name (Details of the Client)'
-    elif person_signing == 'Primary carer':
-        return f"{csv_data.get('First name (Primary carer)', 'First name (Primary carer)')} {csv_data.get('Surname (Primary carer)', 'Surname (Primary carer)')}"
+        return ' '.join(name_parts) if name_parts else ''
+    elif person_signing.lower() == 'primary carer':
+        first_name = csv_data.get('First name (Primary carer)', '').strip()
+        surname = csv_data.get('Surname (Primary carer)', '').strip()
+        name_parts = [p for p in [first_name, surname] if p]
+        return ' '.join(name_parts) if name_parts else ''
     else:
-        return f"{csv_data.get('First name (Person Signing the Agreement)', 'First name (Person Signing the Agreement)')} {csv_data.get('Surname (Person Signing the Agreement)', 'Surname (Person Signing the Agreement)')}"
+        first_name = csv_data.get('First name (Person Signing the Agreement)', '').strip()
+        surname = csv_data.get('Surname (Person Signing the Agreement)', '').strip()
+        name_parts = [p for p in [first_name, surname] if p]
+        return ' '.join(name_parts) if name_parts else ''
 
 def get_signatory_relationship(csv_data):
     """Get signatory relationship based on who is signing"""
-    person_signing = csv_data.get('Person signing the agreement', '')
-    if person_signing == 'Participant':
+    person_signing = csv_data.get('Person signing the agreement', '').strip()
+    if person_signing.lower() == 'participant':
         return 'Participant'
-    elif person_signing == 'Primary carer':
-        return csv_data.get('Relationship to client (Primary carer)', 'Relationship to client (Primary carer)')
+    elif person_signing.lower() == 'primary carer':
+        return csv_data.get('Relationship to client (Primary carer)', '').strip()
     else:
-        return csv_data.get('Relationship to client (Person Signing the Agreement)', 'Relationship to client (Person Signing the Agreement)')
+        return csv_data.get('Relationship to client (Person Signing the Agreement)', '').strip()
 
 def get_signatory_address(csv_data):
     """Get signatory address based on who is signing"""
-    person_signing = csv_data.get('Person signing the agreement', '')
-    if person_signing == 'Participant':
-        return csv_data.get('Home address (Contact Details of the Client)', 'Home address (Contact Details of the Client)')
-    elif person_signing == 'Primary carer':
-        return csv_data.get('Home address (Primary carer)', 'Home address (Primary carer)')
+    person_signing = csv_data.get('Person signing the agreement', '').strip()
+    if person_signing.lower() == 'participant':
+        return csv_data.get('Home address (Contact Details of the Client)', '').strip()
+    elif person_signing.lower() == 'primary carer':
+        return csv_data.get('Home address (Primary carer)', '').strip()
     else:
-        return csv_data.get('Home address (Person Signing the Agreement)', 'Home address (Person Signing the Agreement)')
+        return csv_data.get('Home address (Person Signing the Agreement)', '').strip()
 
 def get_signatory_contact_details(csv_data):
     """Get comprehensive contact details for signatory based on who is signing"""
-    person_signing = csv_data.get('Person signing the agreement', '')
+    person_signing = csv_data.get('Person signing the agreement', '').strip()
     contact_parts = []
     
-    if person_signing == 'Participant':
+    if person_signing.lower() == 'participant':
         # Use participant's contact details
         home_phone = csv_data.get('Home phone (Contact Details of the Client)', '').strip()
         mobile_phone = csv_data.get('Mobile phone (Contact Details of the Client)', '').strip()
@@ -1262,7 +1289,7 @@ def get_signatory_contact_details(csv_data):
             contact_parts.append(f"Mobile: {mobile_phone}")
         if email:
             contact_parts.append(f"Email: {email}")
-    elif person_signing == 'Primary carer':
+    elif person_signing.lower() == 'primary carer':
         # Use primary carer's contact details
         home_phone = csv_data.get('Home phone (Primary carer)', '').strip()
         mobile_phone = csv_data.get('Mobile phone (Primary carer)', '').strip()
@@ -1290,8 +1317,7 @@ def get_signatory_contact_details(csv_data):
     if contact_parts:
         return ' | '.join(contact_parts)
     else:
-        # Fallback to preferred contact method if no specific contact details found
-        return get_preferred_contact_details(csv_data)
+        return ''
 
 def get_plan_manager_name(csv_data):
     """Get plan manager name based on plan management type"""
