@@ -1,0 +1,1151 @@
+#!/usr/bin/env python3
+
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT
+import csv
+import os
+
+# Try to import PDF parsing libraries
+try:
+    import pdfplumber  # text extraction
+except Exception:
+    pdfplumber = None
+try:
+    from pypdf import PdfReader  # form fields
+except Exception:
+    PdfReader = None
+
+# Define custom colors
+BLUE_COLOR = colors.HexColor('#316DB2')
+
+def load_ndis_support_items():
+    """Load NDIS support items from CSV file and return as a dictionary for lookup"""
+    ndis_items = {}
+    try:
+        with open('outputs/other/NDIS Support Items - NDIS Support Items.csv', 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                # Use support item name as key for lookup
+                item_name = row['Support Item Name'].strip()
+                ndis_items[item_name] = {
+                    'number': row['Support Item Number'].strip(),
+                    'unit': row['Unit'].strip(),
+                    'wa_price': row['WA'].strip()
+                }
+    except FileNotFoundError:
+        print("NDIS Support Items CSV file not found. Using placeholder data.")
+    except Exception as e:
+        print(f"Error loading NDIS support items: {e}")
+    
+    return ndis_items
+
+def lookup_support_item(ndis_items, item_name):
+    """Look up a support item by name and return its details"""
+    if item_name in ndis_items:
+        return ndis_items[item_name]
+    else:
+        # Try partial matching for common support items
+        for key, value in ndis_items.items():
+            if item_name.lower() in key.lower() or key.lower() in item_name.lower():
+                return value
+        # Return placeholder if not found
+        return {
+            'number': '[Not Found]',
+            'unit': 'Hour',
+            'wa_price': '$0.00'
+        }
+
+def load_active_users():
+    """Load active users from CSV file and return as a dictionary for lookup"""
+    active_users = {}
+    try:
+        with open('outputs/other/Active_Users_1761707021.csv', 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                # Use name as key for lookup
+                user_name = row['name'].strip()
+                active_users[user_name] = {
+                    'name': row['name'].strip(),
+                    'mobile': row['mobile'].strip(),
+                    'email': row['email'].strip(),
+                    'team': (row.get('area') or row.get('role') or '').strip()
+                }
+    except FileNotFoundError:
+        print("Active Users CSV file not found. Using placeholder data.")
+    except Exception as e:
+        print(f"Error loading active users: {e}")
+    
+    return active_users
+
+def lookup_user_data(active_users, respondent_name):
+    """Look up user data by respondent name and return contact details"""
+    if respondent_name in active_users:
+        return active_users[respondent_name]
+    else:
+        # Try partial matching
+        for key, value in active_users.items():
+            if respondent_name.lower() in key.lower() or key.lower() in respondent_name.lower():
+                return value
+        # Return placeholder if not found
+        return {
+            'name': respondent_name,
+            'mobile': '[Not Found]',
+            'email': '[Not Found]'
+        }
+
+def normalize_key(key: str) -> str:
+    """Normalize a key for comparison"""
+    return str(key or "").strip().lower()
+
+def extract_pdf_fields_pdfreader(pdf_path: str) -> dict:
+    """Extract form fields from PDF using PdfReader"""
+    if PdfReader is None:
+        return {}
+    try:
+        reader = PdfReader(pdf_path)
+        fields = {}
+        if reader.get_fields():
+            for name, field in reader.get_fields().items():
+                value = field.get("/V")
+                if value is None:
+                    continue
+                fields[name] = str(value)
+        return fields
+    except Exception:
+        return {}
+
+def extract_pdf_text_pdfplumber(pdf_path: str) -> str:
+    """Extract all text from PDF using pdfplumber"""
+    if pdfplumber is None:
+        return ""
+    try:
+        text_parts = []
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                text_parts.append(page.extract_text() or "")
+        return "\n".join(text_parts)
+    except Exception:
+        return ""
+
+def parse_pdf_to_data(pdf_path: str) -> dict:
+    """Parse PDF and extract data, mapping to CSV field names"""
+    data = {}
+    
+    # First try to extract form fields
+    fields = extract_pdf_fields_pdfreader(pdf_path)
+    if fields:
+        # Map form fields to CSV field names
+        def find_in_fields(*candidates):
+            for cand in candidates:
+                cand_norm = normalize_key(cand)
+                for key, val in fields.items():
+                    if cand_norm in normalize_key(key):
+                        return str(val).strip()
+            return ""
+        
+        # Map common field names
+        data['First name (Details of the Client)'] = find_in_fields("first name", "firstname")
+        data['Middle name (Details of the Client)'] = find_in_fields("middle name", "middlename")
+        data['Surname (Details of the Client)'] = find_in_fields("surname", "family name", "last name", "lastname")
+        data['NDIS number (Details of the Client)'] = find_in_fields("ndis number", "ndis")
+        data['Date of birth (Details of the Client)'] = find_in_fields("date of birth", "dob", "birth date")
+        data['Gender (Details of the Client)'] = find_in_fields("gender")
+        data['Home address (Contact Details of the Client)'] = find_in_fields("home address", "address")
+        data['Home phone (Contact Details of the Client)'] = find_in_fields("home phone", "homephone")
+        data['Work phone (Contact Details of the Client)'] = find_in_fields("work phone", "workphone")
+        data['Mobile phone (Contact Details of the Client)'] = find_in_fields("mobile phone", "mobile", "mobilephone")
+        data['Email address (Contact Details of the Client)'] = find_in_fields("email", "email address")
+        
+        # Return if we got some data from form fields
+        if any(data.values()):
+            return data
+    
+    # Fallback: extract text and try to parse
+    text = extract_pdf_text_pdfplumber(pdf_path)
+    if not text:
+        return data
+    
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    
+    # Identify section boundaries
+    section_starts = []
+    for i, line in enumerate(lines):
+        line_lower = normalize_key(line)
+        if "details of the client" in line_lower and "contact" not in line_lower:
+            section_starts.append(("details", i))
+        elif "contact details of the client" in line_lower:
+            section_starts.append(("contact", i))
+        elif any(x in line_lower for x in ["needs of the client", "ndis information", "support items", "formal supports", 
+                                           "primary carer", "important people", "home life", "health information", 
+                                           "care requirements", "behaviour requirements", "other information", "consents"]):
+            # End of relevant sections
+            break
+    
+    # Helper function to find value in a specific section
+    def find_value_in_section(label_patterns, section_type):
+        """Find value only in the specified section (details or contact)"""
+        # Find the relevant section
+        section_start = None
+        section_end = None
+        
+        for sec_type, start_idx in section_starts:
+            if sec_type == section_type:
+                section_start = start_idx
+                # Find end of this section (start of next section or end of lines)
+                for next_sec_type, next_start_idx in section_starts:
+                    if next_start_idx > start_idx:
+                        section_end = next_start_idx
+                        break
+                if section_end is None:
+                    section_end = len(lines)
+                break
+        
+        if section_start is None:
+            return ""
+        
+        # Only search within this section
+        for i in range(section_start, section_end):
+            line = lines[i]
+            line_lower = normalize_key(line)
+            
+            for pattern in label_patterns:
+                pattern_lower = normalize_key(pattern)
+                
+                # Match if the line contains the pattern
+                if pattern_lower == line_lower or (pattern_lower in line_lower and not any(x in line_lower for x in 
+                    ["formal support", "informal support", "primary carer", "emergency contact", "plan manager"])):
+                    
+                    # Look for value on same line after colon
+                    if ':' in line:
+                        parts = line.split(':', 1)
+                        if len(parts) > 1 and parts[1].strip():
+                            return parts[1].strip()
+                    
+                    # Look for value on next line(s)
+                    for j in range(i + 1, min(i + 3, section_end)):
+                        next_line = lines[j].strip()
+                        if not next_line:
+                            continue
+                        next_line_lower = normalize_key(next_line)
+                        
+                        # Skip if it's another label (contains section names or is another field label)
+                        if any(x in next_line_lower for x in ['details of the client', 'contact details of the client']):
+                            continue
+                        
+                        # Skip if it looks like another field label
+                        field_labels = ['first name', 'middle name', 'surname', 'ndis number', 'date of birth', 'gender',
+                                       'home address', 'home phone', 'work phone', 'mobile phone', 'email address',
+                                       'preferred name', 'key code', 'postal address']
+                        if any(x in next_line_lower for x in field_labels):
+                            # But only if it's a short label (likely a label, not a value)
+                            if len(next_line) < 30 and '(' not in next_line:
+                                continue
+                        
+                        # This looks like a value
+                        return next_line
+        
+        return ""
+    
+    # Helper function for fields that aren't in specific sections
+    def find_value_after_label(label_patterns, start_idx=0):
+        for i in range(start_idx, len(lines)):
+            line_lower = normalize_key(lines[i])
+            for pattern in label_patterns:
+                pattern_lower = normalize_key(pattern)
+                if pattern_lower in line_lower or line_lower == pattern_lower:
+                    # Look for value on same line after colon
+                    if ':' in lines[i]:
+                        parts = lines[i].split(':', 1)
+                        if len(parts) > 1 and parts[1].strip():
+                            return parts[1].strip()
+                    if i + 1 < len(lines):
+                        next_line = lines[i + 1].strip()
+                        if next_line and not any(x in normalize_key(next_line) for x in ['details', 'contact', 'information']):
+                            return next_line
+        return ""
+    
+    # Extract data using section-aware text parsing
+    data['First name (Details of the Client)'] = find_value_in_section(['First name', 'First name (Details of the Client)'], "details")
+    data['Middle name (Details of the Client)'] = find_value_in_section(['Middle name', 'Middle name (Details of the Client)'], "details")
+    data['Surname (Details of the Client)'] = find_value_in_section(['Surname', 'Surname (Details of the Client)', 'Family name', 'Last name'], "details")
+    data['NDIS number (Details of the Client)'] = find_value_in_section(['NDIS number', 'NDIS number (Details of the Client)'], "details")
+    data['Date of birth (Details of the Client)'] = find_value_in_section(['Date of birth', 'Date of birth (Details of the Client)', 'DOB'], "details")
+    data['Gender (Details of the Client)'] = find_value_in_section(['Gender', 'Gender (Details of the Client)'], "details")
+    data['Home address (Contact Details of the Client)'] = find_value_in_section(['Home address', 'Home address (Contact Details of the Client)', 'Address'], "contact")
+    data['Home phone (Contact Details of the Client)'] = find_value_in_section(['Home phone', 'Home phone (Contact Details of the Client)'], "contact")
+    data['Work phone (Contact Details of the Client)'] = find_value_in_section(['Work phone', 'Work phone (Contact Details of the Client)'], "contact")
+    data['Mobile phone (Contact Details of the Client)'] = find_value_in_section(['Mobile phone', 'Mobile phone (Contact Details of the Client)'], "contact")
+    data['Email address (Contact Details of the Client)'] = find_value_in_section(['Email address', 'Email address (Contact Details of the Client)', 'Email'], "contact")
+    
+    # Extract other fields that might be in the PDF
+    data['Preferred method of contact'] = find_value_after_label(['Preferred method of contact', 'Preferred contact method'])
+    data['Total core budget to allocate to Neighbourhood Care'] = find_value_after_label(['Total core budget', 'core budget'])
+    data['Total capacity building budget to allocate to Neighbourhood Care'] = find_value_after_label(['Total capacity building budget', 'capacity building budget'])
+    data['Plan start date'] = find_value_after_label(['Plan start date', 'Plan start'])
+    data['Plan end date'] = find_value_after_label(['Plan end date', 'Plan end'])
+    data['Service start date'] = find_value_after_label(['Service start date', 'Service start'])
+    data['Service end date'] = find_value_after_label(['Service end date', 'Service end'])
+    data['Person signing the agreement'] = find_value_after_label(['Person signing the agreement', 'Who is signing'])
+    data['First name (Person Signing the Agreement)'] = find_value_after_label(['First name (Person Signing the Agreement)'])
+    data['Surname (Person Signing the Agreement)'] = find_value_after_label(['Surname (Person Signing the Agreement)'])
+    data['Relationship to client (Person Signing the Agreement)'] = find_value_after_label(['Relationship to client (Person Signing the Agreement)', 'Relationship'])
+    data['Home address (Person Signing the Agreement)'] = find_value_after_label(['Home address (Person Signing the Agreement)'])
+    data['First name (Primary carer)'] = find_value_after_label(['First name (Primary carer)'])
+    data['Surname (Primary carer)'] = find_value_after_label(['Surname (Primary carer)'])
+    data['Relationship to client (Primary carer)'] = find_value_after_label(['Relationship to client (Primary carer)'])
+    data['Home address (Primary carer)'] = find_value_after_label(['Home address (Primary carer)'])
+    data['First name (Emergency contact)'] = find_value_after_label(['First name (Emergency contact)'])
+    data['Surname (Emergency contact)'] = find_value_after_label(['Surname (Emergency contact)'])
+    data['Is the primary carer also the emergency contact for the participant?'] = find_value_after_label(['Is the primary carer also the emergency contact'])
+    data['Plan management type'] = find_value_after_label(['Plan management type', 'Plan management'])
+    data['Plan manager name'] = find_value_after_label(['Plan manager name'])
+    data['Plan manager postal address'] = find_value_after_label(['Plan manager postal address', 'Plan manager address'])
+    data['Plan manager phone number'] = find_value_after_label(['Plan manager phone', 'Plan manager phone number'])
+    data['Plan manager email address'] = find_value_after_label(['Plan manager email'])
+    data['Respondent'] = find_value_after_label(['Respondent', 'Neighbourhood Care representative'])
+    data['Neighbourhood Care representative team'] = find_value_after_label(['Neighbourhood Care representative team', 'Team'])
+    
+    # Extract consent responses - look for Yes/No patterns
+    consent_labels = [
+        'I agree to receive services from Neighbourhood Care.',
+        'I consent for Neighbourhood Care to create an NDIS portal service booking',
+        'I understand that if at any time I (The Participant) require emergency medical assistance',
+        'I agree that Neighbourhood Care staff may administer simple first aid',
+        'I consent for Neighbourhood Care to discuss relevant information',
+        'I agree not to smoke inside the home',
+        'I understand that an Emergency Response Plan will be developed',
+        'I consent for Neighbourhood Care for I (The Participant) to be photographed',
+        'I give authority for my details or information to be shared'
+    ]
+    
+    for consent_label in consent_labels:
+        # Look for the consent text and find Yes/No after it
+        for i, line in enumerate(lines):
+            if normalize_key(consent_label.split('.')[0]) in normalize_key(line):
+                # Look for Yes/No in nearby lines
+                for j in range(max(0, i-2), min(len(lines), i+5)):
+                    if normalize_key(lines[j]) in ['yes', 'no']:
+                        data[consent_label] = lines[j]
+                        break
+    
+    return data
+
+def get_preferred_contact_details(csv_data):
+    """Get contact details based on preferred method of contact"""
+    preferred_method = csv_data.get('Preferred method of contact', '').lower()
+    
+    if 'home phone' in preferred_method:
+        return csv_data.get('Home phone (Contact Details of the Client)', 'Home phone (Contact Details of the Client)')
+    elif 'mobile' in preferred_method:
+        return csv_data.get('Mobile phone (Contact Details of the Client)', 'Mobile phone (Contact Details of the Client)')
+    elif 'work phone' in preferred_method:
+        return csv_data.get('Work phone (Contact Details of the Client)', 'Work phone (Contact Details of the Client)')
+    elif 'email' in preferred_method:
+        return csv_data.get('Email address (Contact Details of the Client)', 'Email address (Contact Details of the Client)')
+    else:
+        # Default to home phone if no clear preference
+        return csv_data.get('Home phone (Contact Details of the Client)', 'Home phone (Contact Details of the Client)')
+
+def create_service_agreement_from_data(csv_data, output_path):
+    """
+    Create a service agreement PDF from provided data dictionary.
+    
+    Args:
+        csv_data: Dictionary containing form data
+        output_path: Path where the PDF should be saved
+    """
+    # Load NDIS support items
+    ndis_items = load_ndis_support_items()
+    
+    # Load active users
+    active_users = load_active_users()
+    
+    # Create PDF document
+    doc = SimpleDocTemplate(output_path, pagesize=A4)
+    _build_service_agreement_content(doc, csv_data, ndis_items, active_users)
+
+def create_service_agreement():
+    # Load NDIS support items
+    ndis_items = load_ndis_support_items()
+    
+    # Load active users
+    active_users = load_active_users()
+    
+    # Read data from PDF (preferred) or CSV (fallback)
+    csv_data = {}
+    pdf_path = 'outputs/other/Neighbourhood Care Welcoming Form Template 2.pdf'
+    
+    # Try to parse PDF first
+    if os.path.exists(pdf_path):
+        try:
+            csv_data = parse_pdf_to_data(pdf_path)
+            print(f"Successfully parsed PDF: {pdf_path}")
+        except Exception as e:
+            print(f"Error parsing PDF: {e}. Falling back to CSV.")
+            csv_data = {}
+    
+    # Fallback to CSV if PDF parsing failed or didn't get enough data
+    if not csv_data or len([v for v in csv_data.values() if v]) < 5:
+        csv_candidates = [
+            'outputs/other/Neighbourhood Care Welcoming Form Template 2.csv',
+            'outputs/other/Neighbourhood Care Welcoming Form.csv'
+        ]
+        last_err = None
+        for candidate in csv_candidates:
+            try:
+                with open(candidate, 'r', encoding='utf-8') as file:
+                    reader = csv.DictReader(file)
+                    for row in reader:
+                        csv_data = row
+                        break
+                print(f"Successfully loaded CSV: {candidate}")
+                break
+            except Exception as e:
+                last_err = e
+                continue
+        if not csv_data and last_err:
+            raise last_err
+    
+    # Create PDF document
+    doc = SimpleDocTemplate("Service Agreement - FINAL TABLES.pdf", pagesize=A4)
+    _build_service_agreement_content(doc, csv_data, ndis_items, active_users)
+
+def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
+    """Build the service agreement PDF content"""
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Create custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=18,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=14,
+        leftIndent=0
+    )
+    
+    # Style with no space after for immediate following text
+    normal_no_space_style = ParagraphStyle(
+        'CustomNormalNoSpace',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=14,
+        leftIndent=0
+    )
+    
+    # Style for headings that should have no space after
+    heading_no_space_style = ParagraphStyle(
+        'CustomHeadingNoSpace',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    
+    # Style for black headings with no space after
+    black_heading_no_space_style = ParagraphStyle(
+        'BlackHeadingNoSpace',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.black,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    
+    # Style for bold headings (questions) with no space after
+    bold_heading_no_space_style = ParagraphStyle(
+        'BoldHeadingNoSpace',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=14,
+        leftIndent=0
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=12,
+        leftIndent=0
+    )
+    
+    black_heading_style = ParagraphStyle(
+        'BlackHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.black,
+        alignment=TA_LEFT,
+        spaceAfter=12,
+        leftIndent=0
+    )
+    
+    table_text_style = ParagraphStyle(
+        'TableText',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=10,
+        leftIndent=0
+    )
+    
+    bullet_style = ParagraphStyle(
+        'BulletStyle',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=20,
+        bulletIndent=10,
+        leading=14
+    )
+    
+    # Title
+    story.append(Paragraph("Service Agreement", title_style))
+    
+    # Introduction
+    intro1 = "Thank you for choosing Neighbourhood Care. We look forward to working with you to help you achieve your goals."
+    story.append(Paragraph(intro1, normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    intro2 = "This document is a written agreement between you and Neighbourhood Care that outlines the supports we will provide and how they will be delivered."
+    story.append(Paragraph(intro2, normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    intro3 = "<b>Please make sure you have read and understood our Agreements, Promises and Terms of Service before completing this document.</b>"
+    story.append(Paragraph(intro3, normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    intro4 = "If you are unsure about any part of this document please speak to your Neighbourhood Care representative."
+    story.append(Paragraph(intro4, normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    intro5 = "This Service Agreement must then be signed in order for us to start delivering services."
+    story.append(Paragraph(intro5, normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    # What makes up your service
+    what_makes_up_heading_style = ParagraphStyle(
+        'WhatMakesUpHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    story.append(Paragraph("What makes up your service?", what_makes_up_heading_style))
+    
+    service_text = "Please note that your service is made up of face to face and some non face to face supports. Services that may be charged as part of your service are:"
+    story.append(Paragraph(service_text, normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    service_bullets = [
+        "Transporting you during a shift (this is a $1 cost per km and is billed out of your core budget).",
+        "Communication by phone or email or in a face to face meeting with key people in your network - when this is not part of your rostered shift.",
+        "Travel for support workers or therapists when they are coming directly from the office or from another participant or travelling back to the office at the end of the shift (you are not charged for travel if they are coming to you from home or going directly home). Max charge 30 min each way and $1 per km non-labour costs (as per NDIS Pricing Arrangements and Price Limits 2023-24 V1.0.",
+        "Preparing some reports that are required for the NDIS such as creating your Support Plan.",
+        "Costs for when we are supporting you in the community such as parking, public transport and so forth.",
+        "For <i>new</i> participants, receiving Core supports, the one off Establishment fee is applied."
+    ]
+    
+    for bullet in service_bullets:
+        story.append(Paragraph(f"• {bullet}", bullet_style))
+    
+    story.append(Spacer(1, 12))
+    establishment_text = "The establishment fee for this service agreement is:"
+    story.append(Paragraph(establishment_text, normal_style))
+    story.append(Spacer(1, 12))
+    
+    # Establishment Fee
+    establishment_data = [
+        ['Establishment Fee', '$0.00']
+    ]
+    
+    establishment_table = Table(establishment_data, colWidths=[3*inch, 2*inch])
+    establishment_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, 0), BLUE_COLOR),
+        ('TEXTCOLOR', (0, 0), (0, 0), colors.white),
+        ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+        ('BACKGROUND', (1, 0), (1, 0), colors.white),
+        ('TEXTCOLOR', (1, 0), (1, 0), colors.black),
+        ('FONTNAME', (1, 0), (1, 0), 'Helvetica'),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+    ]))
+    story.append(establishment_table)
+    story.append(Spacer(1, 12))
+    
+    # Schedule of Supports
+    schedule_heading_style = ParagraphStyle(
+        'ScheduleHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    story.append(Paragraph("Schedule of Supports", schedule_heading_style))
+    
+    # Core and Capacity Building
+    core_capacity_heading_style = ParagraphStyle(
+        'CoreCapacityHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.black,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    story.append(Paragraph("Core and Capacity Building", core_capacity_heading_style))
+    # Create white bold text style for table cells
+    white_bold_table_text_style = ParagraphStyle(
+        'WhiteBoldTableText',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=10,
+        leftIndent=0,
+        textColor=colors.white,
+        fontName='Helvetica-Bold'
+    )
+    
+    core_data = [
+        [Paragraph('Core Budget Allocated to Neighbourhood Care', white_bold_table_text_style), Paragraph(csv_data.get('Total core budget to allocate to Neighbourhood Care', 'Total core budget to allocate to Neighbourhood Care (NDIS Information)'), table_text_style)],
+        [Paragraph('Capacity Building Budget Allocated to Neighbourhood Care', white_bold_table_text_style), Paragraph(csv_data.get('Total capacity building budget to allocate to Neighbourhood Care', 'Total capacity building budget to allocate to Neighbourhood Care (NDIS Information)'), table_text_style)]
+    ]
+    
+    core_table = Table(core_data, colWidths=[3.5*inch, 2*inch])
+    core_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, 0), BLUE_COLOR),
+        ('TEXTCOLOR', (0, 0), (0, 0), colors.white),
+        ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+        ('BACKGROUND', (1, 0), (1, 0), colors.white),
+        ('TEXTCOLOR', (1, 0), (1, 0), colors.black),
+        ('FONTNAME', (1, 0), (1, 0), 'Helvetica'),
+        ('BACKGROUND', (0, 1), (0, 1), BLUE_COLOR),
+        ('TEXTCOLOR', (0, 1), (0, 1), colors.white),
+        ('FONTNAME', (0, 1), (0, 1), 'Helvetica-Bold'),
+        ('BACKGROUND', (1, 1), (1, 1), colors.white),
+        ('TEXTCOLOR', (1, 1), (1, 1), colors.black),
+        ('FONTNAME', (1, 1), (1, 1), 'Helvetica'),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    story.append(core_table)
+    
+    # Support Items
+    support_items_heading_style = ParagraphStyle(
+        'SupportItemsHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.black,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    story.append(Paragraph("Support Items", support_items_heading_style))
+    support_data = [['Category', 'Name', 'Number', 'Unit', 'Price']]
+    
+    # Define some common support items to look up
+    common_support_items = [
+        "Assistance With Self-Care Activities - Standard - Weekday Daytime",
+        "Assistance With Self-Care Activities - Standard - Weekday Evening", 
+        "Assistance With Self-Care Activities - Standard - Saturday",
+        "Assistance With Self-Care Activities - Standard - Sunday",
+        "Assistance With Self-Care Activities - Standard - Public Holiday",
+        "Assistance with Personal Domestic Activities",
+        "Assistance With Self-Care Activities - Night-Time Sleepover",
+        "Assistance From Live-In Carer"
+    ]
+    
+    for i, item_name in enumerate(common_support_items, 1):
+        item_details = lookup_support_item(ndis_items, item_name)
+        support_data.append([
+            Paragraph(f'Support item ({i})', table_text_style),
+            Paragraph(item_name, table_text_style),
+            item_details['number'],
+            item_details['unit'],
+            item_details['wa_price']
+        ])
+    
+    support_table = Table(support_data, colWidths=[0.8*inch, 3*inch, 1.2*inch, 0.6*inch, 0.8*inch])
+    support_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    story.append(support_table)
+    story.append(Spacer(1, 12))
+    
+    # Consents
+    consents_heading_style = ParagraphStyle(
+        'ConsentsHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    story.append(Paragraph("Consents", consents_heading_style))
+    consent_data = []
+    
+    consents = [
+        'I agree to receive services from Neighbourhood Care.',
+        'I consent for Neighbourhood Care to create an NDIS portal service booking on my behalf if my budget/s are Agency Managed.',
+        'I understand that if at any time I (The Participant) require emergency medical assistance, Neighbourhood Care staff will call an ambulance to attend, and that I (The Participant) will be liable for any expenses incurred for Ambulance attendance.',
+        'I agree that Neighbourhood Care staff may administer simple first aid to me (The Participant), if the need arises.',
+        'I consent for Neighbourhood Care to discuss relevant information about my case with other providers involved in my care and support, for example GP, support coordinator.',
+        'I agree not to smoke inside the home whilst Neighbourhood Care staff are present.',
+        'I understand that an Emergency Response Plan will be developed with me by Neighbourhood Care to help keep me safe in the event of an emergency.',
+        'I consent for Neighbourhood Care for I (The Participant) to be photographed/recorded for therapeutic and/or training purposes.',
+        'I give authority for my details or information to be shared with an external auditor who will assess Neighbourhood Care against the NDIS Quality and Safeguards Framework.'
+    ]
+    
+    for consent in consents:
+        consent_data.append([Paragraph(consent, white_bold_table_text_style), csv_data.get(consent, 'Yes')])
+    
+    consent_table = Table(consent_data, colWidths=[4.2*inch, 0.8*inch])
+    consent_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), BLUE_COLOR),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.white),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('BACKGROUND', (1, 0), (1, -1), colors.white),
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.black),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    story.append(consent_table)
+    story.append(Spacer(1, 12))
+    
+    # Agreements, Promises and Terms of Service
+    agreements_heading_style = ParagraphStyle(
+        'AgreementsHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    story.append(Paragraph("<b>Agreements, Promises and Terms of Service</b>", agreements_heading_style))
+    
+    story.append(Paragraph("Our Agreements, Promises and Terms of Service outline how we deliver services. It outlines our rights and responsibilities as a service provider, and the rights and responsibilities of the people we provide services to.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>What can you expect from Neighbourhood Care?</b>", bold_heading_no_space_style))
+    story.append(Paragraph("We agree to:", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    nc_agreements = [
+        "Review your care and service plan every 6 months with you.",
+        "Maintain a service that works for you, so times of appointments meet your needs and we are in tune with each other. We call this Attunement.",
+        "At all times communicate openly and honestly in a timely manner.",
+        "At all times treat you with dignity and respect and being mindful of any cultural differences.",
+        "Be open and transparent about managing complaints or disagreements and provide you the opportunity to provide feedback to us and to the NDIS.",
+        "Ensure your privacy and any information is held in confidence and not shared without your permission.",
+        "Work together at every step on your journey towards reaching your goals.",
+        "Operate within the National Disability Insurance Scheme Act 2013 and associated Business Rules."
+    ]
+    
+    for agreement in nc_agreements:
+        story.append(Paragraph(f"• {agreement}", bullet_style))
+    
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>What is expected of you as an NDIS participant?</b>", normal_style))
+    story.append(Paragraph("You agree to:", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    participant_agreements = [
+        "Inform Neighbourhood Care about how you wish your supports to be provided and how they should be offered to meet your needs.",
+        "Treat Neighbourhood Care staff with courtesy and respect in the same way you want to be treated.",
+        "Talk to Neighbourhood Care if you have any concerns about Plan Management or Financial Administration being provided.",
+        "Give your care and support team the required notice if you need to end this Service Agreement. There is a notice period of 4 weeks to end this service.",
+        "Advise your care and support team immediately if your plan is suspended or replaced by a new NDIS Plan or where you stop being an active participant in the NDIS."
+    ]
+    
+    for agreement in participant_agreements:
+        story.append(Paragraph(f"• {agreement}", bullet_style))
+    
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>Cancellations</b>", normal_style))
+    story.append(Paragraph("Your care and support team require a minimum of 7 Days notice if you cannot make a scheduled appointment or planned shift. If you are able to reschedule a make up shift with the same support worker within the following 7 days, no cancellation will be charged. If a make up shift with that support worker cannot be scheduled, the NDIS considers this a Short Notice Cancellation and Neighbourhood Care may charge 100% of the agreed hourly rate.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>How will services be provided to you?</b>", bold_heading_no_space_style))
+    story.append(Paragraph("Services will be provided at your place of residence and in other locations as deemed necessary and suitable by you, your family, the Support Coordinator and the Neighbourhood Care Team charged with your safety whilst in the service.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>When will services be provided?</b>", bold_heading_no_space_style))
+    story.append(Paragraph("All services will be provided in attunement to your needs and subject to availability by others who may have an impact to your availability.", normal_no_space_style))
+    story.append(Paragraph("From the commencement of the service agreement: Direct support provided as per the support and/or Therapy support plan, subject to change/increase, upon confirmation with you and/or your family.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>How long will services be provided?</b>", bold_heading_no_space_style))
+    story.append(Paragraph("Services will be provided for the length of the service agreement plan unless otherwise ceased at the discretion by by you or your team, in accordance with Neighbourhood Care's Policy and Procedures.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>How to make changes?</b>", bold_heading_no_space_style))
+    story.append(Paragraph("If changes to the supports or their delivery are required, you and your Neighbourhood Care team (the parties) agree to discuss and review this Service Agreement. The Parties agree that any changes to this Service Agreement will be in writing, signed, and dated by the Parties.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>How to end the Agreement?</b>", bold_heading_no_space_style))
+    story.append(Paragraph("Should either Party wish to end this Service Agreement they must give 4 weeks written notice to their care and support team. If either Party seriously breaches this Service Agreement the requirement of notice will be waived.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>Pricing Changes</b>", bold_heading_no_space_style))
+    story.append(Paragraph("Neighbourhood Care's services are charged in accordance with the NDIS Pricing Arrangements and Price Limits Guide. The prices set out in this Service Agreement will change in accordance with updates to the NDIS Pricing Arrangements and Price Limits Guide. This typically updates on the 1st of July each year but may be updated at other times.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>What to do if there is a problem?</b>", bold_heading_no_space_style))
+    story.append(Paragraph("If there is a problem with anything related to your service or this agreement, you can contact:", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Your Neighbourhood Care contact person (please refer to the front page of your Service Agreement) or 1800 292 273.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Alternatively, you can email your concern or query to: ask@nhcare.com.au.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("If you don't feel that your problem was resolved please speak to your support coordinator, Local Area Coordinator or you can just contact the National Disability Insurance Agency (NDIA)", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>Collection of your personal information</b>", bold_heading_no_space_style))
+    story.append(Paragraph("Neighbourhood Care will use your information to support your involvement in the NDIS.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Neighbourhood Care will NOT use any of your personal information for any other purpose or disclose your personal information to any other organisations or individuals (including overseas recipients) unless authorised by law or you provide consent for us to do so.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("You can also ask to see what personal information (if any) we hold about you at any time and you can seek correction if the information is incorrect.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("<b>Neighbourhood Care's privacy policy describes:</b>", normal_no_space_style))
+    
+    privacy_bullets = [
+        "How we use your personal information",
+        "Why some personal information may be given to other organisations from time to time",
+        "How you can access the personal information we have about you on our system",
+        "How you can complain about a privacy breach, and how Neighbourhood Care deals with the complaint.",
+        "How you can get your personal information corrected if it is wrong."
+    ]
+    
+    for bullet in privacy_bullets:
+        story.append(Paragraph(f"• {bullet}", bullet_style))
+    
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("You can find the policy by enquiring at Neighbourhood Care.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Please note that Neighbourhood Care is required to release information about service users (without identifying you by full name or address) to the Australian Institute of Health and Welfare, to enable statistics about disability services and their clients to be compiled. This information will be kept confidential. This information is used for statistical purposes only and will not be used to affect your entitlements or your access to services. You have the right to access your own files and to update or correct information included in the Disability Services National Minimum Data Set collection.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    story.append(Paragraph("<b>Goods and Services Tax</b>", normal_style))
+    story.append(Paragraph("Most services provided under the NDIS will not include GST. However, GST will apply to some services. Neighbourhood Care will apply GST when it is required.", normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    # For your information text (comes before Signatures heading)
+    for_your_info_text = 'For your information: "A supply of supports under this Service Agreement is a supply of one or more reasonable and necessary supports specified in the statement of supports included, under subsection 33(2) of the National Disability Insurance Scheme Act 2013 (NDIS Act), in the participant\'s NDIS Plan currently in effect under section 37 of the NDIS Act."'
+    story.append(Paragraph(for_your_info_text, normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    # Signatures
+    signatures_heading_style = ParagraphStyle(
+        'SignaturesHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leftIndent=0
+    )
+    story.append(Paragraph("Signatures", signatures_heading_style))
+    signatory_name = f"{csv_data.get('First name (Person Signing the Agreement)', 'First name (Person Signing the Agreement)')} {csv_data.get('Surname (Person Signing the Agreement)', 'Surname (Person Signing the Agreement)')}"
+    signatory_text = f"<b>Signatory:</b><br/><b>Name:</b> {signatory_name}<br/><b>Date:</b> [Date]<br/><b>Signed:</b> [Signature]"
+    story.append(Paragraph(signatory_text, normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    # Neighbourhood Care Representative
+    nc_rep_text = f"<b>Neighbourhood Care Representative:</b><br/><b>Name:</b> [To be filled with NC representative name]<br/><b>Date:</b> [Date]<br/><b>Signed:</b> [Signature]"
+    story.append(Paragraph(nc_rep_text, normal_no_space_style))
+    story.append(Spacer(1, 12))
+    
+    # Participant - FIXED with all missing fields
+    story.append(Paragraph("Appendix", black_heading_style))
+    story.append(Paragraph("Participant", black_heading_no_space_style))
+    # Participant Name: First name + Middle name + Surname (from Details of the Client)
+    first_name = csv_data.get('First name (Details of the Client)', '').strip()
+    middle_name = csv_data.get('Middle name (Details of the Client)', '').strip()
+    surname = csv_data.get('Surname (Details of the Client)', '').strip()
+    participant_name_parts = [p for p in [first_name, middle_name, surname] if p]
+    participant_name = ' '.join(participant_name_parts) if participant_name_parts else 'First name (Details of the Client)'
+    
+    # Emergency Contact: First name + Surname (from Emergency contact)
+    emergency_first = csv_data.get('First name (Emergency contact)', '').strip()
+    emergency_surname = csv_data.get('Surname (Emergency contact)', '').strip()
+    emergency_contact_parts = [p for p in [emergency_first, emergency_surname] if p]
+    emergency_contact = ' '.join(emergency_contact_parts) if emergency_contact_parts else get_emergency_contact(csv_data)
+    
+    participant_data = [
+        ['Participant Name', Paragraph(participant_name, table_text_style)],
+        ['Date of Birth', csv_data.get('Date of birth (Details of the Client)', csv_data.get('Date of birth', 'Date of birth (Details of the Client)'))],
+        ['NDIS Number', csv_data.get('NDIS number (Details of the Client)', csv_data.get('NDIS number', 'NDIS number (Details of the Client)'))],
+        ['Plan Duration', f"{csv_data.get('Plan start date', 'Plan start date')} - {csv_data.get('Plan end date', 'Plan end date')}"],
+        ['Address', Paragraph(csv_data.get('Home address (Contact Details of the Client)', 'Home address (Contact Details of the Client)'), table_text_style)],
+        ['Home phone', csv_data.get('Home phone (Contact Details of the Client)', 'Home phone (Contact Details of the Client)')],
+        ['Mobile phone', csv_data.get('Mobile phone (Contact Details of the Client)', 'Mobile phone (Contact Details of the Client)')],
+        ['Email address', Paragraph(csv_data.get('Email address (Contact Details of the Client)', 'Email address (Contact Details of the Client)'), table_text_style)],
+        ['Preferred contact method', csv_data.get('Preferred method of contact', 'Preferred method of contact (Contact Details of the Client)')],
+        ['Emergency Contact', Paragraph(emergency_contact, table_text_style)],
+        ['Service Agreement Duration', f"{csv_data.get('Service start date', csv_data.get('Service start', 'Service start date'))} - {csv_data.get('Service end date', csv_data.get('Service end', 'Service end date'))}"]
+    ]
+    
+    participant_table = Table(participant_data, colWidths=[2.5*inch, 3*inch])
+    participant_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    story.append(participant_table)
+    story.append(Spacer(1, 12))
+    
+    # Signatory (detailed) - FIXED with all missing fields
+    story.append(Paragraph("Signatory", black_heading_no_space_style))
+    # Get signatory contact details based on who is signing
+    person_signing = csv_data.get('Person signing the agreement', '')
+    if person_signing == 'Participant':
+        # If participant is signing, use their contact details
+        signatory_contact = get_preferred_contact_details(csv_data)
+    elif person_signing == 'Primary carer':
+        # Use primary carer contact details if available
+        signatory_contact = csv_data.get('Home phone (Primary carer)', csv_data.get('Mobile phone (Primary carer)', csv_data.get('Email address (Primary carer)', '')))
+    else:
+        # Use person signing the agreement contact details
+        signatory_contact = get_preferred_contact_details(csv_data)
+    
+    signatory_detailed_data = [
+        ['Name', Paragraph(get_signatory_name(csv_data), table_text_style)],
+        ['Relationship to Participant', get_signatory_relationship(csv_data)],
+        ['Address', Paragraph(get_signatory_address(csv_data), table_text_style)],
+        ['Contact Details', Paragraph(signatory_contact, table_text_style)]
+    ]
+    
+    signatory_detailed_table = Table(signatory_detailed_data, colWidths=[2.5*inch, 3*inch])
+    signatory_detailed_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    story.append(signatory_detailed_table)
+    story.append(Spacer(1, 12))
+    
+    # Plan Manager
+    story.append(Paragraph("Plan Manager", black_heading_no_space_style))
+    plan_manager_data = [
+        ['Name', get_plan_manager_name(csv_data)],
+        ['Postal Address', Paragraph(get_plan_manager_address(csv_data), table_text_style)],
+        ['Phone', get_plan_manager_phone(csv_data)],
+        ['Email Address', Paragraph(get_plan_manager_email(csv_data), table_text_style)]
+    ]
+    
+    plan_manager_table = Table(plan_manager_data, colWidths=[2.5*inch, 3*inch])
+    plan_manager_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    story.append(plan_manager_table)
+    story.append(Spacer(1, 12))
+    
+    # My Neighbourhood Care Key Contact
+    story.append(Paragraph("My Neighbourhood Care Key Contact", black_heading_no_space_style))
+    
+    # Get respondent name and lookup user data
+    respondent_name = csv_data.get('Respondent', '')
+    user_data = lookup_user_data(active_users, respondent_name)
+    
+    key_contact_data = [
+        ['My Neighbourhood Care ID', '[To be filled in]'],
+        ['Team', csv_data.get('Neighbourhood Care representative team', '[To be filled in]')],
+        ['Key Contact', Paragraph(user_data['name'], table_text_style)],
+        ['Phone', user_data['mobile']],
+        ['Email Address', Paragraph(user_data['email'], table_text_style)],
+        ['Neighbourhood Care Office', 'Phone: 1800 292 273']
+    ]
+    
+    key_contact_table = Table(key_contact_data, colWidths=[2.5*inch, 3*inch])
+    key_contact_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    story.append(key_contact_table)
+    
+    # Build PDF
+    doc.build(story)
+    print("Service Agreement PDF FINAL TABLES created successfully!")
+
+def get_emergency_contact(csv_data):
+    """Get emergency contact based on the logic specified"""
+    if csv_data.get('Is the primary carer also the emergency contact for the participant?', '').lower() == 'yes':
+        return f"{csv_data.get('First name (Primary carer)', 'First name (Primary carer)')} {csv_data.get('Surname (Primary carer)', 'Surname (Primary carer)')}"
+    else:
+        return f"{csv_data.get('First name (Emergency contact)', 'First name (Emergency contact)')} {csv_data.get('Surname (Emergency contact)', 'Surname (Emergency contact)')}"
+
+def get_signatory_name(csv_data):
+    """Get signatory name based on who is signing"""
+    person_signing = csv_data.get('Person signing the agreement', '')
+    if person_signing == 'Participant':
+        # Participant is the client - use First name + Middle name + Surname from Details of the Client
+        first_name = csv_data.get('First name (Details of the Client)', '').strip()
+        middle_name = csv_data.get('Middle name (Details of the Client)', '').strip()
+        surname = csv_data.get('Surname (Details of the Client)', '').strip()
+        name_parts = [p for p in [first_name, middle_name, surname] if p]
+        return ' '.join(name_parts) if name_parts else 'First name (Details of the Client)'
+    elif person_signing == 'Primary carer':
+        return f"{csv_data.get('First name (Primary carer)', 'First name (Primary carer)')} {csv_data.get('Surname (Primary carer)', 'Surname (Primary carer)')}"
+    else:
+        return f"{csv_data.get('First name (Person Signing the Agreement)', 'First name (Person Signing the Agreement)')} {csv_data.get('Surname (Person Signing the Agreement)', 'Surname (Person Signing the Agreement)')}"
+
+def get_signatory_relationship(csv_data):
+    """Get signatory relationship based on who is signing"""
+    person_signing = csv_data.get('Person signing the agreement', '')
+    if person_signing == 'Participant':
+        return 'Participant'
+    elif person_signing == 'Primary carer':
+        return csv_data.get('Relationship to client (Primary carer)', 'Relationship to client (Primary carer)')
+    else:
+        return csv_data.get('Relationship to client (Person Signing the Agreement)', 'Relationship to client (Person Signing the Agreement)')
+
+def get_signatory_address(csv_data):
+    """Get signatory address based on who is signing"""
+    person_signing = csv_data.get('Person signing the agreement', '')
+    if person_signing == 'Participant':
+        return csv_data.get('Home address (Contact Details of the Client)', 'Home address (Contact Details of the Client)')
+    elif person_signing == 'Primary carer':
+        return csv_data.get('Home address (Primary carer)', 'Home address (Primary carer)')
+    else:
+        return csv_data.get('Home address (Person Signing the Agreement)', 'Home address (Person Signing the Agreement)')
+
+def get_plan_manager_name(csv_data):
+    """Get plan manager name based on plan management type"""
+    plan_type = csv_data.get('Plan management type', '')
+    if plan_type in ['NDIA Agency Managed', 'Insurance Commission of WA']:
+        return ''
+    else:
+        return csv_data.get('Plan manager name', 'Plan manager name (Support Items Required)')
+
+def get_plan_manager_address(csv_data):
+    """Get plan manager address based on plan management type"""
+    plan_type = csv_data.get('Plan management type', '')
+    if plan_type in ['NDIA Agency Managed', 'Insurance Commission of WA']:
+        return ''
+    else:
+        return csv_data.get('Plan manager postal address', 'Plan manager postal address (Support Items Required)')
+
+def get_plan_manager_phone(csv_data):
+    """Get plan manager phone based on plan management type"""
+    plan_type = csv_data.get('Plan management type', '')
+    if plan_type in ['NDIA Agency Managed', 'Insurance Commission of WA']:
+        return ''
+    else:
+        return csv_data.get('Plan manager phone number', 'Plan manager phone number (Support Items Required)')
+
+def get_plan_manager_email(csv_data):
+    """Get plan manager email based on plan management type"""
+    plan_type = csv_data.get('Plan management type', '')
+    if plan_type in ['NDIA Agency Managed', 'Insurance Commission of WA']:
+        return ''
+    else:
+        return csv_data.get('Plan manager email address', 'Plan manager email address (Support Items Required)')
+
+if __name__ == "__main__":
+    create_service_agreement()
