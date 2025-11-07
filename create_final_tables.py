@@ -160,6 +160,30 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         data['Mobile phone (Contact Details of the Client)'] = find_in_fields("mobile phone", "mobile", "mobilephone")
         data['Email address (Contact Details of the Client)'] = find_in_fields("email", "email address")
         
+        # Extract emergency contact fields
+        data['First name (Emergency contact)'] = find_in_fields("first name (emergency contact)", "emergency contact first name", "emergency first name")
+        data['Surname (Emergency contact)'] = find_in_fields("surname (emergency contact)", "emergency contact surname", "emergency contact last name", "emergency surname", "emergency last name")
+        data['Is the primary carer also the emergency contact for the participant?'] = find_in_fields("primary carer also emergency contact", "is primary carer emergency contact")
+        
+        # Extract Person Signing the Agreement fields
+        data['Person signing the agreement'] = find_in_fields("person signing the agreement", "who is signing", "signatory")
+        data['First name (Person Signing the Agreement)'] = find_in_fields("first name (person signing", "person signing first name", "signatory first name")
+        data['Surname (Person Signing the Agreement)'] = find_in_fields("surname (person signing", "person signing surname", "person signing last name", "signatory surname", "signatory last name")
+        data['Relationship to client (Person Signing the Agreement)'] = find_in_fields("relationship to client (person signing", "person signing relationship", "signatory relationship")
+        data['Home address (Person Signing the Agreement)'] = find_in_fields("home address (person signing", "person signing address", "signatory address")
+        data['Home phone (Person Signing the Agreement)'] = find_in_fields("home phone (person signing", "person signing home phone", "signatory home phone")
+        data['Mobile phone (Person Signing the Agreement)'] = find_in_fields("mobile phone (person signing", "person signing mobile", "signatory mobile")
+        data['Email address (Person Signing the Agreement)'] = find_in_fields("email address (person signing", "person signing email", "signatory email")
+        
+        # Extract Primary carer fields
+        data['First name (Primary carer)'] = find_in_fields("first name (primary carer", "primary carer first name")
+        data['Surname (Primary carer)'] = find_in_fields("surname (primary carer", "primary carer surname", "primary carer last name")
+        data['Relationship to client (Primary carer)'] = find_in_fields("relationship to client (primary carer", "primary carer relationship")
+        data['Home address (Primary carer)'] = find_in_fields("home address (primary carer", "primary carer address")
+        data['Home phone (Primary carer)'] = find_in_fields("home phone (primary carer", "primary carer home phone")
+        data['Mobile phone (Primary carer)'] = find_in_fields("mobile phone (primary carer", "primary carer mobile")
+        data['Email address (Primary carer)'] = find_in_fields("email address (primary carer", "primary carer email")
+        
         # Return if we got some data from form fields
         if any(data.values()):
             return data
@@ -973,16 +997,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
     # Signatory (detailed) - FIXED with all missing fields
     story.append(Paragraph("Signatory", black_heading_no_space_style))
     # Get signatory contact details based on who is signing
-    person_signing = csv_data.get('Person signing the agreement', '')
-    if person_signing == 'Participant':
-        # If participant is signing, use their contact details
-        signatory_contact = get_preferred_contact_details(csv_data)
-    elif person_signing == 'Primary carer':
-        # Use primary carer contact details if available
-        signatory_contact = csv_data.get('Home phone (Primary carer)', csv_data.get('Mobile phone (Primary carer)', csv_data.get('Email address (Primary carer)', '')))
-    else:
-        # Use person signing the agreement contact details
-        signatory_contact = get_preferred_contact_details(csv_data)
+    signatory_contact = get_signatory_contact_details(csv_data)
     
     signatory_detailed_data = [
         ['Name', Paragraph(get_signatory_name(csv_data), table_text_style)],
@@ -1114,6 +1129,54 @@ def get_signatory_address(csv_data):
         return csv_data.get('Home address (Primary carer)', 'Home address (Primary carer)')
     else:
         return csv_data.get('Home address (Person Signing the Agreement)', 'Home address (Person Signing the Agreement)')
+
+def get_signatory_contact_details(csv_data):
+    """Get comprehensive contact details for signatory based on who is signing"""
+    person_signing = csv_data.get('Person signing the agreement', '')
+    contact_parts = []
+    
+    if person_signing == 'Participant':
+        # Use participant's contact details
+        home_phone = csv_data.get('Home phone (Contact Details of the Client)', '').strip()
+        mobile_phone = csv_data.get('Mobile phone (Contact Details of the Client)', '').strip()
+        email = csv_data.get('Email address (Contact Details of the Client)', '').strip()
+        
+        if home_phone:
+            contact_parts.append(f"Home: {home_phone}")
+        if mobile_phone:
+            contact_parts.append(f"Mobile: {mobile_phone}")
+        if email:
+            contact_parts.append(f"Email: {email}")
+    elif person_signing == 'Primary carer':
+        # Use primary carer's contact details
+        home_phone = csv_data.get('Home phone (Primary carer)', '').strip()
+        mobile_phone = csv_data.get('Mobile phone (Primary carer)', '').strip()
+        email = csv_data.get('Email address (Primary carer)', '').strip()
+        
+        if home_phone:
+            contact_parts.append(f"Home: {home_phone}")
+        if mobile_phone:
+            contact_parts.append(f"Mobile: {mobile_phone}")
+        if email:
+            contact_parts.append(f"Email: {email}")
+    else:
+        # Use Person Signing the Agreement contact details
+        home_phone = csv_data.get('Home phone (Person Signing the Agreement)', '').strip()
+        mobile_phone = csv_data.get('Mobile phone (Person Signing the Agreement)', '').strip()
+        email = csv_data.get('Email address (Person Signing the Agreement)', '').strip()
+        
+        if home_phone:
+            contact_parts.append(f"Home: {home_phone}")
+        if mobile_phone:
+            contact_parts.append(f"Mobile: {mobile_phone}")
+        if email:
+            contact_parts.append(f"Email: {email}")
+    
+    if contact_parts:
+        return ' | '.join(contact_parts)
+    else:
+        # Fallback to preferred contact method if no specific contact details found
+        return get_preferred_contact_details(csv_data)
 
 def get_plan_manager_name(csv_data):
     """Get plan manager name based on plan management type"""
