@@ -159,14 +159,8 @@ def build_output_row(row):
     # Build display name from first name + surname
     display_name = " ".join([p for p in [first_name, surname] if p]).strip()
     
-    # Combine home phone and work phone with semicolon
-    # Include phone numbers even if they don't pass validation (they might be test data or formatted differently)
-    phone_numbers = []
-    if home_phone:
-        phone_numbers.append(home_phone)
-    if work_phone:
-        phone_numbers.append(work_phone)
-    phone_number = ";".join(phone_numbers) if phone_numbers else ""
+    # Use only home phone (work phone is not included)
+    phone_number = home_phone if home_phone else ""
 
     return {
         "Salutation": "",
