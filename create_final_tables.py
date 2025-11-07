@@ -192,7 +192,11 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         data['Is the primary carer also the emergency contact for the participant?'] = find_in_fields("primary carer also emergency contact", "is primary carer emergency contact")
         
         # Extract Person Signing the Agreement fields
-        data['Person signing the agreement'] = find_in_fields("person signing the agreement", "who is signing", "signatory")
+        person_signing = find_in_fields("person signing the agreement", "who is signing", "signatory")
+        # Clean up checkbox characters
+        if person_signing:
+            person_signing = person_signing.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+        data['Person signing the agreement'] = person_signing
         data['First name (Person Signing the Agreement)'] = find_in_fields("first name (person signing the agreement)", "first name (person signing", "person signing first name", "signatory first name")
         data['Surname (Person Signing the Agreement)'] = find_in_fields("surname (person signing the agreement)", "surname (person signing", "person signing surname", "person signing last name", "signatory surname", "signatory last name")
         data['Relationship to client (Person Signing the Agreement)'] = find_in_fields("relationship to client (person signing the agreement)", "relationship to client (person signing", "person signing relationship", "signatory relationship")
@@ -220,21 +224,32 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         section_starts = []
         for i, line in enumerate(lines):
             line_lower = normalize_key(line)
-            if "details of the client" in line_lower and "contact" not in line_lower:
-                section_starts.append(("details", i))
-            elif "contact details of the client" in line_lower:
-                section_starts.append(("contact", i))
-            elif any(x in line_lower for x in ["needs of the client", "ndis information", "support items", "formal supports", 
-                                               "primary carer", "important people", "home life", "health information", 
-                                               "care requirements", "behaviour requirements", "other information", "consents", "emergency contact"]):
-                # End of relevant sections or start of new section
-                if "emergency contact" in line_lower:
+            line_clean = line.strip()
+            
+            # Only match actual section headers - they should be standalone lines without parentheses
+            # Section headers are typically short and don't contain field values
+            is_section_header = (
+                len(line_clean) < 50 and  # Section headers are short
+                '(' not in line_clean and  # Section headers don't have parentheses (values do)
+                ':' not in line_clean      # Section headers don't have colons
+            )
+            
+            if is_section_header:
+                if "details of the client" in line_lower and "contact" not in line_lower:
+                    section_starts.append(("details", i))
+                elif "contact details of the client" in line_lower:
+                    section_starts.append(("contact", i))
+                elif "emergency contact" in line_lower:
                     section_starts.append(("emergency", i))
-                break
+                elif any(x in line_lower for x in ["needs of the client", "ndis information", "support items", "formal supports", 
+                                                   "primary carer", "important people", "home life", "health information", 
+                                                   "care requirements", "behaviour requirements", "other information", "consents"]):
+                    # End of relevant sections
+                    break
         
-        # Helper function to find value in a specific section
+        # Helper function to find value in a specific section - SIMPLIFIED
         def find_value_in_section(label_patterns, section_type):
-            """Find value only in the specified section (details or contact)"""
+            """Find value only in the specified section - just get the next line after the label"""
             # Find the relevant section
             section_start = None
             section_end = None
@@ -262,13 +277,10 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                 for pattern in label_patterns:
                     pattern_lower = normalize_key(pattern)
                     
-                    # More flexible matching - check if pattern matches the line
-                    # Remove common punctuation and section names for comparison
+                    # Simple match - check if pattern matches the line
                     line_clean = line_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
                     pattern_clean = pattern_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
                     
-                    # Match if the line is exactly the label (simple exact match)
-                    # The PDF has labels like "First name" on one line, value on next line
                     matches = (
                         pattern_lower == line_lower or
                         pattern_clean == line_clean or
@@ -280,77 +292,37 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                         if ':' in line:
                             parts = line.split(':', 1)
                             if len(parts) > 1 and parts[1].strip():
-                                value = parts[1].strip()
-                                # Make sure it's not just another label
-                                if value and len(value) > 2 and not any(x in normalize_key(value) for x in 
-                                    ['first name', 'middle name', 'surname', 'details of', 'contact details']):
-                                    return value
+                                return parts[1].strip()
                         
-                        # Look for value on next line(s) - check up to 5 lines ahead
-                        for j in range(i + 1, min(i + 6, section_end)):
+                        # Just get the next non-empty line - that's the value
+                        for j in range(i + 1, min(i + 3, section_end)):
                             next_line = lines[j].strip()
-                            if not next_line:
-                                continue
-                            
-                            # Skip checkbox indicators (bullet points) - these are just visual markers
-                            if next_line in ['•', '●', '○', '☐', '☑', '✓']:
-                                continue
-                            
-                            next_line_lower = normalize_key(next_line)
-                            
-                            # Skip if it's another section header
-                            if any(x in next_line_lower for x in ['details of the client', 'contact details of the client', 'emergency contact', 'person signing the agreement']):
-                                break  # End of section, stop looking
-                            
-                            # Skip if it's clearly another field label
-                            # Field labels are typically short and match known patterns
-                            field_labels = ['first name', 'middle name', 'surname', 'ndis number', 'date of birth', 'gender',
-                                           'home address', 'home phone', 'work phone', 'mobile phone', 'email address',
-                                           'preferred name', 'key code', 'postal address', 'preferred method of contact',
-                                           'relationship to client', 'if their home address']
-                            is_field_label = False
-                            for fl in field_labels:
-                                # Check if next line is exactly a field label (not a value)
-                                # A field label is: exact match, or contains the label and is short
-                                if (fl == next_line_lower or 
-                                    (fl in next_line_lower and len(next_line) < 50 and ':' not in next_line and 
-                                     not any(x in next_line_lower for x in ['write', 'below', 'same as', 'postal address']))):
-                                    is_field_label = True
-                                    break
-                            
-                            # Also skip instruction text (long lines with words like "write", "below", etc.)
-                            if len(next_line) > 80 or any(x in next_line_lower for x in ['write', 'below', 'same as', 'if their']):
-                                continue
-                            
-                            if not is_field_label:
-                                # This looks like a value - return it
+                            if next_line and next_line not in ['•', '●', '○', '☐', '☑', '✓']:
                                 return next_line
             
             return ""
         
-        # Helper function for fields that aren't in specific sections
+        # Helper function for fields that aren't in specific sections - SIMPLIFIED
         def find_value_after_label(label_patterns, start_idx=0):
             for i in range(start_idx, len(lines)):
                 line_lower = normalize_key(lines[i])
                 for pattern in label_patterns:
                     pattern_lower = normalize_key(pattern)
-                    if pattern_lower in line_lower or line_lower == pattern_lower:
+                    # Match if pattern is in the line (but not if the line IS the pattern - that's the label)
+                    if pattern_lower in line_lower:
                         # Look for value on same line after colon
                         if ':' in lines[i]:
                             parts = lines[i].split(':', 1)
                             if len(parts) > 1 and parts[1].strip():
                                 return parts[1].strip()
-                        # Look for value on next line(s), skipping checkboxes
-                        for j in range(i + 1, min(i + 4, len(lines))):
+                        # Skip the label line itself and get the next non-empty line - that's the value
+                        for j in range(i + 1, min(i + 3, len(lines))):
                             next_line = lines[j].strip()
-                            if not next_line:
-                                continue
-                            # Skip checkbox indicators
-                            if next_line in ['•', '●', '○', '☐', '☑', '✓']:
-                                continue
-                            next_line_lower = normalize_key(next_line)
-                            if next_line and not any(x in next_line_lower for x in ['details', 'contact', 'information']):
-                                return next_line
+                            if next_line and next_line not in ['•', '●', '○', '☐', '☑', '✓']:
+                                # Make sure we're not returning the label itself
+                                next_line_lower = normalize_key(next_line)
+                                if next_line_lower != pattern_lower:
+                                    return next_line
             return ""
         
         # Extract data using section-aware text parsing - only fill in missing fields
@@ -408,8 +380,13 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
             data['Service start date'] = find_value_after_label(['Service start date', 'Service start'])
         if not data.get('Service end date'):
             data['Service end date'] = find_value_after_label(['Service end date', 'Service end'])
-        if not data.get('Person signing the agreement'):
-            data['Person signing the agreement'] = find_value_after_label(['Person signing the agreement', 'Who is signing'])
+        # Always try text extraction for Person signing the agreement (form fields might return the label)
+        person_signing_text = find_value_after_label(['Person signing the agreement', 'Who is signing'])
+        if person_signing_text and person_signing_text.lower() != 'person signing the agreement':
+            # Clean up checkbox characters
+            person_signing_text = person_signing_text.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+            if person_signing_text:
+                data['Person signing the agreement'] = person_signing_text
         if not data.get('First name (Person Signing the Agreement)'):
             data['First name (Person Signing the Agreement)'] = find_value_after_label(['First name (Person Signing the Agreement)'])
         if not data.get('Surname (Person Signing the Agreement)'):
