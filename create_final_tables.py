@@ -855,15 +855,23 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
             item_name.lower() in key.lower() or key.lower() in item_name.lower() 
             for key in ndis_items.keys()
         )
-        # If item not found, show [Not Found] in unit section
-        unit = item_details.get('unit', '') if item_found else '[Not Found]'
-        support_data.append([
-            Paragraph(f'Support item ({item_num})', table_text_style),
-            Paragraph(item_name, table_text_style),
-            item_details.get('number', '') if item_found else '',
-            unit,
-            item_details.get('wa_price', '') if item_found else ''
-        ])
+        # If item not found, show [Not Found] for all fields
+        if item_found:
+            support_data.append([
+                Paragraph(f'Support item ({item_num})', table_text_style),
+                Paragraph(item_name, table_text_style),
+                item_details.get('number', ''),
+                item_details.get('unit', ''),
+                item_details.get('wa_price', '')
+            ])
+        else:
+            support_data.append([
+                Paragraph(f'Support item ({item_num})', table_text_style),
+                Paragraph(item_name, table_text_style),
+                '[Not Found]',
+                '[Not Found]',
+                '[Not Found]'
+            ])
     
     support_table = Table(support_data, colWidths=[0.8*inch, 3*inch, 1.2*inch, 0.6*inch, 0.8*inch])
     support_table.setStyle(TableStyle([
