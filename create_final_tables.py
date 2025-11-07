@@ -239,13 +239,16 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                     section_starts.append(("details", i))
                 elif "contact details of the client" in line_lower:
                     section_starts.append(("contact", i))
+                elif "primary carer" in line_lower and "emergency" not in line_lower:
+                    section_starts.append(("primary_carer", i))
                 elif "emergency contact" in line_lower:
                     section_starts.append(("emergency", i))
                 elif any(x in line_lower for x in ["needs of the client", "ndis information", "support items", "formal supports", 
-                                                   "primary carer", "important people", "home life", "health information", 
+                                                   "important people", "home life", "health information", 
                                                    "care requirements", "behaviour requirements", "other information", "consents"]):
-                    # End of relevant sections
-                    break
+                    # End of relevant sections - but only break if we've found primary_carer and emergency sections
+                    if any(sec[0] == "primary_carer" for sec in section_starts) and any(sec[0] == "emergency" for sec in section_starts):
+                        break
         
         # Helper function to find value in a specific section - SIMPLIFIED
         def find_value_in_section(label_patterns, section_type):
@@ -351,13 +354,13 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         
         # Extract emergency contact fields - try emergency section first, then fallback to general search
         if not data.get('First name (Emergency contact)'):
-            emergency_first = find_value_in_section(['First name', 'First name (Emergency contact)'], "emergency")
+            emergency_first = find_value_in_section(['First name'], "emergency")
             if emergency_first:
                 data['First name (Emergency contact)'] = emergency_first
             else:
                 data['First name (Emergency contact)'] = find_value_after_label(['First name (Emergency contact)'])
         if not data.get('Surname (Emergency contact)'):
-            emergency_surname = find_value_in_section(['Surname', 'Surname (Emergency contact)', 'Last name', 'Family name'], "emergency")
+            emergency_surname = find_value_in_section(['Surname'], "emergency")
             if emergency_surname:
                 data['Surname (Emergency contact)'] = emergency_surname
             else:
@@ -396,9 +399,11 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         if not data.get('Home address (Person Signing the Agreement)'):
             data['Home address (Person Signing the Agreement)'] = find_value_after_label(['Home address (Person Signing the Agreement)'])
         if not data.get('First name (Primary carer)'):
-            data['First name (Primary carer)'] = find_value_after_label(['First name (Primary carer)'])
+            # Look for "First name" label in Primary carer section
+            data['First name (Primary carer)'] = find_value_in_section(['First name'], "primary_carer")
         if not data.get('Surname (Primary carer)'):
-            data['Surname (Primary carer)'] = find_value_after_label(['Surname (Primary carer)'])
+            # Look for "Surname" label in Primary carer section  
+            data['Surname (Primary carer)'] = find_value_in_section(['Surname'], "primary_carer")
         if not data.get('Relationship to client (Primary carer)'):
             data['Relationship to client (Primary carer)'] = find_value_after_label(['Relationship to client (Primary carer)'])
         if not data.get('Home address (Primary carer)'):
@@ -1103,7 +1108,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
     
     # Signatory (detailed) - FIXED with all missing fields
     story.append(Paragraph("Signatory", black_heading_no_space_style))
-    # Get signatory contact details based on who is signing
+    # Get signatory contact details based on who is signing (preferred method only)
     signatory_contact = get_signatory_contact_details(csv_data)
     
     signatory_detailed_data = [
@@ -1197,7 +1202,11 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
 
 def get_emergency_contact(csv_data):
     """Get emergency contact based on the logic specified"""
-    if csv_data.get('Is the primary carer also the emergency contact for the participant?', '').lower() == 'yes':
+    is_primary_carer = csv_data.get('Is the primary carer also the emergency contact for the participant?', '').strip()
+    # Clean checkbox characters and check if it's "yes"
+    is_primary_carer_clean = is_primary_carer.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip().lower()
+    
+    if 'yes' in is_primary_carer_clean:
         first_name = csv_data.get('First name (Primary carer)', '').strip()
         surname = csv_data.get('Surname (Primary carer)', '').strip()
         name_parts = [p for p in [first_name, surname] if p]
@@ -1250,51 +1259,18 @@ def get_signatory_address(csv_data):
         return csv_data.get('Home address (Person Signing the Agreement)', '').strip()
 
 def get_signatory_contact_details(csv_data):
-    """Get comprehensive contact details for signatory based on who is signing"""
+    """Get preferred contact method for signatory based on who is signing"""
     person_signing = csv_data.get('Person signing the agreement', '').strip()
-    contact_parts = []
     
     if person_signing.lower() == 'participant':
-        # Use participant's contact details
-        home_phone = csv_data.get('Home phone (Contact Details of the Client)', '').strip()
-        mobile_phone = csv_data.get('Mobile phone (Contact Details of the Client)', '').strip()
-        email = csv_data.get('Email address (Contact Details of the Client)', '').strip()
-        
-        if home_phone:
-            contact_parts.append(f"Home: {home_phone}")
-        if mobile_phone:
-            contact_parts.append(f"Mobile: {mobile_phone}")
-        if email:
-            contact_parts.append(f"Email: {email}")
+        # Use participant's preferred method of contact
+        return csv_data.get('Preferred method of contact', '').strip()
     elif person_signing.lower() == 'primary carer':
-        # Use primary carer's contact details
-        home_phone = csv_data.get('Home phone (Primary carer)', '').strip()
-        mobile_phone = csv_data.get('Mobile phone (Primary carer)', '').strip()
-        email = csv_data.get('Email address (Primary carer)', '').strip()
-        
-        if home_phone:
-            contact_parts.append(f"Home: {home_phone}")
-        if mobile_phone:
-            contact_parts.append(f"Mobile: {mobile_phone}")
-        if email:
-            contact_parts.append(f"Email: {email}")
+        # Use primary carer's preferred method of contact (if available)
+        return csv_data.get('Preferred method of contact (Primary carer)', '').strip() or csv_data.get('Preferred method of contact', '').strip()
     else:
-        # Use Person Signing the Agreement contact details
-        home_phone = csv_data.get('Home phone (Person Signing the Agreement)', '').strip()
-        mobile_phone = csv_data.get('Mobile phone (Person Signing the Agreement)', '').strip()
-        email = csv_data.get('Email address (Person Signing the Agreement)', '').strip()
-        
-        if home_phone:
-            contact_parts.append(f"Home: {home_phone}")
-        if mobile_phone:
-            contact_parts.append(f"Mobile: {mobile_phone}")
-        if email:
-            contact_parts.append(f"Email: {email}")
-    
-    if contact_parts:
-        return ' | '.join(contact_parts)
-    else:
-        return ''
+        # Use Person Signing the Agreement preferred method of contact (if available)
+        return csv_data.get('Preferred method of contact (Person Signing the Agreement)', '').strip() or csv_data.get('Preferred method of contact', '').strip()
 
 def get_plan_manager_name(csv_data):
     """Get plan manager name based on plan management type"""
