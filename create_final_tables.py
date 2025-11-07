@@ -298,9 +298,29 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                                 return parts[1].strip()
                         
                         # Just get the next non-empty line - that's the value
-                        for j in range(i + 1, min(i + 3, section_end)):
+                        # But skip if it's clearly another field label
+                        field_labels = ['first name', 'middle name', 'surname', 'ndis number', 'date of birth', 'gender',
+                                       'home address', 'home phone', 'work phone', 'mobile phone', 'email address',
+                                       'preferred name', 'key code', 'postal address', 'preferred method of contact',
+                                       'relationship to client']
+                        for j in range(i + 1, min(i + 5, section_end)):
                             next_line = lines[j].strip()
-                            if next_line and next_line not in ['•', '●', '○', '☐', '☑', '✓']:
+                            if not next_line or next_line in ['•', '●', '○', '☐', '☑', '✓']:
+                                continue
+                            
+                            # Skip if it's another field label
+                            next_line_lower = normalize_key(next_line)
+                            is_field_label = False
+                            for fl in field_labels:
+                                if fl == next_line_lower or (fl in next_line_lower and len(next_line) < 50 and '(' not in next_line):
+                                    is_field_label = True
+                                    break
+                            
+                            # Skip instruction text
+                            if len(next_line) > 80 or any(x in next_line_lower for x in ['write', 'below', 'same as', 'if their']):
+                                continue
+                            
+                            if not is_field_label:
                                 return next_line
             
             return ""
@@ -1262,15 +1282,22 @@ def get_signatory_contact_details(csv_data):
     """Get preferred contact method for signatory based on who is signing"""
     person_signing = csv_data.get('Person signing the agreement', '').strip()
     
+    preferred_contact = ''
     if person_signing.lower() == 'participant':
         # Use participant's preferred method of contact
-        return csv_data.get('Preferred method of contact', '').strip()
+        preferred_contact = csv_data.get('Preferred method of contact', '').strip()
     elif person_signing.lower() == 'primary carer':
         # Use primary carer's preferred method of contact (if available)
-        return csv_data.get('Preferred method of contact (Primary carer)', '').strip() or csv_data.get('Preferred method of contact', '').strip()
+        preferred_contact = csv_data.get('Preferred method of contact (Primary carer)', '').strip() or csv_data.get('Preferred method of contact', '').strip()
     else:
         # Use Person Signing the Agreement preferred method of contact (if available)
-        return csv_data.get('Preferred method of contact (Person Signing the Agreement)', '').strip() or csv_data.get('Preferred method of contact', '').strip()
+        preferred_contact = csv_data.get('Preferred method of contact (Person Signing the Agreement)', '').strip() or csv_data.get('Preferred method of contact', '').strip()
+    
+    # Clean up checkbox characters to get the actual value
+    if preferred_contact:
+        preferred_contact = preferred_contact.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+    
+    return preferred_contact
 
 def get_plan_manager_name(csv_data):
     """Get plan manager name based on plan management type"""
