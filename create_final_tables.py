@@ -135,29 +135,65 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
     """Parse PDF and extract data, mapping to CSV field names"""
     data = {}
     
+    # Debug flag - set to True to see what's being extracted
+    DEBUG = False
+    
     # First try to extract form fields
     fields = extract_pdf_fields_pdfreader(pdf_path)
     if fields:
+        # Debug: print all field names found (commented out for production)
+        # print("PDF Form Fields found:", list(fields.keys()))
+        
         # Map form fields to CSV field names
         def find_in_fields(*candidates):
+            # Try candidates in order - most specific first
             for cand in candidates:
                 cand_norm = normalize_key(cand)
+                # Try all field names
                 for key, val in fields.items():
                     key_norm = normalize_key(key)
-                    # Try exact match first, then substring match
-                    if cand_norm == key_norm or cand_norm in key_norm:
-                        value = str(val).strip()
-                        if value:  # Only return non-empty values
+                    value = str(val).strip()
+                    if not value:
+                        continue
+                    
+                    # Exact match
+                    if cand_norm == key_norm:
+                        return value
+                    
+                    # For section-specific searches, check if both the field name and section match
+                    if "details of the client" in cand_norm:
+                        field_part = cand_norm.replace("details of the client", "").strip()
+                        if "details of the client" in key_norm and field_part in key_norm:
+                            return value
+                    elif "contact details of the client" in cand_norm:
+                        field_part = cand_norm.replace("contact details of the client", "").strip()
+                        if "contact details of the client" in key_norm and field_part in key_norm:
+                            return value
+                    elif "emergency contact" in cand_norm:
+                        field_part = cand_norm.replace("emergency contact", "").strip()
+                        if "emergency contact" in key_norm and field_part in key_norm:
+                            return value
+                    # For generic searches (no section in candidate), match if candidate is in key
+                    # but avoid matching fields from other sections
+                    elif cand_norm in key_norm:
+                        # Don't match if it's clearly from a different section
+                        if ("emergency contact" not in key_norm and 
+                            "primary carer" not in key_norm and 
+                            "person signing" not in key_norm and
+                            "plan manager" not in key_norm):
                             return value
             return ""
         
         # Map common field names - try with section names first, then without
+        # Details of the Client section
         data['First name (Details of the Client)'] = find_in_fields("first name (details of the client)", "first name", "firstname")
         data['Middle name (Details of the Client)'] = find_in_fields("middle name (details of the client)", "middle name", "middlename")
         data['Surname (Details of the Client)'] = find_in_fields("surname (details of the client)", "surname", "family name", "last name", "lastname")
         data['NDIS number (Details of the Client)'] = find_in_fields("ndis number (details of the client)", "ndis number", "ndis")
         data['Date of birth (Details of the Client)'] = find_in_fields("date of birth (details of the client)", "date of birth", "dob", "birth date")
         data['Gender (Details of the Client)'] = find_in_fields("gender (details of the client)", "gender")
+        
+        # Contact Details of the Client section
         data['Home address (Contact Details of the Client)'] = find_in_fields("home address (contact details of the client)", "home address", "address")
         data['Home phone (Contact Details of the Client)'] = find_in_fields("home phone (contact details of the client)", "home phone", "homephone")
         data['Work phone (Contact Details of the Client)'] = find_in_fields("work phone (contact details of the client)", "work phone", "workphone")
@@ -240,38 +276,60 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                 for pattern in label_patterns:
                     pattern_lower = normalize_key(pattern)
                     
-                    # Match if the line contains the pattern
-                    if pattern_lower == line_lower or (pattern_lower in line_lower and not any(x in line_lower for x in 
-                        ["formal support", "informal support", "plan manager"])):
-                        
+                    # More flexible matching - check if pattern matches the line
+                    # Remove common punctuation and section names for comparison
+                    line_clean = line_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
+                    pattern_clean = pattern_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
+                    
+                    # Match if:
+                    # 1. Exact match (with or without section name)
+                    # 2. Pattern is at the start of the line (likely a label)
+                    # 3. Pattern is in the line and line doesn't contain excluded phrases
+                    matches = (
+                        pattern_lower == line_lower or
+                        pattern_clean == line_clean or
+                        (line_lower.startswith(pattern_lower) and ':' in line) or
+                        (pattern_lower in line_lower and not any(x in line_lower for x in 
+                            ["formal support", "informal support", "plan manager", "primary carer"]))
+                    )
+                    
+                    if matches:
                         # Look for value on same line after colon
                         if ':' in line:
                             parts = line.split(':', 1)
                             if len(parts) > 1 and parts[1].strip():
-                                return parts[1].strip()
+                                value = parts[1].strip()
+                                # Make sure it's not just another label
+                                if value and len(value) > 2 and not any(x in normalize_key(value) for x in 
+                                    ['first name', 'middle name', 'surname', 'details of', 'contact details']):
+                                    return value
                         
-                        # Look for value on next line(s)
-                        for j in range(i + 1, min(i + 3, section_end)):
+                        # Look for value on next line(s) - check up to 3 lines ahead
+                        for j in range(i + 1, min(i + 4, section_end)):
                             next_line = lines[j].strip()
                             if not next_line:
                                 continue
                             next_line_lower = normalize_key(next_line)
                             
-                            # Skip if it's another label (contains section names or is another field label)
+                            # Skip if it's another section header
                             if any(x in next_line_lower for x in ['details of the client', 'contact details of the client', 'emergency contact']):
                                 continue
                             
-                            # Skip if it looks like another field label
+                            # Skip if it looks like another field label (short and contains field name)
                             field_labels = ['first name', 'middle name', 'surname', 'ndis number', 'date of birth', 'gender',
                                            'home address', 'home phone', 'work phone', 'mobile phone', 'email address',
                                            'preferred name', 'key code', 'postal address']
-                            if any(x in next_line_lower for x in field_labels):
-                                # But only if it's a short label (likely a label, not a value)
-                                if len(next_line) < 30 and '(' not in next_line:
-                                    continue
+                            is_field_label = False
+                            for fl in field_labels:
+                                if fl in next_line_lower and len(next_line) < 40:
+                                    # Check if it's just a label (ends with colon or is very short)
+                                    if ':' in next_line or (len(next_line) < 25 and '(' not in next_line):
+                                        is_field_label = True
+                                        break
                             
-                            # This looks like a value
-                            return next_line
+                            if not is_field_label:
+                                # This looks like a value
+                                return next_line
             
             return ""
         
@@ -404,6 +462,14 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                             if normalize_key(lines[j]) in ['yes', 'no']:
                                 data[consent_label] = lines[j]
                                 break
+    
+    # Debug output
+    if DEBUG:
+        print("\n=== Extracted Data ===")
+        for key, value in data.items():
+            if value:
+                print(f"{key}: {value}")
+        print("=====================\n")
     
     return data
 
