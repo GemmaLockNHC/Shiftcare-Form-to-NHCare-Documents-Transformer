@@ -659,6 +659,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
     
     table_text_style = ParagraphStyle(
         'TableText',
+        wordWrap='CJK',  # Enable word wrapping
         parent=styles['Normal'],
         fontSize=8,
         alignment=TA_LEFT,
@@ -860,20 +861,21 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
             support_data.append([
                 Paragraph(f'Support item ({item_num})', table_text_style),
                 Paragraph(item_name, table_text_style),
-                item_details.get('number', ''),
-                item_details.get('unit', ''),
-                item_details.get('wa_price', '')
+                Paragraph(item_details.get('number', ''), table_text_style),
+                Paragraph(item_details.get('unit', ''), table_text_style),
+                Paragraph(item_details.get('wa_price', ''), table_text_style)
             ])
         else:
             support_data.append([
                 Paragraph(f'Support item ({item_num})', table_text_style),
                 Paragraph(item_name, table_text_style),
-                '[Not Found]',
-                '[Not Found]',
-                '[Not Found]'
+                Paragraph('[Not Found]', table_text_style),
+                Paragraph('[Not Found]', table_text_style),
+                Paragraph('[Not Found]', table_text_style)
             ])
     
-    support_table = Table(support_data, colWidths=[0.8*inch, 3*inch, 1.2*inch, 0.6*inch, 0.8*inch])
+    # Adjust column widths to prevent text overflow - A4 width is ~8.27 inches, leave some margin
+    support_table = Table(support_data, colWidths=[0.7*inch, 3.5*inch, 1.1*inch, 0.7*inch, 0.9*inch])
     support_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -883,8 +885,8 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
         ('TOPPADDING', (0, 0), (-1, -1), 8),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ('VALIGN', (0, 0), (-1, -1), 'TOP')
