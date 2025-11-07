@@ -1279,9 +1279,10 @@ def get_signatory_address(csv_data):
         return csv_data.get('Home address (Person Signing the Agreement)', '').strip()
 
 def get_signatory_contact_details(csv_data):
-    """Get preferred contact method for signatory based on who is signing"""
+    """Get actual contact detail value for signatory based on preferred method and who is signing"""
     person_signing = csv_data.get('Person signing the agreement', '').strip()
     
+    # Get preferred method of contact
     preferred_contact = ''
     if person_signing.lower() == 'participant':
         # Use participant's preferred method of contact
@@ -1293,10 +1294,45 @@ def get_signatory_contact_details(csv_data):
         # Use Person Signing the Agreement preferred method of contact (if available)
         preferred_contact = csv_data.get('Preferred method of contact (Person Signing the Agreement)', '').strip() or csv_data.get('Preferred method of contact', '').strip()
     
-    # Clean up checkbox characters to get the actual value
+    # Clean up checkbox characters to get the actual preferred method
     if preferred_contact:
         preferred_contact = preferred_contact.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
     
+    # Get the actual contact value based on preferred method
+    preferred_contact_lower = preferred_contact.lower()
+    
+    if person_signing.lower() == 'participant':
+        # Get participant's contact details
+        if 'home phone' in preferred_contact_lower:
+            return csv_data.get('Home phone (Contact Details of the Client)', '').strip()
+        elif 'mobile phone' in preferred_contact_lower or 'mobile' in preferred_contact_lower:
+            return csv_data.get('Mobile phone (Contact Details of the Client)', '').strip()
+        elif 'email' in preferred_contact_lower:
+            return csv_data.get('Email address (Contact Details of the Client)', '').strip()
+        elif 'work phone' in preferred_contact_lower:
+            return csv_data.get('Work phone (Contact Details of the Client)', '').strip()
+    elif person_signing.lower() == 'primary carer':
+        # Get primary carer's contact details
+        if 'home phone' in preferred_contact_lower:
+            return csv_data.get('Home phone (Primary carer)', '').strip()
+        elif 'mobile phone' in preferred_contact_lower or 'mobile' in preferred_contact_lower:
+            return csv_data.get('Mobile phone (Primary carer)', '').strip()
+        elif 'email' in preferred_contact_lower:
+            return csv_data.get('Email address (Primary carer)', '').strip()
+        elif 'work phone' in preferred_contact_lower:
+            return csv_data.get('Work phone (Primary carer)', '').strip()
+    else:
+        # Get Person Signing the Agreement's contact details
+        if 'home phone' in preferred_contact_lower:
+            return csv_data.get('Home phone (Person Signing the Agreement)', '').strip()
+        elif 'mobile phone' in preferred_contact_lower or 'mobile' in preferred_contact_lower:
+            return csv_data.get('Mobile phone (Person Signing the Agreement)', '').strip()
+        elif 'email' in preferred_contact_lower:
+            return csv_data.get('Email address (Person Signing the Agreement)', '').strip()
+        elif 'work phone' in preferred_contact_lower:
+            return csv_data.get('Work phone (Person Signing the Agreement)', '').strip()
+    
+    # Fallback: return preferred method if we can't find the actual value
     return preferred_contact
 
 def get_plan_manager_name(csv_data):
