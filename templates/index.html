@@ -103,9 +103,16 @@
                 Client Export CSV
             </label>
             <label style="display: block; margin: 10px 0;">
-                <input type="checkbox" name="generate_service_agreement" value="1" checked style="margin-right: 8px;">
+                <input type="checkbox" name="generate_service_agreement" value="1" checked id="service-agreement-checkbox" style="margin-right: 8px;">
                 Service Agreement PDF
             </label>
+        </div>
+        
+        <div id="name-input-container" style="margin: 20px 0; display: none;">
+            <label for="contact-name" style="display: block; margin-bottom: 5px; font-weight: bold;">
+                Contact Name (for Service Agreement):
+            </label>
+            <input type="text" id="contact-name" name="contact_name" placeholder="Enter your name" style="width: 100%; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;">
         </div>
         
         <div class="loading" id="loading">
@@ -158,6 +165,25 @@
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
+
+        const serviceAgreementCheckbox = document.getElementById('service-agreement-checkbox');
+        const nameInputContainer = document.getElementById('name-input-container');
+        const contactNameInput = document.getElementById('contact-name');
+
+        // Function to toggle name input visibility
+        function toggleNameInput() {
+            if (serviceAgreementCheckbox.checked) {
+                nameInputContainer.style.display = 'block';
+            } else {
+                nameInputContainer.style.display = 'none';
+            }
+        }
+
+        // Check initial state (in case checkbox is checked by default)
+        toggleNameInput();
+        
+        // Listen for changes
+        serviceAgreementCheckbox.addEventListener('change', toggleNameInput);
 
         uploadForm.addEventListener('submit', () => {
             loading.style.display = 'block';
