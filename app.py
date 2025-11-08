@@ -439,9 +439,11 @@ def upload_file():
             if generate_service_agreement:
                 # Import the service agreement generation function
                 from create_final_tables import create_service_agreement_from_data
+                # Get contact name from form
+                contact_name = request.form.get('contact_name', '').strip()
                 sa_filename = f"service_agreement_{unique_filename}.pdf"
                 sa_path = os.path.join(app.config['UPLOAD_FOLDER'], sa_filename)
-                create_service_agreement_from_data(pdf_data, sa_path)
+                create_service_agreement_from_data(pdf_data, sa_path, contact_name)
                 output_files.append(('pdf', sa_path, 'Service Agreement.pdf'))
             
             # Clean up input file
