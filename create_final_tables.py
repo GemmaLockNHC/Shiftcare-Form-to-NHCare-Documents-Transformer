@@ -1229,9 +1229,9 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
         if year_match:
             year = year_match.group(0)
     
-    # Build ID: First name + Surname + Year
+    # Build ID: First name + Surname + Year (with spaces)
     name_parts = [p for p in [first_name, surname] if p]
-    neighbourhood_care_id = ''.join(name_parts) + year if name_parts and year else '[To be filled in]'
+    neighbourhood_care_id = ' '.join(name_parts) + ' ' + year if name_parts and year else '[To be filled in]'
     
     key_contact_data = [
         ['My Neighbourhood Care ID', neighbourhood_care_id],
