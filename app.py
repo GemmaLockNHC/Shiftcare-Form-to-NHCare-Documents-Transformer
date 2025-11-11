@@ -122,6 +122,69 @@ def is_valid_phone_number(value: str) -> bool:
     
     return True
 
+def format_date_dd_mm_yyyy(date_str):
+    """
+    Convert date string to DD/MM/YYYY format.
+    Handles various input formats: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, DD-MM-YYYY, etc.
+    """
+    if not date_str:
+        return ""
+    
+    date_str = date_str.strip()
+    if not date_str:
+        return ""
+    
+    import re
+    from datetime import datetime
+    
+    # Try to parse common date formats
+    date_formats = [
+        '%Y-%m-%d',      # 2023-12-25
+        '%d/%m/%Y',      # 25/12/2023
+        '%m/%d/%Y',      # 12/25/2023
+        '%d-%m-%Y',      # 25-12-2023
+        '%Y/%m/%d',      # 2023/12/25
+        '%d.%m.%Y',      # 25.12.2023
+        '%d %m %Y',      # 25 12 2023
+    ]
+    
+    for fmt in date_formats:
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            # Return in DD/MM/YYYY format
+            return dt.strftime('%d/%m/%Y')
+        except ValueError:
+            continue
+    
+    # If no format matched, try to extract numbers and rearrange
+    # Look for pattern like: 3 numbers separated by /, -, or space
+    numbers = re.findall(r'\d+', date_str)
+    if len(numbers) >= 3:
+        # If first number is 4 digits, assume YYYY-MM-DD or YYYY/MM/DD
+        if len(numbers[0]) == 4:
+            year, month, day = numbers[0], numbers[1], numbers[2]
+        # If last number is 4 digits, assume DD/MM/YYYY or MM/DD/YYYY
+        elif len(numbers[-1]) == 4:
+            # Try to determine if it's DD/MM/YYYY or MM/DD/YYYY
+            # If middle number > 12, it must be DD/MM/YYYY
+            if int(numbers[1]) > 12:
+                day, month, year = numbers[0], numbers[1], numbers[2]
+            else:
+                # Ambiguous - assume DD/MM/YYYY (day first)
+                day, month, year = numbers[0], numbers[1], numbers[2]
+        else:
+            # Default to DD/MM/YYYY
+            day, month, year = numbers[0], numbers[1], numbers[2]
+        
+        # Format with leading zeros
+        day = day.zfill(2)
+        month = month.zfill(2)
+        return f"{day}/{month}/{year}"
+    
+    # If we can't parse it, return as-is
+    return date_str
+
+
 def build_output_row(row):
     """
     Build output row with correct field mappings:
@@ -131,7 +194,7 @@ def build_output_row(row):
       - 'Middle name' → 'Middle Name'
       - 'Surname' → 'Family Name'
       - 'Display Name' = 'First name' + 'Surname'
-      - 'Date of birth' → 'Date of Birth'
+      - 'Date of birth' → 'Date of Birth' (formatted as DD/MM/YYYY)
       - 'Gender' → 'Gender'
     - Contact Details of the Client:
       - 'Home address' → 'Address'
@@ -146,7 +209,8 @@ def build_output_row(row):
     middle_name = get_value_from_normalized_row(row_norm, "middle name")
     surname = get_value_from_normalized_row(row_norm, "surname")
     ndis_number = get_value_from_normalized_row(row_norm, "ndis number")
-    dob = get_value_from_normalized_row(row_norm, "date of birth")
+    dob_raw = get_value_from_normalized_row(row_norm, "date of birth")
+    dob = format_date_dd_mm_yyyy(dob_raw)  # Format as DD/MM/YYYY
     gender = get_value_from_normalized_row(row_norm, "gender")
     
     # Contact Details of the Client
@@ -443,7 +507,8 @@ def upload_file():
                 contact_name = request.form.get('contact_name', '').strip()
                 sa_filename = f"service_agreement_{unique_filename}.pdf"
                 sa_path = os.path.join(app.config['UPLOAD_FOLDER'], sa_filename)
-                create_service_agreement_from_data(pdf_data, sa_path, contact_name)
+                # Pass source PDF path for signature extraction
+                create_service_agreement_from_data(pdf_data, sa_path, contact_name, filepath)
                 output_files.append(('pdf', sa_path, 'Service Agreement.pdf'))
             
             # Clean up input file
