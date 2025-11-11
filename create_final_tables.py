@@ -1636,6 +1636,8 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     service_start = csv_data.get('Service start date', '').strip() or csv_data.get('Service start', '').strip()
     service_end = csv_data.get('Service end date', '').strip() or csv_data.get('Service end', '').strip()
     preferred_contact = csv_data.get('Preferred method of contact', '').strip()
+    # Clean up checkbox characters that appear as black boxes
+    preferred_contact = preferred_contact.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
     
     participant_data = [
         ['Participant Name', Paragraph(participant_name, table_text_style)],
@@ -1750,9 +1752,14 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     name_parts = [p for p in [first_name, surname] if p]
     neighbourhood_care_id = ' '.join(name_parts) + ' ' + year if name_parts and year else '[To be filled in]'
     
+    # Get team value and clean checkbox characters
+    team_value = csv_data.get('Neighbourhood Care representative team', '[To be filled in]')
+    # Clean up checkbox characters that appear as black boxes
+    team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+    
     key_contact_data = [
         ['My Neighbourhood Care ID', neighbourhood_care_id],
-        ['Team', csv_data.get('Neighbourhood Care representative team', '[To be filled in]')],
+        ['Team', team_value],
         ['Key Contact', Paragraph(contact_name_to_use if contact_name_to_use else user_data.get('name', '[To be filled in]'), table_text_style)],
         ['Phone', user_data.get('mobile', '[To be filled in]')],
         ['Email Address', Paragraph(user_data.get('email', '[To be filled in]'), table_text_style)],
