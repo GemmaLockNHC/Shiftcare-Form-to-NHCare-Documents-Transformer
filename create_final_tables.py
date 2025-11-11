@@ -82,15 +82,19 @@ def get_establishment_fee(csv_data, ndis_items):
     is_new_client = False
     new_client_fields = [
         'isNewClient',  # Primary field name from JavaScript
+        'Is this client new to Neighbourhood Care?',  # Actual PDF question text
         'Is this a new client?',
         'Is the client new?',
+        'Is this client new?',
         'New client',
         'Is new client',
         'Client is new'
     ]
     
-    for field in new_client_fields:xa
+    for field in new_client_fields:
         value = csv_data.get(field, '').strip()
+        # Clean up checkbox characters and other special characters
+        value = value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
         # Match JavaScript: exact "Yes" check (case-sensitive in JS, but we'll be flexible)
         if value == "Yes" or normalize_key(value) == 'yes':
             is_new_client = True
@@ -103,16 +107,20 @@ def get_establishment_fee(csv_data, ndis_items):
     hours_support_fields = [
         'isReceiving20HoursSupport',  # Primary field name from JavaScript
         'isReceiving20HoursOfSupport',  # Alternative from JavaScript
+        'Is Neighbourhood Care delivering 20 or more hours of support per month?',  # Actual PDF question text
         'Is the client receiving 20 or more hours of support?',
         'Is receiving 20 hours of support',
         'Is receiving 20+ hours of support',
         'Receiving 20 hours support',
         'Receiving 20+ hours',
-        '20 hours support'
+        '20 hours support',
+        '20 or more hours of support'
     ]
     
     for field in hours_support_fields:
         value = csv_data.get(field, '').strip()
+        # Clean up checkbox characters and other special characters
+        value = value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
         # Match JavaScript: exact "Yes" check (case-sensitive in JS, but we'll be flexible)
         if value == "Yes" or normalize_key(value) == 'yes':
             is_receiving_20_hours = True
@@ -537,6 +545,12 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
             data['Respondent'] = find_value_after_label(['Respondent', 'Neighbourhood Care representative'])
         if not data.get('Neighbourhood Care representative team'):
             data['Neighbourhood Care representative team'] = find_value_after_label(['Neighbourhood Care representative team', 'Team'])
+        
+        # Extract establishment fee related fields
+        if not data.get('Is this client new to Neighbourhood Care?'):
+            data['Is this client new to Neighbourhood Care?'] = find_value_after_label(['Is this client new to Neighbourhood Care?', 'Is this client new', 'Is this a new client'])
+        if not data.get('Is Neighbourhood Care delivering 20 or more hours of support per month?'):
+            data['Is Neighbourhood Care delivering 20 or more hours of support per month?'] = find_value_after_label(['Is Neighbourhood Care delivering 20 or more hours of support per month?', 'Is Neighbourhood Care delivering 20', '20 or more hours of support'])
     
         # Extract consent responses - look for Yes/No patterns
         consent_labels = [
