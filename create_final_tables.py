@@ -62,6 +62,83 @@ def lookup_support_item(ndis_items, item_name):
             'wa_price': '$0.00'
         }
 
+def get_establishment_fee(csv_data, ndis_items):
+    """
+    Calculate the establishment fee based on client status and support hours.
+    
+    The establishment fee is applied only if:
+    - Client is new (isNewClient == "Yes")
+    - Client is receiving 20+ hours of support (isReceiving20HoursSupport == "Yes" or similar)
+    
+    Args:
+        csv_data: Dictionary containing form data
+        ndis_items: Dictionary of NDIS support items loaded from CSV
+    
+    Returns:
+        str: Formatted establishment fee amount (e.g., "$702.30" or "$0.00")
+    """
+    # Check for new client status - try various possible field names
+    # JavaScript code checked: submission.isNewClient == "Yes"
+    is_new_client = False
+    new_client_fields = [
+        'isNewClient',  # Primary field name from JavaScript
+        'Is this a new client?',
+        'Is the client new?',
+        'New client',
+        'Is new client',
+        'Client is new'
+    ]
+    
+    for field in new_client_fields:xa
+        value = csv_data.get(field, '').strip()
+        # Match JavaScript: exact "Yes" check (case-sensitive in JS, but we'll be flexible)
+        if value == "Yes" or normalize_key(value) == 'yes':
+            is_new_client = True
+            break
+    
+    # Check for 20+ hours of support - try various possible field names
+    # JavaScript code checked: submission.isReceiving20HoursSupport == "Yes"
+    # Also had: submission.isReceiving20HoursOfSupport == "Yes"
+    is_receiving_20_hours = False
+    hours_support_fields = [
+        'isReceiving20HoursSupport',  # Primary field name from JavaScript
+        'isReceiving20HoursOfSupport',  # Alternative from JavaScript
+        'Is the client receiving 20 or more hours of support?',
+        'Is receiving 20 hours of support',
+        'Is receiving 20+ hours of support',
+        'Receiving 20 hours support',
+        'Receiving 20+ hours',
+        '20 hours support'
+    ]
+    
+    for field in hours_support_fields:
+        value = csv_data.get(field, '').strip()
+        # Match JavaScript: exact "Yes" check (case-sensitive in JS, but we'll be flexible)
+        if value == "Yes" or normalize_key(value) == 'yes':
+            is_receiving_20_hours = True
+            break
+    
+    # If both conditions are met, get the establishment fee from NDIS support items
+    if is_new_client and is_receiving_20_hours:
+        # Look up "Establishment Fee For Personal Care/Participation" in NDIS items
+        establishment_fee_item = lookup_support_item(ndis_items, "Establishment Fee For Personal Care/Participation")
+        wa_price = establishment_fee_item.get('wa_price', '$0.00')
+        
+        # Clean up the price string (remove any extra formatting)
+        wa_price = wa_price.strip()
+        if not wa_price.startswith('$'):
+            # If it's a number, add $ prefix
+            try:
+                # Remove any commas and $ signs, then format
+                price_num = float(wa_price.replace('$', '').replace(',', ''))
+                wa_price = f"${price_num:.2f}"
+            except (ValueError, AttributeError):
+                wa_price = '$0.00'
+        
+        return wa_price
+    else:
+        return '$0.00'
+
 def load_active_users():
     """Load active users from CSV file and return as a dictionary for lookup"""
     active_users = {}
@@ -1117,9 +1194,12 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     story.append(Paragraph(establishment_text, normal_style))
     story.append(Spacer(1, 12))
     
+    # Calculate Establishment Fee
+    establishment_fee_amount = get_establishment_fee(csv_data, ndis_items)
+    
     # Establishment Fee
     establishment_data = [
-        ['Establishment Fee', '$0.00']
+        ['Establishment Fee', establishment_fee_amount]
     ]
     
     establishment_table = Table(establishment_data, colWidths=[3*inch, 2*inch])
