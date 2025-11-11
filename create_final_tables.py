@@ -222,7 +222,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
     text = extract_pdf_text_pdfplumber(pdf_path)
     if text:
         lines = [l.strip() for l in text.splitlines() if l.strip()]
-    
+        
         # Identify section boundaries
         section_starts = []
         for i, line in enumerate(lines):
@@ -303,7 +303,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                             parts = line.split(':', 1)
                             if len(parts) > 1 and parts[1].strip():
                                 return parts[1].strip()
-                    
+                        
                         # Just get the next non-empty line - that's the value
                         # But skip if it's clearly another field label
                         field_labels = ['first name', 'middle name', 'surname', 'ndis number', 'date of birth', 'gender',
@@ -330,7 +330,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                             
                             if not is_field_label:
                                 return next_line
-        
+            
             return ""
         
         # Helper function for fields that aren't in specific sections - SIMPLIFIED
@@ -355,7 +355,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                                 if next_line_lower != pattern_lower:
                                     return next_line
             return ""
-        
+    
         # Extract data using section-aware text parsing - only fill in missing fields
         if not data.get('First name (Details of the Client)'):
             data['First name (Details of the Client)'] = find_value_in_section(['First name', 'First name (Details of the Client)'], "details")
@@ -396,7 +396,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         if not data.get('Is the primary carer also the emergency contact for the participant?'):
             data['Is the primary carer also the emergency contact for the participant?'] = find_value_after_label(['Is the primary carer also the emergency contact'])
     
-        # Extract other fields that might be in the PDF
+    # Extract other fields that might be in the PDF
         if not data.get('Preferred method of contact'):
             data['Preferred method of contact'] = find_value_after_label(['Preferred method of contact', 'Preferred contact method'])
         if not data.get('Total core budget to allocate to Neighbourhood Care'):
@@ -511,7 +511,8 @@ def get_preferred_contact_details(csv_data):
         # Default to home phone if no clear preference
         return csv_data.get('Home phone (Contact Details of the Client)', 'Home phone (Contact Details of the Client)')
 
-def extract_signatures_from_pdf(source_pdf_path):
+# Signature extraction removed to prevent timeouts
+def _extract_signatures_from_pdf_removed(source_pdf_path):
     """
     Extract signature images from the source PDF.
     Returns a dictionary with signature images (file paths).
@@ -527,13 +528,23 @@ def extract_signatures_from_pdf(source_pdf_path):
     
     This function is designed to fail gracefully - if extraction fails,
     it returns an empty dict and the PDF generation continues without signatures.
+    
+    OPTIMIZED: Only processes last 5 pages (where signatures usually are) to avoid timeouts.
     """
+    import signal
+    import time
+    
     signatures = {}
     if not source_pdf_path or not os.path.exists(source_pdf_path):
         print(f"Signature extraction: Source PDF not found: {source_pdf_path}")
         return signatures
     
     print(f"Signature extraction: Attempting to extract from {source_pdf_path}")
+    
+    # Set a maximum processing time (30 seconds)
+    start_time = time.time()
+    MAX_PROCESSING_TIME = 30
+    MAX_PAGES_TO_PROCESS = 5  # Only check last 5 pages (signatures are usually at the end)
     
     try:
         # Method 1: Try PyMuPDF first (best method, but optional)
@@ -542,20 +553,41 @@ def extract_signatures_from_pdf(source_pdf_path):
             doc = fitz.open(source_pdf_path)
             image_list = []
             
-            print(f"Signature extraction: Using PyMuPDF, found {len(doc)} pages")
+            total_pages = len(doc)
+            print(f"Signature extraction: Using PyMuPDF, found {total_pages} pages")
             
-            for page_num in range(len(doc)):
+            # Only process last MAX_PAGES_TO_PROCESS pages (signatures are usually at the end)
+            start_page = max(0, total_pages - MAX_PAGES_TO_PROCESS)
+            print(f"Signature extraction: Processing pages {start_page + 1} to {total_pages} (last {MAX_PAGES_TO_PROCESS} pages)")
+            
+            for page_num in range(start_page, total_pages):
+                # Check timeout
+                if time.time() - start_time > MAX_PROCESSING_TIME:
+                    print("Signature extraction: Timeout reached during PyMuPDF processing")
+                    break
+                
                 page = doc[page_num]
                 # Get all images on the page
                 page_images = page.get_images()
                 print(f"Signature extraction: Page {page_num + 1} has {len(page_images)} images")
-                image_list.extend(page_images)
+                # Limit images per page
+                image_list.extend(page_images[:10])  # Max 10 images per page
             
             print(f"Signature extraction: Total images found: {len(image_list)}")
             
             # Extract images that might be signatures
             # Look for images at the bottom of pages (where signatures usually are)
-            for img_index, img in enumerate(image_list):
+            # Limit to first 20 images total to avoid memory issues
+            for img_index, img in enumerate(image_list[:20]):
+                # Check timeout
+                if time.time() - start_time > MAX_PROCESSING_TIME:
+                    print("Signature extraction: Timeout reached during image extraction")
+                    break
+                
+                # Stop if we already have 2 signatures
+                if len(signatures) >= 2:
+                    break
+                
                 try:
                     # Get image data
                     xref = img[0]
@@ -634,19 +666,48 @@ def extract_signatures_from_pdf(source_pdf_path):
         # Method 3: Try using pdfplumber to extract images (better for FlateDecode images)
         if not signatures:
             try:
+                # Check timeout
+                if time.time() - start_time > MAX_PROCESSING_TIME:
+                    print("Signature extraction: Timeout reached, skipping pdfplumber method")
+                    return signatures
+                
                 print("Signature extraction: Trying pdfplumber image extraction method")
                 import pdfplumber
                 with pdfplumber.open(source_pdf_path) as pdf:
                     image_count = 0
                     total_images_found = 0
+                    total_pages = len(pdf.pages)
                     
-                    for page_num, page in enumerate(pdf.pages):
+                    # Only process last MAX_PAGES_TO_PROCESS pages (signatures are usually at the end)
+                    start_page = max(0, total_pages - MAX_PAGES_TO_PROCESS)
+                    print(f"Signature extraction: Processing pages {start_page + 1} to {total_pages} (last {MAX_PAGES_TO_PROCESS} pages)")
+                    
+                    for page_num in range(start_page, total_pages):
+                        # Check timeout before processing each page
+                        if time.time() - start_time > MAX_PROCESSING_TIME:
+                            print("Signature extraction: Timeout reached during page processing")
+                            break
+                        
+                        page = pdf.pages[page_num]
                         images = page.images
                         if images:
                             print(f"Signature extraction: Page {page_num + 1} has {len(images)} images")
                             total_images_found += len(images)
                             
-                            for img in images:
+                            # Limit number of images processed per page
+                            max_images_per_page = 10
+                            images_to_process = images[:max_images_per_page]
+                            
+                            for img in images_to_process:
+                                # Check timeout before processing each image
+                                if time.time() - start_time > MAX_PROCESSING_TIME:
+                                    print("Signature extraction: Timeout reached during image processing")
+                                    break
+                                
+                                # Stop if we already have 2 signatures
+                                if image_count >= 2:
+                                    break
+                                
                                 try:
                                     # Check if this looks like a signature (usually at bottom of page, specific size)
                                     # Signatures are typically wider than tall, and positioned near bottom
@@ -727,8 +788,23 @@ def extract_signatures_from_pdf(source_pdf_path):
                 image_count = 0
                 total_images_found = 0
                 
-                for page_num, page in enumerate(reader.pages):
+                total_pages = len(reader.pages)
+                # Only process last MAX_PAGES_TO_PROCESS pages
+                start_page = max(0, total_pages - MAX_PAGES_TO_PROCESS)
+                print(f"Signature extraction: Processing pages {start_page + 1} to {total_pages} (last {MAX_PAGES_TO_PROCESS} pages)")
+                
+                for page_num in range(start_page, total_pages):
+                    # Check timeout
+                    if time.time() - start_time > MAX_PROCESSING_TIME:
+                        print("Signature extraction: Timeout reached during pypdf processing")
+                        break
+                    
+                    # Stop if we already have 2 signatures
+                    if len(signatures) >= 2:
+                        break
+                    
                     try:
+                        page = reader.pages[page_num]
                         resources = page.get('/Resources', {})
                         if resources and '/XObject' in resources:
                             xobjects = resources['/XObject']
@@ -801,7 +877,7 @@ def extract_signatures_from_pdf(source_pdf_path):
     else:
         print("Signature extraction: No signatures were extracted")
     
-    return signatures
+    return {}  # Always return empty - signature extraction disabled
 
 def create_service_agreement_from_data(csv_data, output_path, contact_name=None, source_pdf_path=None):
     """
@@ -819,10 +895,8 @@ def create_service_agreement_from_data(csv_data, output_path, contact_name=None,
     # Load active users
     active_users = load_active_users()
     
-    # Extract signatures from source PDF if provided
+    # Signature extraction removed to prevent timeouts
     signatures = {}
-    if source_pdf_path and os.path.exists(source_pdf_path):
-        signatures = extract_signatures_from_pdf(source_pdf_path)
     
     # Create PDF document
     doc = SimpleDocTemplate(output_path, pagesize=A4)
@@ -1167,7 +1241,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
         if item_found:
             support_data.append([
                 Paragraph(f'Support item ({item_num})', table_text_style),
-            Paragraph(item_name, table_text_style),
+                Paragraph(item_name, table_text_style),
                 Paragraph(item_details.get('number', ''), table_text_style),
                 Paragraph(item_details.get('unit', ''), table_text_style),
                 Paragraph(item_details.get('wa_price', ''), table_text_style)
