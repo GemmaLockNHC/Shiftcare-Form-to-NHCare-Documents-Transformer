@@ -222,7 +222,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
     text = extract_pdf_text_pdfplumber(pdf_path)
     if text:
         lines = [l.strip() for l in text.splitlines() if l.strip()]
-        
+    
         # Identify section boundaries
         section_starts = []
         for i, line in enumerate(lines):
@@ -268,12 +268,16 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                         if next_start_idx > start_idx:
                             section_end = next_start_idx
                             break
-                            if section_end is None:
-                                section_end = len(lines)
+                    if section_end is None:
+                        section_end = len(lines) if lines else 0
                     break
             
-            if section_start is None:
+            if section_start is None or section_end is None:
                 return ""
+            
+            # Ensure both are integers
+            section_start = int(section_start) if section_start is not None else 0
+            section_end = int(section_end) if section_end is not None else len(lines) if lines else 0
             
             # Only search within this section
             for i in range(section_start, section_end):
@@ -282,55 +286,56 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                 
                 for pattern in label_patterns:
                     pattern_lower = normalize_key(pattern)
-                
+                    
                     # Simple match - check if pattern matches the line
                     line_clean = line_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
                     pattern_clean = pattern_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
                     
                     matches = (
-                    pattern_lower == line_lower or
-                    pattern_clean == line_clean or
-                    line_lower.startswith(pattern_lower)
+                        pattern_lower == line_lower or
+                        pattern_clean == line_clean or
+                        line_lower.startswith(pattern_lower)
                     )
                     
                     if matches:
                         # Look for value on same line after colon (if present)
                         if ':' in line:
                             parts = line.split(':', 1)
-                        if len(parts) > 1 and parts[1].strip():
-                            return parts[1].strip()
+                            if len(parts) > 1 and parts[1].strip():
+                                return parts[1].strip()
                     
-                    # Just get the next non-empty line - that's the value
-                    # But skip if it's clearly another field label
-                    field_labels = ['first name', 'middle name', 'surname', 'ndis number', 'date of birth', 'gender',
-                    'home address', 'home phone', 'work phone', 'mobile phone', 'email address',
-                    'preferred name', 'key code', 'postal address', 'preferred method of contact',
-                    'relationship to client']
-                    for j in range(i + 1, min(i + 5, section_end)):
-                        next_line = lines[j].strip()
-                        if not next_line or next_line in ['•', '●', '○', '☐', '☑', '✓']:
-                            continue
+                        # Just get the next non-empty line - that's the value
+                        # But skip if it's clearly another field label
+                        field_labels = ['first name', 'middle name', 'surname', 'ndis number', 'date of birth', 'gender',
+                                       'home address', 'home phone', 'work phone', 'mobile phone', 'email address',
+                                       'preferred name', 'key code', 'postal address', 'preferred method of contact',
+                                       'relationship to client']
+                        section_end_safe = section_end if section_end is not None and isinstance(section_end, int) else (len(lines) if lines else i + 5)
+                        for j in range(i + 1, min(i + 5, section_end_safe)):
+                            next_line = lines[j].strip()
+                            if not next_line or next_line in ['•', '●', '○', '☐', '☑', '✓']:
+                                continue
                             
-                        # Skip if it's another field label
-                        next_line_lower = normalize_key(next_line)
-                        is_field_label = False
-                        for fl in field_labels:
-                            if fl == next_line_lower or (fl in next_line_lower and len(next_line) < 50 and '(' not in next_line):
-                                is_field_label = True
-                                break
-                        
-                        # Skip instruction text
-                        if len(next_line) > 80 or any(x in next_line_lower for x in ['write', 'below', 'same as', 'if their']):
-                            continue
-                        
-                        if not is_field_label:
-                            return next_line
-            
-                return ""
+                            # Skip if it's another field label
+                            next_line_lower = normalize_key(next_line)
+                            is_field_label = False
+                            for fl in field_labels:
+                                if fl == next_line_lower or (fl in next_line_lower and len(next_line) < 50 and '(' not in next_line):
+                                    is_field_label = True
+                                    break
+                            
+                            # Skip instruction text
+                            if len(next_line) > 80 or any(x in next_line_lower for x in ['write', 'below', 'same as', 'if their']):
+                                continue
+                            
+                            if not is_field_label:
+                                return next_line
+        
+            return ""
         
         # Helper function for fields that aren't in specific sections - SIMPLIFIED
         def find_value_after_label(label_patterns, start_idx=0):
-            for i in range(start_idx, len(lines)):
+            for i in range(start_idx, len(lines) if lines else 0):
                 line_lower = normalize_key(lines[i])
                 for pattern in label_patterns:
                     pattern_lower = normalize_key(pattern)
@@ -341,43 +346,43 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                             parts = lines[i].split(':', 1)
                             if len(parts) > 1 and parts[1].strip():
                                 return parts[1].strip()
-                                # Skip the label line itself and get the next non-empty line - that's the value
-                        for j in range(i + 1, min(i + 3, len(lines))):
+                        # Skip the label line itself and get the next non-empty line - that's the value
+                        for j in range(i + 1, min(i + 3, len(lines) if lines else i + 3)):
                             next_line = lines[j].strip()
                             if next_line and next_line not in ['•', '●', '○', '☐', '☑', '✓']:
                                 # Make sure we're not returning the label itself
                                 next_line_lower = normalize_key(next_line)
                                 if next_line_lower != pattern_lower:
                                     return next_line
-                                    return ""
+            return ""
+        
+        # Extract data using section-aware text parsing - only fill in missing fields
+        if not data.get('First name (Details of the Client)'):
+            data['First name (Details of the Client)'] = find_value_in_section(['First name', 'First name (Details of the Client)'], "details")
+        if not data.get('Middle name (Details of the Client)'):
+            data['Middle name (Details of the Client)'] = find_value_in_section(['Middle name', 'Middle name (Details of the Client)'], "details")
+        if not data.get('Surname (Details of the Client)'):
+            data['Surname (Details of the Client)'] = find_value_in_section(['Surname', 'Surname (Details of the Client)', 'Family name', 'Last name'], "details")
+        if not data.get('NDIS number (Details of the Client)'):
+            data['NDIS number (Details of the Client)'] = find_value_in_section(['NDIS number', 'NDIS number (Details of the Client)'], "details")
+        if not data.get('Date of birth (Details of the Client)'):
+            data['Date of birth (Details of the Client)'] = find_value_in_section(['Date of birth', 'Date of birth (Details of the Client)', 'DOB'], "details")
+        if not data.get('Gender (Details of the Client)'):
+            data['Gender (Details of the Client)'] = find_value_in_section(['Gender', 'Gender (Details of the Client)'], "details")
+        if not data.get('Home address (Contact Details of the Client)'):
+            data['Home address (Contact Details of the Client)'] = find_value_in_section(['Home address', 'Home address (Contact Details of the Client)', 'Address'], "contact")
+        if not data.get('Home phone (Contact Details of the Client)'):
+            data['Home phone (Contact Details of the Client)'] = find_value_in_section(['Home phone', 'Home phone (Contact Details of the Client)'], "contact")
+        if not data.get('Work phone (Contact Details of the Client)'):
+            data['Work phone (Contact Details of the Client)'] = find_value_in_section(['Work phone', 'Work phone (Contact Details of the Client)'], "contact")
+        if not data.get('Mobile phone (Contact Details of the Client)'):
+            data['Mobile phone (Contact Details of the Client)'] = find_value_in_section(['Mobile phone', 'Mobile phone (Contact Details of the Client)'], "contact")
+        if not data.get('Email address (Contact Details of the Client)'):
+            data['Email address (Contact Details of the Client)'] = find_value_in_section(['Email address', 'Email address (Contact Details of the Client)', 'Email'], "contact")
     
-            # Extract data using section-aware text parsing - only fill in missing fields
-            if not data.get('First name (Details of the Client)'):
-                data['First name (Details of the Client)'] = find_value_in_section(['First name', 'First name (Details of the Client)'], "details")
-            if not data.get('Middle name (Details of the Client)'):
-                data['Middle name (Details of the Client)'] = find_value_in_section(['Middle name', 'Middle name (Details of the Client)'], "details")
-            if not data.get('Surname (Details of the Client)'):
-                data['Surname (Details of the Client)'] = find_value_in_section(['Surname', 'Surname (Details of the Client)', 'Family name', 'Last name'], "details")
-            if not data.get('NDIS number (Details of the Client)'):
-                data['NDIS number (Details of the Client)'] = find_value_in_section(['NDIS number', 'NDIS number (Details of the Client)'], "details")
-            if not data.get('Date of birth (Details of the Client)'):
-                data['Date of birth (Details of the Client)'] = find_value_in_section(['Date of birth', 'Date of birth (Details of the Client)', 'DOB'], "details")
-            if not data.get('Gender (Details of the Client)'):
-                data['Gender (Details of the Client)'] = find_value_in_section(['Gender', 'Gender (Details of the Client)'], "details")
-            if not data.get('Home address (Contact Details of the Client)'):
-                data['Home address (Contact Details of the Client)'] = find_value_in_section(['Home address', 'Home address (Contact Details of the Client)', 'Address'], "contact")
-            if not data.get('Home phone (Contact Details of the Client)'):
-                data['Home phone (Contact Details of the Client)'] = find_value_in_section(['Home phone', 'Home phone (Contact Details of the Client)'], "contact")
-            if not data.get('Work phone (Contact Details of the Client)'):
-                data['Work phone (Contact Details of the Client)'] = find_value_in_section(['Work phone', 'Work phone (Contact Details of the Client)'], "contact")
-            if not data.get('Mobile phone (Contact Details of the Client)'):
-                data['Mobile phone (Contact Details of the Client)'] = find_value_in_section(['Mobile phone', 'Mobile phone (Contact Details of the Client)'], "contact")
-            if not data.get('Email address (Contact Details of the Client)'):
-                data['Email address (Contact Details of the Client)'] = find_value_in_section(['Email address', 'Email address (Contact Details of the Client)', 'Email'], "contact")
-    
-            # Extract emergency contact fields - try emergency section first, then fallback to general search
-            if not data.get('First name (Emergency contact)'):
-                emergency_first = find_value_in_section(['First name'], "emergency")
+        # Extract emergency contact fields - try emergency section first, then fallback to general search
+        if not data.get('First name (Emergency contact)'):
+            emergency_first = find_value_in_section(['First name'], "emergency")
             if emergency_first:
                 data['First name (Emergency contact)'] = emergency_first
             else:
@@ -458,15 +463,15 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
     
         # Extract consent responses - look for Yes/No patterns
         consent_labels = [
-        'I agree to receive services from Neighbourhood Care.',
-        'I consent for Neighbourhood Care to create an NDIS portal service booking',
-        'I understand that if at any time I (The Participant) require emergency medical assistance',
-        'I agree that Neighbourhood Care staff may administer simple first aid',
-        'I consent for Neighbourhood Care to discuss relevant information',
-        'I agree not to smoke inside the home',
-        'I understand that an Emergency Response Plan will be developed',
-        'I consent for Neighbourhood Care for I (The Participant) to be photographed',
-        'I give authority for my details or information to be shared'
+            'I agree to receive services from Neighbourhood Care.',
+            'I consent for Neighbourhood Care to create an NDIS portal service booking',
+            'I understand that if at any time I (The Participant) require emergency medical assistance',
+            'I agree that Neighbourhood Care staff may administer simple first aid',
+            'I consent for Neighbourhood Care to discuss relevant information',
+            'I agree not to smoke inside the home',
+            'I understand that an Emergency Response Plan will be developed',
+            'I consent for Neighbourhood Care for I (The Participant) to be photographed',
+            'I give authority for my details or information to be shared'
         ]
         
         for consent_label in consent_labels:
@@ -475,7 +480,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                 for i, line in enumerate(lines):
                     if normalize_key(consent_label.split('.')[0]) in normalize_key(line):
                         # Look for Yes/No in nearby lines
-                        for j in range(max(0, i-2), min(len(lines), i+5)):
+                        for j in range(max(0, i-2), min(len(lines) if lines else i+5, i+5)):
                             if normalize_key(lines[j]) in ['yes', 'no']:
                                 data[consent_label] = lines[j]
                         break
@@ -645,16 +650,16 @@ def extract_signatures_from_pdf(source_pdf_path):
                                 try:
                                     # Check if this looks like a signature (usually at bottom of page, specific size)
                                     # Signatures are typically wider than tall, and positioned near bottom
-                                    img_height = img.get('height', 0)
-                                    img_width = img.get('width', 0)
-                                    y_position = img.get('y0', 0)
-                                    page_height = page.height
+                                    img_height = img.get('height', 0) or 0
+                                    img_width = img.get('width', 0) or 0
+                                    y_position = img.get('y0', 0) or 0
+                                    page_height = getattr(page, 'height', None) or 800  # Default to 800 if None
                                     
                                     # Signatures are usually at bottom 20% of page and have reasonable dimensions
                                     is_likely_signature = (
-                                        img_height > 20 and img_height < 200 and  # Reasonable signature height
-                                        img_width > 100 and  # Signatures are usually wide
-                                        y_position < page_height * 0.3  # Near bottom of page (y0 is from bottom)
+                                        img_height and img_height > 20 and img_height < 200 and  # Reasonable signature height
+                                        img_width and img_width > 100 and  # Signatures are usually wide
+                                        page_height and y_position < page_height * 0.3  # Near bottom of page (y0 is from bottom)
                                     )
                                     
                                     if is_likely_signature or image_count < 2:  # Take first 2 images if we can't determine
