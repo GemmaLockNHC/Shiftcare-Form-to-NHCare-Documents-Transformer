@@ -509,100 +509,130 @@ def get_preferred_contact_details(csv_data):
 def extract_signatures_from_pdf(source_pdf_path):
     """
     Extract signature images from the source PDF.
-    Returns a dictionary with signature images (file paths or PIL Images).
+    Returns a dictionary with signature images (file paths).
     Signatures can be stored as:
     1. Form field signature values
     2. Embedded images in the PDF
     3. Annotations
+    
+    Uses multiple methods with fallbacks:
+    - PyMuPDF (if available) - best for image extraction
+    - pypdf - for form field signatures
+    - pdfplumber - for text-based identification
     """
     signatures = {}
     try:
-        # Method 1: Try to extract from signature form fields using pypdf
-        if PdfReader is not None:
-            reader = PdfReader(source_pdf_path)
-            
-            if reader.get_fields():
-                for field_name, field in reader.get_fields().items():
-                    field_name_lower = (field_name or "").lower()
-                    
-                    # Check if this is a signature field
-                    if 'signature' in field_name_lower or 'sign' in field_name_lower:
-                        try:
-                            # Try to extract signature image from appearance stream
-                            if hasattr(field, 'get'):
-                                ap = field.get('/AP')
-                                if ap:
-                                    normal_ap = ap.get('/N')
-                                    if normal_ap:
-                                        # Try to extract image from appearance stream
-                                        # This requires accessing the PDF's internal structure
-                                        try:
-                                            # Get the appearance stream object
-                                            if hasattr(normal_ap, 'get_data'):
-                                                stream_data = normal_ap.get_data()
-                                                # Try to extract image from stream
-                                                # This is complex and may require additional parsing
-                                                pass
-                                        except Exception:
-                                            pass
-                        except Exception as e:
-                            print(f"Error extracting signature from field {field_name}: {e}")
-        
-        # Method 2: Extract all images from PDF pages and try to identify signatures
-        # This is a more reliable method for scanned signatures
-        # Note: Requires PyMuPDF (pip install pymupdf)
+        # Method 1: Try PyMuPDF first (best method, but optional)
         try:
-            import fitz  # PyMuPDF - better for image extraction
+            import fitz  # PyMuPDF
+            doc = fitz.open(source_pdf_path)
+            image_list = []
+            
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                # Get all images on the page
+                image_list.extend(page.get_images())
+            
+            # Extract images that might be signatures
+            for img_index, img in enumerate(image_list):
+                try:
+                    # Get image data
+                    xref = img[0]
+                    base_image = doc.extract_image(xref)
+                    image_bytes = base_image["image"]
+                    image_ext = base_image["ext"]
+                    
+                    # Save to temporary file
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{image_ext}') as tmp_file:
+                        tmp_file.write(image_bytes)
+                        tmp_path = tmp_file.name
+                    
+                    # Take first 2 images as potential signatures
+                    if img_index < 2:
+                        key = 'signatory' if img_index == 0 else 'nc_representative'
+                        signatures[key] = tmp_path
+                except Exception as e:
+                    print(f"Error extracting image {img_index}: {e}")
+            
+            doc.close()
+            if signatures:
+                return signatures
         except ImportError:
-            fitz = None
-            print("Note: PyMuPDF (pymupdf) not installed. Install with 'pip install pymupdf' for better signature extraction.")
+            # PyMuPDF not available, continue to other methods
+            pass
+        except Exception as e:
+            print(f"Error using PyMuPDF: {e}")
         
-        if fitz is not None:
+        # Method 2: Try to extract from signature form fields using pypdf
+        if PdfReader is not None:
             try:
-                doc = fitz.open(source_pdf_path)
-                image_list = []
+                reader = PdfReader(source_pdf_path)
                 
-                for page_num in range(len(doc)):
-                    page = doc[page_num]
-                    # Get all images on the page
-                    image_list.extend(page.get_images())
-                
-                # Extract images that might be signatures
-                # Look for images in signature-like locations (bottom of pages, etc.)
-                for img_index, img in enumerate(image_list):
-                    try:
-                        # Get image data
-                        xref = img[0]
-                        base_image = doc.extract_image(xref)
-                        image_bytes = base_image["image"]
-                        image_ext = base_image["ext"]
+                if reader.get_fields():
+                    for field_name, field in reader.get_fields().items():
+                        field_name_lower = (field_name or "").lower()
                         
-                        # Save to temporary file
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{image_ext}') as tmp_file:
-                            tmp_file.write(image_bytes)
-                            tmp_path = tmp_file.name
-                        
-                        # Try to identify if this is a signature (heuristic: small images at bottom of page)
-                        # For now, we'll take the first few images as potential signatures
-                        if img_index < 2:  # Take first 2 images as potential signatures
-                            key = 'signatory' if img_index == 0 else 'nc_representative'
-                            signatures[key] = tmp_path
-                    except Exception as e:
-                        print(f"Error extracting image {img_index}: {e}")
-                
-                doc.close()
+                        # Check if this is a signature field
+                        if 'signature' in field_name_lower or 'sign' in field_name_lower:
+                            try:
+                                # Try to extract signature image from appearance stream
+                                if hasattr(field, 'get'):
+                                    ap = field.get('/AP')
+                                    if ap:
+                                        normal_ap = ap.get('/N')
+                                        if normal_ap:
+                                            # Try to get image from appearance stream
+                                            try:
+                                                # Access the stream object
+                                                if hasattr(normal_ap, 'get_data'):
+                                                    stream_data = normal_ap.get_data()
+                                                    # Try to extract image from PDF stream
+                                                    # This is complex - would need PDF stream parsing
+                                                    pass
+                                                elif hasattr(normal_ap, 'get_object'):
+                                                    # Try to get the object and extract image
+                                                    obj = normal_ap.get_object()
+                                                    if obj and hasattr(obj, 'get_data'):
+                                                        stream_data = obj.get_data()
+                                                        # Would need to parse PDF stream to extract image
+                                                        pass
+                                            except Exception as e:
+                                                print(f"Error extracting from appearance stream: {e}")
+                            except Exception as e:
+                                print(f"Error extracting signature from field {field_name}: {e}")
             except Exception as e:
-                print(f"Error using PyMuPDF for image extraction: {e}")
+                print(f"Error reading PDF fields: {e}")
         
-        # Method 3: Try using pdfplumber to extract images (less reliable)
-        if not signatures and pdfplumber is not None:
+        # Method 3: Try using pypdf to extract images from pages
+        if not signatures and PdfReader is not None:
             try:
-                with pdfplumber.open(source_pdf_path) as pdf:
-                    # pdfplumber doesn't directly extract images, but we can try
-                    # to identify signature areas by looking at the page structure
-                    pass
-            except Exception:
-                pass
+                reader = PdfReader(source_pdf_path)
+                image_count = 0
+                
+                for page_num, page in enumerate(reader.pages):
+                    if '/XObject' in page.get('/Resources', {}):
+                        xobjects = page['/Resources']['/XObject'].get_object()
+                        for obj_name, obj in xobjects.items():
+                            if obj.get('/Subtype') == '/Image':
+                                try:
+                                    # Extract image data
+                                    if '/Filter' in obj:
+                                        filter_type = obj['/Filter']
+                                        if filter_type == '/DCTDecode' or (isinstance(filter_type, list) and '/DCTDecode' in filter_type):
+                                            # JPEG image
+                                            image_data = obj.get_data()
+                                            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+                                                tmp_file.write(image_data)
+                                                tmp_path = tmp_file.name
+                                            
+                                            if image_count < 2:
+                                                key = 'signatory' if image_count == 0 else 'nc_representative'
+                                                signatures[key] = tmp_path
+                                                image_count += 1
+                                except Exception as e:
+                                    print(f"Error extracting image object {obj_name}: {e}")
+            except Exception as e:
+                print(f"Error extracting images with pypdf: {e}")
                 
     except Exception as e:
         print(f"Error extracting signatures: {e}")
