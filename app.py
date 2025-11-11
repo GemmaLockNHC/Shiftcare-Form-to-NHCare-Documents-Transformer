@@ -158,28 +158,36 @@ def format_date_dd_mm_yyyy(date_str):
     
     # If no format matched, try to extract numbers and rearrange
     # Look for pattern like: 3 numbers separated by /, -, or space
-    numbers = re.findall(r'\d+', date_str)
-    if len(numbers) >= 3:
-        # If first number is 4 digits, assume YYYY-MM-DD or YYYY/MM/DD
-        if len(numbers[0]) == 4:
-            year, month, day = numbers[0], numbers[1], numbers[2]
-        # If last number is 4 digits, assume DD/MM/YYYY or MM/DD/YYYY
-        elif len(numbers[-1]) == 4:
-            # Try to determine if it's DD/MM/YYYY or MM/DD/YYYY
-            # If middle number > 12, it must be DD/MM/YYYY
-            if int(numbers[1]) > 12:
-                day, month, year = numbers[0], numbers[1], numbers[2]
+    try:
+        numbers = re.findall(r'\d+', date_str)
+        if len(numbers) >= 3:
+            # If first number is 4 digits, assume YYYY-MM-DD or YYYY/MM/DD
+            if len(numbers[0]) == 4:
+                year, month, day = numbers[0], numbers[1], numbers[2]
+            # If last number is 4 digits, assume DD/MM/YYYY or MM/DD/YYYY
+            elif len(numbers[-1]) == 4:
+                # Try to determine if it's DD/MM/YYYY or MM/DD/YYYY
+                # If middle number > 12, it must be DD/MM/YYYY
+                try:
+                    if int(numbers[1]) > 12:
+                        day, month, year = numbers[0], numbers[1], numbers[2]
+                    else:
+                        # Ambiguous - assume DD/MM/YYYY (day first)
+                        day, month, year = numbers[0], numbers[1], numbers[2]
+                except (ValueError, IndexError):
+                    # If conversion fails, default to DD/MM/YYYY
+                    day, month, year = numbers[0], numbers[1], numbers[2]
             else:
-                # Ambiguous - assume DD/MM/YYYY (day first)
+                # Default to DD/MM/YYYY
                 day, month, year = numbers[0], numbers[1], numbers[2]
-        else:
-            # Default to DD/MM/YYYY
-            day, month, year = numbers[0], numbers[1], numbers[2]
-        
-        # Format with leading zeros
-        day = day.zfill(2)
-        month = month.zfill(2)
-        return f"{day}/{month}/{year}"
+            
+            # Format with leading zeros
+            day = day.zfill(2)
+            month = month.zfill(2)
+            return f"{day}/{month}/{year}"
+    except (ValueError, IndexError, AttributeError):
+        # If anything goes wrong, return original string
+        pass
     
     # If we can't parse it, return as-is
     return date_str
@@ -445,12 +453,12 @@ def index():
 def upload_file():
     if 'file' not in request.files:
         flash('No file selected')
-        return redirect(request.url)
+        return redirect(url_for('index'))
     
     file = request.files['file']
     if file.filename == '':
         flash('No file selected')
-        return redirect(request.url)
+        return redirect(url_for('index'))
     
     # Check what to generate
     generate_csv = request.form.get('generate_csv') == '1'
@@ -465,7 +473,15 @@ def upload_file():
         # Add unique identifier to avoid conflicts
         unique_filename = f"{uuid.uuid4()}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(filepath)
+        
+        # Ensure upload directory exists
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        
+        try:
+            file.save(filepath)
+        except Exception as save_error:
+            flash(f'Error saving file: {str(save_error)}')
+            return redirect(url_for('index'))
         
         try:
             # Parse PDF data using the working function from create_final_tables
@@ -531,10 +547,22 @@ def upload_file():
                 return response
             
         except Exception as e:
-            flash(f'Error processing file: {str(e)}')
+            import traceback
+            error_msg = str(e)
+            error_traceback = traceback.format_exc()
+            # Log full error for debugging (on Render, this goes to logs)
+            print(f"ERROR processing file: {error_msg}")
+            print(f"TRACEBACK: {error_traceback}")
+            # Show user-friendly error message (limit length to avoid issues)
+            if len(error_msg) > 200:
+                error_msg = error_msg[:200] + "..."
+            flash(f'Error processing file: {error_msg}')
             # Clean up files on error
-            if os.path.exists(filepath):
-                os.remove(filepath)
+            if 'filepath' in locals() and os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
             return redirect(url_for('index'))
     else:
         flash('Invalid file type. Please upload a PDF file.')
