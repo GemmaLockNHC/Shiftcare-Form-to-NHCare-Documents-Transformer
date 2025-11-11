@@ -222,7 +222,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
     text = extract_pdf_text_pdfplumber(pdf_path)
     if text:
         lines = [l.strip() for l in text.splitlines() if l.strip()]
-    
+        
         # Identify section boundaries
         section_starts = []
         for i, line in enumerate(lines):
@@ -282,7 +282,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                 
                 for pattern in label_patterns:
                     pattern_lower = normalize_key(pattern)
-                
+                    
                     # Simple match - check if pattern matches the line
                     line_clean = line_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
                     pattern_clean = pattern_lower.replace("(details of the client)", "").replace("(contact details of the client)", "").strip()
@@ -391,7 +391,7 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         if not data.get('Is the primary carer also the emergency contact for the participant?'):
             data['Is the primary carer also the emergency contact for the participant?'] = find_value_after_label(['Is the primary carer also the emergency contact'])
     
-        # Extract other fields that might be in the PDF
+    # Extract other fields that might be in the PDF
         if not data.get('Preferred method of contact'):
             data['Preferred method of contact'] = find_value_after_label(['Preferred method of contact', 'Preferred contact method'])
         if not data.get('Total core budget to allocate to Neighbourhood Care'):
@@ -455,20 +455,20 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
             data['Respondent'] = find_value_after_label(['Respondent', 'Neighbourhood Care representative'])
         if not data.get('Neighbourhood Care representative team'):
             data['Neighbourhood Care representative team'] = find_value_after_label(['Neighbourhood Care representative team', 'Team'])
-    
+        
         # Extract consent responses - look for Yes/No patterns
         consent_labels = [
-        'I agree to receive services from Neighbourhood Care.',
-        'I consent for Neighbourhood Care to create an NDIS portal service booking',
-        'I understand that if at any time I (The Participant) require emergency medical assistance',
-        'I agree that Neighbourhood Care staff may administer simple first aid',
-        'I consent for Neighbourhood Care to discuss relevant information',
-        'I agree not to smoke inside the home',
-        'I understand that an Emergency Response Plan will be developed',
-        'I consent for Neighbourhood Care for I (The Participant) to be photographed',
-        'I give authority for my details or information to be shared'
+            'I agree to receive services from Neighbourhood Care.',
+            'I consent for Neighbourhood Care to create an NDIS portal service booking',
+            'I understand that if at any time I (The Participant) require emergency medical assistance',
+            'I agree that Neighbourhood Care staff may administer simple first aid',
+            'I consent for Neighbourhood Care to discuss relevant information',
+            'I agree not to smoke inside the home',
+            'I understand that an Emergency Response Plan will be developed',
+            'I consent for Neighbourhood Care for I (The Participant) to be photographed',
+            'I give authority for my details or information to be shared'
         ]
-    
+        
         for consent_label in consent_labels:
             if consent_label not in data:
                 # Look for the consent text and find Yes/No after it
@@ -517,10 +517,16 @@ def extract_signatures_from_pdf(source_pdf_path):
     
     Uses multiple methods with fallbacks:
     - PyMuPDF (if available) - best for image extraction
-    - pypdf - for form field signatures
+    - pypdf - for form field signatures and embedded images
     - pdfplumber - for text-based identification
+    
+    This function is designed to fail gracefully - if extraction fails,
+    it returns an empty dict and the PDF generation continues without signatures.
     """
     signatures = {}
+    if not source_pdf_path or not os.path.exists(source_pdf_path):
+        return signatures
+    
     try:
         # Method 1: Try PyMuPDF first (best method, but optional)
         try:
@@ -610,32 +616,52 @@ def extract_signatures_from_pdf(source_pdf_path):
                 image_count = 0
                 
                 for page_num, page in enumerate(reader.pages):
-                    if '/XObject' in page.get('/Resources', {}):
-                        xobjects = page['/Resources']['/XObject'].get_object()
-                        for obj_name, obj in xobjects.items():
-                            if obj.get('/Subtype') == '/Image':
-                                try:
-                                    # Extract image data
-                                    if '/Filter' in obj:
-                                        filter_type = obj['/Filter']
-                                        if filter_type == '/DCTDecode' or (isinstance(filter_type, list) and '/DCTDecode' in filter_type):
-                                            # JPEG image
-                                            image_data = obj.get_data()
-                                            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-                                                tmp_file.write(image_data)
-                                                tmp_path = tmp_file.name
-                                            
-                                            if image_count < 2:
-                                                key = 'signatory' if image_count == 0 else 'nc_representative'
-                                                signatures[key] = tmp_path
-                                                image_count += 1
-                                except Exception as e:
-                                    print(f"Error extracting image object {obj_name}: {e}")
+                    try:
+                        resources = page.get('/Resources', {})
+                        if resources and '/XObject' in resources:
+                            xobjects = resources['/XObject']
+                            if hasattr(xobjects, 'get_object'):
+                                xobjects = xobjects.get_object()
+                            
+                            if isinstance(xobjects, dict):
+                                for obj_name, obj in xobjects.items():
+                                    try:
+                                        if hasattr(obj, 'get') and obj.get('/Subtype') == '/Image':
+                                            # Extract image data
+                                            if '/Filter' in obj:
+                                                filter_type = obj['/Filter']
+                                                # Handle both single filter and list of filters
+                                                is_jpeg = False
+                                                if filter_type == '/DCTDecode':
+                                                    is_jpeg = True
+                                                elif isinstance(filter_type, list) and '/DCTDecode' in filter_type:
+                                                    is_jpeg = True
+                                                
+                                                if is_jpeg:
+                                                    try:
+                                                        image_data = obj.get_data()
+                                                        if image_data:
+                                                            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+                                                                tmp_file.write(image_data)
+                                                                tmp_path = tmp_file.name
+                                                            
+                                                            if image_count < 2:
+                                                                key = 'signatory' if image_count == 0 else 'nc_representative'
+                                                                signatures[key] = tmp_path
+                                                                image_count += 1
+                                                    except Exception as e:
+                                                        print(f"Error writing image {obj_name} to temp file: {e}")
+                                    except Exception as e:
+                                        print(f"Error processing image object {obj_name}: {e}")
+                    except Exception as e:
+                        print(f"Error processing page {page_num}: {e}")
+                        continue
             except Exception as e:
                 print(f"Error extracting images with pypdf: {e}")
                 
     except Exception as e:
         print(f"Error extracting signatures: {e}")
+        # Return empty dict on error - don't break the build
     
     return signatures
 
@@ -1230,8 +1256,12 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     if signatures and 'signatory' in signatures:
         try:
             sig_img = signatures['signatory']
-            story.append(Spacer(1, 6))
-            story.append(Image(sig_img, width=2*inch, height=0.5*inch))
+            # Check if it's a file path (string) or already an image object
+            if isinstance(sig_img, str) and os.path.exists(sig_img):
+                story.append(Spacer(1, 6))
+                story.append(Image(sig_img, width=2*inch, height=0.5*inch))
+            else:
+                story.append(Paragraph("[Signature]", normal_no_space_style))
         except Exception as e:
             print(f"Error adding signatory signature: {e}")
             story.append(Paragraph("[Signature]", normal_no_space_style))
@@ -1248,8 +1278,12 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     if signatures and 'nc_representative' in signatures:
         try:
             sig_img = signatures['nc_representative']
-            story.append(Spacer(1, 6))
-            story.append(Image(sig_img, width=2*inch, height=0.5*inch))
+            # Check if it's a file path (string) or already an image object
+            if isinstance(sig_img, str) and os.path.exists(sig_img):
+                story.append(Spacer(1, 6))
+                story.append(Image(sig_img, width=2*inch, height=0.5*inch))
+            else:
+                story.append(Paragraph("[Signature]", normal_no_space_style))
         except Exception as e:
             print(f"Error adding NC representative signature: {e}")
             story.append(Paragraph("[Signature]", normal_no_space_style))
