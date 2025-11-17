@@ -37,7 +37,8 @@ def load_ndis_support_items():
                 ndis_items[item_name] = {
                     'number': row['Support Item Number'].strip(),
                     'unit': row['Unit'].strip(),
-                    'wa_price': row['WA'].strip()
+                    'wa_price': row.get('WA', '').strip(),
+                    'qld_price': row.get('QLD', '').strip()
                 }
     except FileNotFoundError:
         print("NDIS Support Items CSV file not found. Using placeholder data.")
@@ -45,6 +46,34 @@ def load_ndis_support_items():
         print(f"Error loading NDIS support items: {e}")
     
     return ndis_items
+
+def get_price_state(team_value):
+    """
+    Determine which state's prices to use based on the team.
+    
+    Args:
+        team_value: The team name from 'Neighbourhood Care representative team'
+    
+    Returns:
+        str: 'WA' or 'QLD'
+    """
+    if not team_value:
+        return 'WA'  # Default to WA if team is not specified
+    
+    team_value_clean = team_value.strip().lower()
+    
+    # WA teams
+    wa_teams = ['fremantle', 'belmont', 'metro-x', 'rockingham', 'wanneroo']
+    if team_value_clean in wa_teams:
+        return 'WA'
+    
+    # QLD teams
+    qld_teams = ['brisbane', 'beaudesert', 'ipswich', 'gold coast']
+    if team_value_clean in qld_teams:
+        return 'QLD'
+    
+    # Default to WA if team doesn't match
+    return 'WA'
 
 def lookup_support_item(ndis_items, item_name):
     """Look up a support item by name and return its details"""
@@ -59,10 +88,11 @@ def lookup_support_item(ndis_items, item_name):
         return {
             'number': '[Not Found]',
             'unit': 'Hour',
-            'wa_price': '$0.00'
+            'wa_price': '$0.00',
+            'qld_price': '$0.00'
         }
 
-def get_establishment_fee(csv_data, ndis_items):
+def get_establishment_fee(csv_data, ndis_items, team_value=None):
     """
     Calculate the establishment fee based on client status and support hours.
     
@@ -73,6 +103,7 @@ def get_establishment_fee(csv_data, ndis_items):
     Args:
         csv_data: Dictionary containing form data
         ndis_items: Dictionary of NDIS support items loaded from CSV
+        team_value: The team name from 'Neighbourhood Care representative team' (optional)
     
     Returns:
         str: Formatted establishment fee amount (e.g., "$702.30" or "$0.00")
@@ -130,20 +161,24 @@ def get_establishment_fee(csv_data, ndis_items):
     if is_new_client and is_receiving_20_hours:
         # Look up "Establishment Fee For Personal Care/Participation" in NDIS items
         establishment_fee_item = lookup_support_item(ndis_items, "Establishment Fee For Personal Care/Participation")
-        wa_price = establishment_fee_item.get('wa_price', '$0.00')
+        
+        # Determine which state's price to use
+        price_state = get_price_state(team_value)
+        price_key = 'wa_price' if price_state == 'WA' else 'qld_price'
+        price = establishment_fee_item.get(price_key, '$0.00')
         
         # Clean up the price string (remove any extra formatting)
-        wa_price = wa_price.strip()
-        if not wa_price.startswith('$'):
+        price = price.strip()
+        if not price.startswith('$'):
             # If it's a number, add $ prefix
             try:
                 # Remove any commas and $ signs, then format
-                price_num = float(wa_price.replace('$', '').replace(',', ''))
-                wa_price = f"${price_num:.2f}"
+                price_num = float(price.replace('$', '').replace(',', ''))
+                price = f"${price_num:.2f}"
             except (ValueError, AttributeError):
-                wa_price = '$0.00'
+                price = '$0.00'
         
-        return wa_price
+        return price
     else:
         return '$0.00'
 
@@ -1151,6 +1186,11 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
         leading=14
     )
     
+    # Get team value early for price determination
+    team_value = csv_data.get('Neighbourhood Care representative team', '[To be filled in]')
+    # Clean up checkbox characters that appear as black boxes
+    team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+    
     # Title
     story.append(Paragraph("Service Agreement", title_style))
     
@@ -1209,7 +1249,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     story.append(Spacer(1, 12))
     
     # Calculate Establishment Fee
-    establishment_fee_amount = get_establishment_fee(csv_data, ndis_items)
+    establishment_fee_amount = get_establishment_fee(csv_data, ndis_items, team_value)
     
     # Establishment Fee
     establishment_data = [
@@ -1324,6 +1364,10 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
             support_items_from_pdf.append((i, item_name))
     
     # If no support items found in PDF, use empty list (don't show hardcoded items)
+    # Determine which state's price to use based on team
+    price_state = get_price_state(team_value)
+    price_key = 'wa_price' if price_state == 'WA' else 'qld_price'
+    
     for item_num, item_name in support_items_from_pdf:
         item_details = lookup_support_item(ndis_items, item_name)
         # Check if item was actually found (not the placeholder)
@@ -1338,7 +1382,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
                 Paragraph(item_name, table_text_style),
                 Paragraph(item_details.get('number', ''), table_text_style),
                 Paragraph(item_details.get('unit', ''), table_text_style),
-                Paragraph(item_details.get('wa_price', ''), table_text_style)
+                Paragraph(item_details.get(price_key, ''), table_text_style)
             ])
         else:
             support_data.append([
