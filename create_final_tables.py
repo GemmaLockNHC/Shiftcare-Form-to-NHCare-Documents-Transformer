@@ -5,7 +5,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
+from reportlab.pdfgen import canvas
 import csv
 import os
 import re
@@ -1105,6 +1106,87 @@ def create_service_agreement():
     doc = SimpleDocTemplate("Service Agreement - FINAL TABLES.pdf", pagesize=A4)
     _build_service_agreement_content(doc, csv_data, ndis_items, active_users)
 
+def _add_header_footer(canvas_obj, doc):
+    """Add header and footer to PDF pages"""
+    # Footer color (gray)
+    footer_color = colors.HexColor('#7F7F7F')
+    
+    # Footer text
+    footer_text = "Neighbourhood Care | Suite 103, 19 Ogilvie Road, Mount Pleasant, WA 6153 | ABN 40 634 832 607"
+    
+    # Get page number
+    page_num = canvas_obj.getPageNumber()
+    
+    # Footer position - center text at normal footer position
+    footer_y = 30  # Position for footer text
+    
+    # Draw footer text in center
+    canvas_obj.saveState()
+    canvas_obj.setFillColor(footer_color)
+    canvas_obj.setFont("Helvetica", 8)
+    
+    # Center footer text
+    page_width = A4[0]
+    footer_x_center = page_width / 2
+    canvas_obj.drawCentredString(footer_x_center, footer_y, footer_text)
+    
+    # Page number on right side (a bit below the footer text)
+    page_num_text = str(page_num)
+    page_num_y = footer_y - 12  # Position below the footer text
+    page_num_x = page_width - 50  # Right side with margin
+    canvas_obj.drawRightString(page_num_x, page_num_y, page_num_text)
+    
+    canvas_obj.restoreState()
+
+def _add_first_page_header(canvas_obj, doc):
+    """Add header with image to first page only"""
+    # Add the image to the right side of header
+    image_path = 'Screenshot 2025-11-19 at 9.31.05 am.png'
+    
+    # Try multiple possible paths
+    possible_paths = [image_path]
+    try:
+        possible_paths.append(os.path.join(os.path.dirname(__file__), image_path))
+    except:
+        pass
+    possible_paths.append(os.path.join(os.getcwd(), image_path))
+    
+    image_found = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            image_found = path
+            break
+    
+    if image_found:
+        try:
+            # Image size - similar to body text (11pt), so make it small
+            # Body text is 11pt, so image height around 15-20 points would be similar
+            img_height = 15  # Small size similar to body text
+            
+            # Position on right side of header
+            page_width = A4[0]
+            page_height = A4[1]
+            img_y = page_height - 50  # Top of page with margin
+            
+            # Try to get image dimensions to calculate aspect ratio
+            try:
+                from PIL import Image as PILImage
+                pil_img = PILImage.open(image_found)
+                img_width_orig, img_height_orig = pil_img.size
+                aspect_ratio = img_width_orig / img_height_orig
+                img_width = img_height * aspect_ratio
+            except:
+                # If PIL not available, use a default aspect ratio
+                img_width = img_height * 1.5  # Default aspect ratio
+            
+            img_x = page_width - img_width - 50  # Right side with margin
+            canvas_obj.drawImage(image_found, img_x, img_y, width=img_width, height=img_height, preserveAspectRatio=True)
+        except Exception as e:
+            print(f"Warning: Could not add header image: {e}")
+    
+    # Also add footer for first page
+    _add_header_footer(canvas_obj, doc)
+
 def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, contact_name=None, signatures=None):
     """Build the service agreement PDF content"""
     story = []
@@ -1864,8 +1946,8 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     ]))
     story.append(key_contact_table)
     
-    # Build PDF
-    doc.build(story)
+    # Build PDF with headers and footers
+    doc.build(story, onFirstPage=_add_first_page_header, onLaterPages=_add_header_footer)
     print("Service Agreement PDF FINAL TABLES created successfully!")
 
 def get_emergency_contact(csv_data):
