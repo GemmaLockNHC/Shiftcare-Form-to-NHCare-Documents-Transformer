@@ -1141,8 +1141,7 @@ def _add_header_footer(canvas_obj, doc):
 def _add_first_page_header(canvas_obj, doc):
     """Add header with image to first page only"""
     # Add the image to the right side of header
-    # The filename might have special characters (narrow no-break space), so search for it
-    image_filename_pattern = 'Screenshot 2025-11-19 at 9.31.05 am.png'
+    image_filename = 'image.png'
     
     # Get the script directory (where this file is located)
     try:
@@ -1150,17 +1149,23 @@ def _add_first_page_header(canvas_obj, doc):
     except:
         script_dir = os.getcwd()
     
-    # Search for the image file - it might have special characters in the filename
+    # Search for the image file
     image_path = None
     search_dirs = [script_dir, os.getcwd(), '.']
     
     for search_dir in search_dirs:
         if os.path.exists(search_dir):
             try:
-                # List all files and find the one matching our pattern
+                # Try exact filename first
+                test_path = os.path.join(search_dir, image_filename)
+                if os.path.exists(test_path):
+                    image_path = os.path.abspath(test_path)
+                    print(f"DEBUG: Found image file: {image_filename}")
+                    break
+                
+                # Fallback: search for any file with "image" in the name
                 for filename in os.listdir(search_dir):
-                    # Check if it's a screenshot file with 9.31 in the name
-                    if 'screenshot' in filename.lower() and '9.31' in filename.lower() and filename.lower().endswith('.png'):
+                    if filename.lower() == image_filename.lower() or (filename.lower().startswith('image') and filename.lower().endswith('.png')):
                         full_path = os.path.join(search_dir, filename)
                         if os.path.exists(full_path):
                             image_path = os.path.abspath(full_path)
@@ -1172,15 +1177,7 @@ def _add_first_page_header(canvas_obj, doc):
                 print(f"DEBUG: Error searching in {search_dir}: {e}")
                 continue
     
-    # Fallback: try the exact filename
-    if not image_path:
-        for search_dir in search_dirs:
-            test_path = os.path.join(search_dir, image_filename_pattern)
-            if os.path.exists(test_path):
-                image_path = os.path.abspath(test_path)
-                break
-    
-    print(f"DEBUG: Looking for image matching pattern: {image_filename_pattern}")
+    print(f"DEBUG: Looking for image: {image_filename}")
     print(f"DEBUG: Image found: {image_path}")
     print(f"DEBUG: Image exists: {os.path.exists(image_path) if image_path else False}")
     
