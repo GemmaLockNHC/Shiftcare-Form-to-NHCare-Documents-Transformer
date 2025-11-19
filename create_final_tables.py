@@ -1143,30 +1143,45 @@ def _add_first_page_header(canvas_obj, doc):
     # Add the image to the right side of header
     image_path = 'Screenshot 2025-11-19 at 9.31.05 am.png'
     
-    # Try multiple possible paths
-    possible_paths = [image_path]
+    # Try multiple possible paths - use absolute paths where possible
+    possible_paths = []
+    
+    # Current working directory
+    cwd_path = os.path.join(os.getcwd(), image_path)
+    possible_paths.append(cwd_path)
+    
+    # Script directory
     try:
-        possible_paths.append(os.path.join(os.path.dirname(__file__), image_path))
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        script_path = os.path.join(script_dir, image_path)
+        possible_paths.append(script_path)
     except:
         pass
-    possible_paths.append(os.path.join(os.getcwd(), image_path))
+    
+    # Relative path
+    possible_paths.append(image_path)
     
     image_found = None
     for path in possible_paths:
         if os.path.exists(path):
-            image_found = path
+            image_found = os.path.abspath(path)  # Use absolute path
+            print(f"DEBUG: Found header image at: {image_found}")
             break
+    
+    if not image_found:
+        print(f"DEBUG: Header image not found. Tried paths: {possible_paths}")
+        print(f"DEBUG: Current working directory: {os.getcwd()}")
     
     if image_found:
         try:
-            # Image size - similar to body text (11pt), so make it small
-            # Body text is 11pt, so image height around 15-20 points would be similar
-            img_height = 15  # Small size similar to body text
+            # Image size - similar to body text (11pt), but make it visible
+            # Body text is 11pt, so image height around 30-40 points would be visible but still small
+            img_height = 30  # Small size but visible
             
             # Position on right side of header
             page_width = A4[0]
             page_height = A4[1]
-            img_y = page_height - 50  # Top of page with margin
+            img_y = page_height - 60  # Top of page with margin
             
             # Try to get image dimensions to calculate aspect ratio
             try:
@@ -1175,14 +1190,22 @@ def _add_first_page_header(canvas_obj, doc):
                 img_width_orig, img_height_orig = pil_img.size
                 aspect_ratio = img_width_orig / img_height_orig
                 img_width = img_height * aspect_ratio
-            except:
+                print(f"DEBUG: Image dimensions: {img_width_orig}x{img_height_orig}, scaled to: {img_width:.1f}x{img_height}")
+            except Exception as pil_error:
                 # If PIL not available, use a default aspect ratio
                 img_width = img_height * 1.5  # Default aspect ratio
+                print(f"DEBUG: PIL not available, using default aspect ratio. Error: {pil_error}")
             
             img_x = page_width - img_width - 50  # Right side with margin
+            print(f"DEBUG: Drawing image at position: x={img_x:.1f}, y={img_y}, size: {img_width:.1f}x{img_height}")
+            canvas_obj.saveState()
             canvas_obj.drawImage(image_found, img_x, img_y, width=img_width, height=img_height, preserveAspectRatio=True)
+            canvas_obj.restoreState()
+            print("DEBUG: Image drawn successfully")
         except Exception as e:
             print(f"Warning: Could not add header image: {e}")
+            import traceback
+            traceback.print_exc()
     
     # Also add footer for first page
     _add_header_footer(canvas_obj, doc)
