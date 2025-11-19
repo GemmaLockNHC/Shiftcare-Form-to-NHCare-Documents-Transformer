@@ -40,6 +40,13 @@ def load_ndis_support_items():
                     'wa_price': row.get('WA', '').strip(),
                     'qld_price': row.get('QLD', '').strip()
                 }
+        print(f"DEBUG: Loaded {len(ndis_items)} NDIS support items from CSV")
+        # Verify establishment fee item exists
+        if "Establishment Fee For Personal Care/Participation" in ndis_items:
+            est_fee = ndis_items["Establishment Fee For Personal Care/Participation"]
+            print(f"DEBUG: Establishment fee item found - WA: {est_fee.get('wa_price')}, QLD: {est_fee.get('qld_price')}")
+        else:
+            print("DEBUG: WARNING - Establishment Fee For Personal Care/Participation not found in NDIS items")
     except FileNotFoundError:
         print("NDIS Support Items CSV file not found. Using placeholder data.")
     except Exception as e:
@@ -169,17 +176,41 @@ def get_establishment_fee(csv_data, ndis_items, team_value=None):
         
         # Clean up the price string (remove any extra formatting)
         price = price.strip()
-        if not price.startswith('$'):
-            # If it's a number, add $ prefix
-            try:
-                # Remove any commas and $ signs, then format
-                price_num = float(price.replace('$', '').replace(',', ''))
-                price = f"${price_num:.2f}"
-            except (ValueError, AttributeError):
-                price = '$0.00'
+        
+        # If price is empty or invalid, try to get it from the item directly
+        if not price or price == '' or price == '$0.00':
+            # Try the other price key as fallback
+            other_key = 'qld_price' if price_key == 'wa_price' else 'wa_price'
+            price = establishment_fee_item.get(other_key, '$0.00').strip()
+        
+        # Ensure price has $ prefix and proper formatting
+        if price and price != '$0.00':
+            if not price.startswith('$'):
+                # If it's a number, add $ prefix
+                try:
+                    # Remove any commas and $ signs, then format
+                    price_num = float(price.replace('$', '').replace(',', ''))
+                    price = f"${price_num:.2f}"
+                except (ValueError, AttributeError):
+                    price = '$0.00'
+            else:
+                # Price already has $, just ensure proper formatting
+                try:
+                    price_num = float(price.replace('$', '').replace(',', ''))
+                    price = f"${price_num:.2f}"
+                except (ValueError, AttributeError):
+                    price = '$0.00'
+        
+        # Debug output
+        if price == '$0.00':
+            print(f"DEBUG: Establishment fee calculation - is_new_client: {is_new_client}, is_receiving_20_hours: {is_receiving_20_hours}")
+            print(f"DEBUG: Price state: {price_state}, Price key: {price_key}")
+            print(f"DEBUG: Establishment fee item found: {establishment_fee_item}")
         
         return price
     else:
+        # Debug output when conditions not met
+        print(f"DEBUG: Establishment fee conditions not met - is_new_client: {is_new_client}, is_receiving_20_hours: {is_receiving_20_hours}")
         return '$0.00'
 
 def load_active_users():
@@ -1248,30 +1279,39 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     # Calculate Establishment Fee
     establishment_fee_amount = get_establishment_fee(csv_data, ndis_items, team_value)
     
-    # Establishment Fee
-    establishment_data = [
-        ['Establishment Fee', establishment_fee_amount]
-    ]
-    
-    establishment_table = Table(establishment_data, colWidths=[3*inch, 2*inch])
-    establishment_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, 0), BLUE_COLOR),
-        ('TEXTCOLOR', (0, 0), (0, 0), colors.white),
-        ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-        ('BACKGROUND', (1, 0), (1, 0), colors.white),
-        ('TEXTCOLOR', (1, 0), (1, 0), colors.black),
-        ('FONTNAME', (1, 0), (1, 0), 'Helvetica'),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
-    ]))
-    story.append(establishment_table)
-    story.append(Spacer(1, 12))
+    # Only show establishment fee table if fee is greater than $0.00
+    if establishment_fee_amount and establishment_fee_amount != '$0.00':
+        # Extract numeric value for comparison
+        try:
+            fee_value = float(establishment_fee_amount.replace('$', '').replace(',', ''))
+            if fee_value > 0:
+                # Establishment Fee
+                establishment_data = [
+                    ['Establishment Fee', establishment_fee_amount]
+                ]
+                
+                establishment_table = Table(establishment_data, colWidths=[3*inch, 2*inch])
+                establishment_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (0, 0), BLUE_COLOR),
+                    ('TEXTCOLOR', (0, 0), (0, 0), colors.white),
+                    ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+                    ('BACKGROUND', (1, 0), (1, 0), colors.white),
+                    ('TEXTCOLOR', (1, 0), (1, 0), colors.black),
+                    ('FONTNAME', (1, 0), (1, 0), 'Helvetica'),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 10),
+                    ('TOPPADDING', (0, 0), (-1, -1), 8),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+                ]))
+                story.append(establishment_table)
+                story.append(Spacer(1, 12))
+        except (ValueError, AttributeError):
+            # If we can't parse the fee, don't show the table
+            pass
     
     # Schedule of Supports
     schedule_heading_style = ParagraphStyle(
