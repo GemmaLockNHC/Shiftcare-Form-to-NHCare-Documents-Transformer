@@ -1,0 +1,4 @@
+user_id,salutation,name,gender,address,dob,email,phone,mobile,role,area,invited_by,last_login,created_at,updated_at
+896183,"",Arnold Stroobach,"",,04/06/2025,arnold.stroobach+@nhcare.com.au,,"",admin,Default Casual,Fletcher Tame,2025-10-29 14:11:38 +1000,06/04/2025,11/10/2025
+891473,,Fletcher Tame,,,17/11/2025,fletcher.tame@nhcare.com.au,"","",admin,Default Casual,Fletcher Tame,2025-08-20 13:28:20 +1000,05/23/2025,08/27/2025
+956567,ms,Gemma Catherine Lock,female,120 Herbert Rd,19/01/2004,gemma.cathlock@gmail.com,,0403229236,admin,Default Casual,Arnold Stroobach,2025-11-19 12:02:49 +1000,10/22/2025,11/19/2025
