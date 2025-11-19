@@ -1211,7 +1211,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     story.append(Paragraph(intro4, normal_no_space_style))
     story.append(Spacer(1, 12))
     
-    intro5 = "This Service Agreement must then be signed in order for us to start delivering services."
+    intro5 = "This Service Agreement must then be signed for us to start delivering services."
     story.append(Paragraph(intro5, normal_no_space_style))
     story.append(Spacer(1, 12))
     
@@ -1234,7 +1234,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     service_bullets = [
         "Transporting you during a shift (this is a $1 cost per km and is billed out of your core budget).",
         "Communication by phone or email or in a face to face meeting with key people in your network - when this is not part of your rostered shift.",
-        "Travel for support workers or therapists when they are coming directly from the office or from another participant or travelling back to the office at the end of the shift (you are not charged for travel if they are coming to you from home or going directly home). Max charge 30 min each way and $1 per km non-labour costs (as per NDIS Pricing Arrangements and Price Limits 2023-24 V1.0.",
+        "Travel for support workers or therapists when they are coming directly from the office or from another participant or travelling back to the office at the end of the shift.",
         "Preparing some reports that are required for the NDIS such as creating your Support Plan.",
         "Costs for when we are supporting you in the community such as parking, public transport and so forth.",
         "For <i>new</i> participants, receiving Core supports, the one off Establishment fee is applied."
@@ -1243,9 +1243,6 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     for bullet in service_bullets:
         story.append(Paragraph(f"• {bullet}", bullet_style))
     
-    story.append(Spacer(1, 12))
-    establishment_text = "The establishment fee for this service agreement is:"
-    story.append(Paragraph(establishment_text, normal_style))
     story.append(Spacer(1, 12))
     
     # Calculate Establishment Fee
@@ -1514,7 +1511,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     story.append(Spacer(1, 12))
     
     story.append(Paragraph("<b>Cancellations</b>", normal_style))
-    story.append(Paragraph("Your care and support team require a minimum of 7 Days notice if you cannot make a scheduled appointment or planned shift. If you are able to reschedule a make up shift with the same support worker within the following 7 days, no cancellation will be charged. If a make up shift with that support worker cannot be scheduled, the NDIS considers this a Short Notice Cancellation and Neighbourhood Care may charge 100% of the agreed hourly rate.", normal_no_space_style))
+    story.append(Paragraph("If a make-up shift with that support worker cannot be scheduled, the NDIS considers this a Short Notice Cancellation, and Neighbourhood Care may charge 100% of the agreed hourly rate.", normal_no_space_style))
     story.append(Spacer(1, 12))
     
     story.append(Paragraph("<b>How will services be provided to you?</b>", bold_heading_no_space_style))
