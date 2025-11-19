@@ -214,11 +214,33 @@ def get_establishment_fee(csv_data, ndis_items, team_value=None):
         print(f"DEBUG: Establishment fee conditions not met - is_new_client: {is_new_client}, is_receiving_20_hours: {is_receiving_20_hours}")
         return '$0.00'
 
-def load_active_users():
-    """Load active users from CSV file and return as a dictionary for lookup"""
+def load_active_users(team_value=None):
+    """
+    Load active users from CSV file and return as a dictionary for lookup.
+    
+    Args:
+        team_value: The team name to determine which CSV file to use.
+                   QLD teams (Beaudesert, Brisbane, Gold Coast, Ipswich) use Active_Users_1763520740.csv
+                   Other teams use Active_Users_1761707021.csv
+    
+    Returns:
+        Dictionary of active users keyed by name
+    """
     active_users = {}
+    
+    # Determine which CSV file to use based on team
+    qld_teams = ['beaudesert', 'brisbane', 'gold coast', 'ipswich']
+    team_lower = team_value.strip().lower() if team_value else ''
+    
+    if team_lower in qld_teams:
+        csv_filename = 'outputs/other/Active_Users_1763520740.csv'
+        print(f"DEBUG: Using QLD active users CSV for team: {team_value}")
+    else:
+        csv_filename = 'outputs/other/Active_Users_1761707021.csv'
+        print(f"DEBUG: Using default active users CSV for team: {team_value or 'unknown'}")
+    
     try:
-        with open('outputs/other/Active_Users_1761707021.csv', 'r', encoding='utf-8') as file:
+        with open(csv_filename, 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
                 # Use name as key for lookup
@@ -229,10 +251,11 @@ def load_active_users():
                     'email': row['email'].strip(),
                     'team': (row.get('area') or row.get('role') or '').strip()
                 }
+        print(f"DEBUG: Loaded {len(active_users)} active users from {csv_filename}")
     except FileNotFoundError:
-        print("Active Users CSV file not found. Using placeholder data.")
+        print(f"Active Users CSV file not found: {csv_filename}. Using placeholder data.")
     except Exception as e:
-        print(f"Error loading active users: {e}")
+        print(f"Error loading active users from {csv_filename}: {e}")
     
     return active_users
 
@@ -1050,8 +1073,13 @@ def create_service_agreement_from_data(csv_data, output_path, contact_name=None,
     # Load NDIS support items
     ndis_items = load_ndis_support_items()
     
-    # Load active users
-    active_users = load_active_users()
+    # Get team value to determine which active users CSV to use
+    team_value = csv_data.get('Neighbourhood Care representative team', '')
+    # Clean up checkbox characters
+    team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+    
+    # Load active users based on team
+    active_users = load_active_users(team_value)
     
     # Signature extraction removed to prevent timeouts
     signatures = {}
@@ -1063,9 +1091,6 @@ def create_service_agreement_from_data(csv_data, output_path, contact_name=None,
 def create_service_agreement():
     # Load NDIS support items
     ndis_items = load_ndis_support_items()
-    
-    # Load active users
-    active_users = load_active_users()
     
     # Read data from PDF (preferred) or CSV (fallback)
     csv_data = {}
@@ -1101,6 +1126,14 @@ def create_service_agreement():
                 continue
         if not csv_data and last_err:
             raise last_err
+    
+    # Get team value to determine which active users CSV to use
+    team_value = csv_data.get('Neighbourhood Care representative team', '')
+    # Clean up checkbox characters
+    team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+    
+    # Load active users based on team
+    active_users = load_active_users(team_value)
     
     # Create PDF document
     doc = SimpleDocTemplate("Service Agreement - FINAL TABLES.pdf", pagesize=A4)
