@@ -1141,71 +1141,101 @@ def _add_header_footer(canvas_obj, doc):
 def _add_first_page_header(canvas_obj, doc):
     """Add header with image to first page only"""
     # Add the image to the right side of header
-    image_path = 'Screenshot 2025-11-19 at 9.31.05 am.png'
+    # The filename might have special characters (narrow no-break space), so search for it
+    image_filename_pattern = 'Screenshot 2025-11-19 at 9.31.05 am.png'
     
-    # Try multiple possible paths - use absolute paths where possible
-    possible_paths = []
-    
-    # Current working directory
-    cwd_path = os.path.join(os.getcwd(), image_path)
-    possible_paths.append(cwd_path)
-    
-    # Script directory
+    # Get the script directory (where this file is located)
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        script_path = os.path.join(script_dir, image_path)
-        possible_paths.append(script_path)
     except:
-        pass
+        script_dir = os.getcwd()
     
-    # Relative path
-    possible_paths.append(image_path)
+    # Search for the image file - it might have special characters in the filename
+    image_path = None
+    search_dirs = [script_dir, os.getcwd(), '.']
     
-    image_found = None
-    for path in possible_paths:
-        if os.path.exists(path):
-            image_found = os.path.abspath(path)  # Use absolute path
-            print(f"DEBUG: Found header image at: {image_found}")
-            break
+    for search_dir in search_dirs:
+        if os.path.exists(search_dir):
+            try:
+                # List all files and find the one matching our pattern
+                for filename in os.listdir(search_dir):
+                    # Check if it's a screenshot file with 9.31 in the name
+                    if 'screenshot' in filename.lower() and '9.31' in filename.lower() and filename.lower().endswith('.png'):
+                        full_path = os.path.join(search_dir, filename)
+                        if os.path.exists(full_path):
+                            image_path = os.path.abspath(full_path)
+                            print(f"DEBUG: Found image file: {filename}")
+                            break
+                if image_path:
+                    break
+            except Exception as e:
+                print(f"DEBUG: Error searching in {search_dir}: {e}")
+                continue
     
-    if not image_found:
-        print(f"DEBUG: Header image not found. Tried paths: {possible_paths}")
-        print(f"DEBUG: Current working directory: {os.getcwd()}")
+    # Fallback: try the exact filename
+    if not image_path:
+        for search_dir in search_dirs:
+            test_path = os.path.join(search_dir, image_filename_pattern)
+            if os.path.exists(test_path):
+                image_path = os.path.abspath(test_path)
+                break
     
-    if image_found:
+    print(f"DEBUG: Looking for image matching pattern: {image_filename_pattern}")
+    print(f"DEBUG: Image found: {image_path}")
+    print(f"DEBUG: Image exists: {os.path.exists(image_path) if image_path else False}")
+    
+    if os.path.exists(image_path):
         try:
-            # Image size - similar to body text (11pt), but make it visible
-            # Body text is 11pt, so image height around 30-40 points would be visible but still small
-            img_height = 30  # Small size but visible
+            # Image size - make it visible but still small (similar to body text size)
+            # Body text is 11pt, so image height around 40-50 points would be visible
+            img_height = 40  # Small size but clearly visible
             
             # Position on right side of header
-            page_width = A4[0]
-            page_height = A4[1]
-            img_y = page_height - 60  # Top of page with margin
+            # ReportLab uses bottom-left as origin (0,0), so y increases upward
+            page_width = A4[0]  # 595.27 points
+            page_height = A4[1]  # 841.89 points
+            img_y = page_height - 70  # Top of page with margin (from bottom)
             
             # Try to get image dimensions to calculate aspect ratio
+            img_width = img_height * 1.5  # Default aspect ratio
             try:
                 from PIL import Image as PILImage
-                pil_img = PILImage.open(image_found)
+                pil_img = PILImage.open(image_path)
                 img_width_orig, img_height_orig = pil_img.size
                 aspect_ratio = img_width_orig / img_height_orig
                 img_width = img_height * aspect_ratio
                 print(f"DEBUG: Image dimensions: {img_width_orig}x{img_height_orig}, scaled to: {img_width:.1f}x{img_height}")
             except Exception as pil_error:
-                # If PIL not available, use a default aspect ratio
-                img_width = img_height * 1.5  # Default aspect ratio
                 print(f"DEBUG: PIL not available, using default aspect ratio. Error: {pil_error}")
             
             img_x = page_width - img_width - 50  # Right side with margin
             print(f"DEBUG: Drawing image at position: x={img_x:.1f}, y={img_y}, size: {img_width:.1f}x{img_height}")
+            print(f"DEBUG: Page dimensions: {page_width}x{page_height}")
+            
             canvas_obj.saveState()
-            canvas_obj.drawImage(image_found, img_x, img_y, width=img_width, height=img_height, preserveAspectRatio=True)
+            # Use absolute path for drawImage
+            abs_image_path = os.path.abspath(image_path)
+            print(f"DEBUG: Using absolute image path: {abs_image_path}")
+            
+            # Draw the image
+            canvas_obj.drawImage(
+                abs_image_path, 
+                img_x, 
+                img_y, 
+                width=img_width, 
+                height=img_height, 
+                preserveAspectRatio=True
+            )
             canvas_obj.restoreState()
             print("DEBUG: Image drawn successfully")
         except Exception as e:
-            print(f"Warning: Could not add header image: {e}")
+            print(f"ERROR: Could not add header image: {e}")
             import traceback
             traceback.print_exc()
+    else:
+        print(f"ERROR: Image file not found at: {image_path}")
+        print(f"DEBUG: Current working directory: {os.getcwd()}")
+        print(f"DEBUG: Script directory: {os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else 'unknown'}")
     
     # Also add footer for first page
     _add_header_footer(canvas_obj, doc)
