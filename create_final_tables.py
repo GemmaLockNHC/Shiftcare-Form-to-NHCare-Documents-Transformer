@@ -1183,9 +1183,9 @@ def _add_first_page_header(canvas_obj, doc):
     
     if os.path.exists(image_path):
         try:
-            # Image size - make it visible but still small (similar to body text size)
-            # Body text is 11pt, so image height around 40-50 points would be visible
-            img_height = 40  # Small size but clearly visible
+            # Image size - doubled from original size
+            # Body text is 11pt, so image height around 80 points for better visibility
+            img_height = 80  # Doubled size for better visibility
             
             # Position on right side of header
             # ReportLab uses bottom-left as origin (0,0), so y increases upward
@@ -1356,6 +1356,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     
     # Title
     story.append(Paragraph("Service Agreement", title_style))
+    story.append(Spacer(1, 12))  # Add one line space after title
     
     # Introduction
     intro1 = "Thank you for choosing Neighbourhood Care. We look forward to working with you to help you achieve your goals."
