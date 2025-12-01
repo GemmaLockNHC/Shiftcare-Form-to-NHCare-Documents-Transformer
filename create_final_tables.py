@@ -2553,7 +2553,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     ]))
     
     story.append(Paragraph("2. Identify Risks", heading_style))
-    story.append(Paragraph("What are the main risks in your community?", normal_style))
+    story.append(Paragraph("<i>What are the main risks in your community?</i>", normal_style))
     story.append(risks_table)
     story.append(Spacer(1, 0.2*inch))
     
@@ -2569,20 +2569,26 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
          Paragraph("How you're affected", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER))]
     ]
     
-    # Add rows for each emergency type
+    # Add rows for each emergency type - make them bold
     for emergency_type in emergency_types:
-        emergency_affect_data.append([Paragraph(emergency_type, table_text_style), ''])
+        emergency_affect_data.append([Paragraph(f"<b>{emergency_type}</b>", table_text_style), ''])
+    
+    # Define gray color for backgrounds
+    GRAY_COLOR = colors.HexColor('#d9d9d9')
     
     emergency_affect_table = Table(emergency_affect_data, colWidths=[2.5*inch, 3.5*inch])
     emergency_affect_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Header row
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('BACKGROUND', (0, 1), (0, -1), GRAY_COLOR),  # Left column (except header) - gray background
+        ('BACKGROUND', (1, 1), (1, -1), colors.white),  # Right column - white
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('ALIGN', (0, 1), (0, -1), 'LEFT'),
         ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Header row bold
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),  # Left column bold
+        ('FONTNAME', (1, 1), (1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
@@ -2592,12 +2598,13 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('VALIGN', (0, 0), (-1, -1), 'TOP')
     ]))
     
-    story.append(Paragraph("How would the emergency affect you?", heading_style))
+    story.append(Paragraph("<i>How would the emergency affect you?</i>", heading_style))
     story.append(emergency_affect_table)
     story.append(Spacer(1, 0.2*inch))
     
     # Section 3 heading
     story.append(Paragraph("3. My Emergency & Disaster Plan", heading_style))
+    story.append(Paragraph("<i>Complete all applicable sections & if not applicable, mark as \"N/A\".</i>", normal_style))
     
     # Complete all applicable sections table
     # Define content for each section - bullet points go in LEFT column, field text goes in RIGHT column
@@ -2615,18 +2622,18 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     communication_left = (
         "<b>Communication</b><br/><br/>"
-        "• I have my phone, computer, or table to be able to stay in touch with people or call people in an emergency?<br/>"
-        "• I have informed my supports about the best way to communicate with me.<br/>"
-        "• I have friends or family who maintain regular contact who will seek assistance if unable to contact me."
+        "[ ] I have my phone, computer, or table to be able to stay in touch with people or call people in an emergency.<br/>"
+        "[ ] I have informed my supports about the best way to communicate with me.<br/>"
+        "[ ] I have friends or family who maintain regular contact who will seek assistance if unable to contact me."
     )
     communication_right = "Other important information about my communication:\n\n\n"
     
     health_left = (
         "<b>Management of Health</b><br/><br/>"
-        "• I know if I'm in an emergency - call 000.<br/>"
-        "• I have copies of concession cards, health insurance cards and prescriptions.<br/>"
-        "• I have discussed with my doctor how I will access controlled medications during and after an emergency.<br/>"
-        "• I registered for MyGov."
+        "[ ] I know if I'm in an emergency - call 000.<br/>"
+        "[ ] I have copies of concession cards, health insurance cards and prescriptions.<br/>"
+        "[ ] I have discussed with my doctor how I will access controlled medications during and after an emergency.<br/>"
+        "[ ] I registered for MyGov."
     )
     health_right = (
         "Instructions for people in my support network so they can help me collect what I need if I have to evacuate:\n\n\n"
@@ -2635,34 +2642,34 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     at_left = (
         "<b>Assistive Technology (AT)</b><br/><br/>"
-        "• I have a list of items I would need to take with me if I needed to leave my home."
+        "[ ] I have a list of items I would need to take with me if I needed to leave my home."
     )
     at_right = "How I will transport critical equipment I have to evacuate:\n\n\n"
     
     support_left = (
         "<b>Personal Support</b><br/><br/>"
-        "• I have a plan for when I get separated from the people who normally provide assistance.<br/>"
-        "• I have discussed my plan with my emergency contact."
+        "[ ] I have a plan for when I get separated from the people who normally provide assistance.<br/>"
+        "[ ] I have discussed my plan with my emergency contact."
     )
     support_right = "Write down the back-up plan for assistance in emergencies:\n\n\n"
     
     pets_left = (
         "<b>Assistance animals and pets</b><br/><br/>"
-        "• I have a plan for who will look after my animal in case of an emergency."
+        "[ ] I have a plan for who will look after my animal in case of an emergency."
     )
     pets_right = "Write down your animals needs here:\n\n\n"
     
     transport_left = (
         "<b>Transportation</b><br/><br/>"
-        "• I have thought about different plans to make sure that we leave in time for safe evacuation."
+        "[ ] I have thought about different plans to make sure that we leave in time for safe evacuation."
     )
     transport_right = "\n\n\n"
     
     living_left = (
         "<b>Living Situation</b><br/><br/>"
-        "• My smoke alarms are texted regularly.<br/>"
-        "• I have a fire extinguisher and/or fire blanket present.<br/>"
-        "I keep a mobility device (if applicable) by my bed in case I have to evacuate quickly."
+        "[ ] My smoke alarms are texted regularly.<br/>"
+        "[ ] I have a fire extinguisher and/or fire blanket present.<br/>"
+        "[ ] I keep a mobility device (if applicable) by my bed in case I have to evacuate quickly."
     )
     living_right = (
         "<i>Contact Fire and Rescue Services in your state to see if you are eligible for a home safety visit.</i><br/><br/>"
@@ -2671,8 +2678,8 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     social_left = (
         "<b>Social Connectedness</b><br/><br/>"
-        "• I have a plan for staying connected and in touch with people.<br/>"
-        "• I have introduced myself to my neighbours."
+        "[ ] I have a plan for staying connected and in touch with people.<br/>"
+        "[ ] I have introduced myself to my neighbours."
     )
     social_right = "Write any notes here:\n\n\n"
     
@@ -2686,19 +2693,23 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         [Paragraph(transport_left, table_text_style), Paragraph(transport_right, table_text_style)],
         [Paragraph(living_left, table_text_style), Paragraph(living_right, table_text_style)],
         [Paragraph(social_left, table_text_style), Paragraph(social_right, table_text_style)],
-        ['Other', Paragraph("Write any notes here:\n\n\n", table_text_style)]
+        [Paragraph("<b>Other</b>", table_text_style), Paragraph("Write any notes here:\n\n\n", table_text_style)]
     ]
     
     sections_table = Table(sections_data, colWidths=[2.5*inch, 3.5*inch])
+    # Define gray color for backgrounds
+    GRAY_COLOR = colors.HexColor('#d9d9d9')
+    
     sections_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, 0), BLUE_COLOR),  # First row first column
+        ('BACKGROUND', (0, 0), (0, 0), BLUE_COLOR),  # First row first column - blue
         ('TEXTCOLOR', (0, 0), (0, 0), colors.white),
         ('BACKGROUND', (1, 0), (1, 0), colors.white),  # First row second column
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),  # Rest of rows
+        ('BACKGROUND', (0, 1), (0, -1), GRAY_COLOR),  # Left column (except first row) - gray
+        ('BACKGROUND', (1, 1), (1, -1), colors.white),  # Right column - white
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),  # All left column bold
         ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
@@ -2718,21 +2729,34 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     mod_date = datetime.now().strftime('%d/%m/%Y')
     
     final_data = [
-        ['Client\'s Name', Paragraph(client_name, table_text_style), 'Team member\'s name', Paragraph(team_member_name, table_text_style)],
-        ['Signature', '', 'Signature', ''],
-        ['Date', mod_date, 'Date', mod_date]
+        [Paragraph("Client's Name", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), Paragraph(client_name, table_text_style), Paragraph("Team member's name", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), Paragraph(team_member_name, table_text_style)],
+        [Paragraph("Signature", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), '', Paragraph("Signature", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), ''],
+        [Paragraph("Date", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), mod_date, Paragraph("Date", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), mod_date]
     ]
     
     final_table = Table(final_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
     final_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('BACKGROUND', (0, 0), (0, 0), BLUE_COLOR),  # Client's Name
+        ('BACKGROUND', (2, 0), (2, 0), BLUE_COLOR),  # Team member's name
+        ('BACKGROUND', (0, 1), (0, 1), BLUE_COLOR),  # Signature (left)
+        ('BACKGROUND', (2, 1), (2, 1), BLUE_COLOR),  # Signature (right)
+        ('BACKGROUND', (0, 2), (0, 2), BLUE_COLOR),  # Date (left)
+        ('BACKGROUND', (2, 2), (2, 2), BLUE_COLOR),  # Date (right)
+        ('TEXTCOLOR', (0, 0), (0, 0), colors.white),
+        ('TEXTCOLOR', (2, 0), (2, 0), colors.white),
+        ('TEXTCOLOR', (0, 1), (0, 1), colors.white),
+        ('TEXTCOLOR', (2, 1), (2, 1), colors.white),
+        ('TEXTCOLOR', (0, 2), (0, 2), colors.white),
+        ('TEXTCOLOR', (2, 2), (2, 2), colors.white),
+        ('BACKGROUND', (1, 0), (1, -1), colors.white),  # Data columns - white
+        ('BACKGROUND', (3, 0), (3, -1), colors.white),
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.black),
+        ('TEXTCOLOR', (3, 0), (3, -1), colors.black),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
         ('ALIGN', (2, 0), (2, -1), 'LEFT'),
         ('ALIGN', (3, 0), (3, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
         ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
         ('FONTNAME', (3, 0), (3, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
