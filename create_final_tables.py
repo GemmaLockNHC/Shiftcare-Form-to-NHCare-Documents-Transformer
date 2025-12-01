@@ -2600,66 +2600,93 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     story.append(Paragraph("3. My Emergency & Disaster Plan", heading_style))
     
     # Complete all applicable sections table
-    # Define content for each section
-    communication_content = (
-        "• I have my phone, computer, or table to be able to stay in touch with people or call people in an emergency?\n"
-        "• I have informed my supports about the best way to communicate with me.\n"
+    # Define content for each section - bullet points go in LEFT column, field text goes in RIGHT column
+    # Create a style for bold section names
+    bold_text_style = ParagraphStyle(
+        'BoldText',
+        parent=table_text_style,
+        fontSize=10,
+        fontName='Helvetica-Bold',
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=12,
+        leftIndent=0
+    )
+    
+    communication_left = (
+        "<b>Communication</b><br/><br/>"
+        "• I have my phone, computer, or table to be able to stay in touch with people or call people in an emergency?<br/>"
+        "• I have informed my supports about the best way to communicate with me.<br/>"
         "• I have friends or family who maintain regular contact who will seek assistance if unable to contact me."
     )
-    communication_field = "Other important information about my communication:\n\n\n"
+    communication_right = "Other important information about my communication:\n\n\n"
     
-    health_content = (
-        "• I know if I'm in an emergency - call 000.\n"
-        "• I have copies of concession cards, health insurance cards and prescriptions.\n"
-        "• I have discussed with my doctor how I will access controlled medications during and after an emergency.\n"
+    health_left = (
+        "<b>Management of Health</b><br/><br/>"
+        "• I know if I'm in an emergency - call 000.<br/>"
+        "• I have copies of concession cards, health insurance cards and prescriptions.<br/>"
+        "• I have discussed with my doctor how I will access controlled medications during and after an emergency.<br/>"
         "• I registered for MyGov."
     )
-    health_field = (
+    health_right = (
         "Instructions for people in my support network so they can help me collect what I need if I have to evacuate:\n\n\n"
         "Things I need to manage my health & medical devices:\n\n\n"
     )
     
-    at_content = "• I have a list of items I would need to take with me if I needed to leave my home."
-    at_field = "How I will transport critical equipment I have to evacuate:\n\n\n"
+    at_left = (
+        "<b>Assistive Technology (AT)</b><br/><br/>"
+        "• I have a list of items I would need to take with me if I needed to leave my home."
+    )
+    at_right = "How I will transport critical equipment I have to evacuate:\n\n\n"
     
-    support_content = (
-        "• I have a plan for when I get separated from the people who normally provide assistance.\n"
+    support_left = (
+        "<b>Personal Support</b><br/><br/>"
+        "• I have a plan for when I get separated from the people who normally provide assistance.<br/>"
         "• I have discussed my plan with my emergency contact."
     )
-    support_field = "Write down the back-up plan for assistance in emergencies:\n\n\n"
+    support_right = "Write down the back-up plan for assistance in emergencies:\n\n\n"
     
-    pets_content = "• I have a plan for who will look after my animal in case of an emergency."
-    pets_field = "Write down your animals needs here:\n\n\n"
-    
-    transport_content = "• I have thought about different plans to make sure that we leave in time for safe evacuation."
-    transport_field = "\n\n\n"
-    
-    living_content = (
-        "• My smoke alarms are texted regularly.\n"
-        "• I have a fire extinguisher and/or fire blanket present.\n"
-        "• I keep a mobility device (if applicable) by my bed in case I have to evacuate quickly."
+    pets_left = (
+        "<b>Assistance animals and pets</b><br/><br/>"
+        "• I have a plan for who will look after my animal in case of an emergency."
     )
-    living_field = (
-        "<i>Contact Fire and Rescue Services in your state to see if you are eligible for a home safety visit.</i>\n\n\n"
+    pets_right = "Write down your animals needs here:\n\n\n"
+    
+    transport_left = (
+        "<b>Transportation</b><br/><br/>"
+        "• I have thought about different plans to make sure that we leave in time for safe evacuation."
+    )
+    transport_right = "\n\n\n"
+    
+    living_left = (
+        "<b>Living Situation</b><br/><br/>"
+        "• My smoke alarms are texted regularly.<br/>"
+        "• I have a fire extinguisher and/or fire blanket present.<br/>"
+        "I keep a mobility device (if applicable) by my bed in case I have to evacuate quickly."
+    )
+    living_right = (
+        "<i>Contact Fire and Rescue Services in your state to see if you are eligible for a home safety visit.</i><br/><br/>"
+        "Write any notes here:\n\n\n"
     )
     
-    social_content = (
-        "• I have a plan for staying connected and in touch with people.\n"
+    social_left = (
+        "<b>Social Connectedness</b><br/><br/>"
+        "• I have a plan for staying connected and in touch with people.<br/>"
         "• I have introduced myself to my neighbours."
     )
-    social_field = ""
+    social_right = "Write any notes here:\n\n\n"
     
     sections_data = [
         [Paragraph('My Emergency & Disaster Plan', ParagraphStyle('TableTextBlue', parent=table_text_style, fontSize=10, textColor=colors.white)), ''],
-        ['Communication', Paragraph(communication_content + '\n\n' + communication_field, table_text_style)],
-        ['Management of Health', Paragraph(health_content + '\n\n' + health_field, table_text_style)],
-        ['Assistive Technology (AT)', Paragraph(at_content + '\n\n' + at_field, table_text_style)],
-        ['Personal Support', Paragraph(support_content + '\n\n' + support_field, table_text_style)],
-        ['Assistance animals and pets', Paragraph(pets_content + '\n\n' + pets_field, table_text_style)],
-        ['Transportation', Paragraph(transport_content + transport_field, table_text_style)],
-        ['Living Situation', Paragraph(living_content + '\n\n' + living_field, table_text_style)],
-        ['Social Connectedness', Paragraph(social_content, table_text_style)],
-        ['Other', '']
+        [Paragraph(communication_left, table_text_style), Paragraph(communication_right, table_text_style)],
+        [Paragraph(health_left, table_text_style), Paragraph(health_right, table_text_style)],
+        [Paragraph(at_left, table_text_style), Paragraph(at_right, table_text_style)],
+        [Paragraph(support_left, table_text_style), Paragraph(support_right, table_text_style)],
+        [Paragraph(pets_left, table_text_style), Paragraph(pets_right, table_text_style)],
+        [Paragraph(transport_left, table_text_style), Paragraph(transport_right, table_text_style)],
+        [Paragraph(living_left, table_text_style), Paragraph(living_right, table_text_style)],
+        [Paragraph(social_left, table_text_style), Paragraph(social_right, table_text_style)],
+        ['Other', Paragraph("Write any notes here:\n\n\n", table_text_style)]
     ]
     
     sections_table = Table(sections_data, colWidths=[2.5*inch, 3.5*inch])
