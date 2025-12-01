@@ -2415,16 +2415,9 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     story.append(Spacer(1, 0.2*inch))
     
     # Key Emergency Contacts table
+    # ONLY use fields from Emergency contact section - no fallback to primary carer
     emergency_first = csv_data.get('First name (Emergency contact)', '').strip()
     emergency_surname = csv_data.get('Surname (Emergency contact)', '').strip()
-    
-    # Check if primary carer is emergency contact
-    is_primary_carer = csv_data.get('Is the primary carer also the emergency contact for the participant?', '').strip()
-    is_primary_carer_clean = is_primary_carer.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip().lower()
-    
-    if 'yes' in is_primary_carer_clean:
-        emergency_first = csv_data.get('First name (Primary carer)', '').strip()
-        emergency_surname = csv_data.get('Surname (Primary carer)', '').strip()
     
     emergency_name = ' '.join([p for p in [emergency_first, emergency_surname] if p]).strip() or ''
     emergency_phone = get_emergency_contact_phone(csv_data)
