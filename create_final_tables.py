@@ -371,7 +371,9 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         data['Home phone (Emergency contact)'] = find_in_fields("home phone (emergency contact)", "emergency contact home phone", "emergency home phone")
         data['Mobile phone (Emergency contact)'] = find_in_fields("mobile phone (emergency contact)", "emergency contact mobile phone", "emergency mobile phone", "emergency contact mobile")
         data['Work phone (Emergency contact)'] = find_in_fields("work phone (emergency contact)", "emergency contact work phone", "emergency work phone")
-        data['Relationship to client (Emergency contact)'] = find_in_fields("relationship to client (emergency contact)", "emergency contact relationship", "emergency relationship")
+        # ONLY look for "relationship to client" field - must be specifically under Emergency contact
+        # Don't do fuzzy matching - only exact match for emergency contact relationship
+        data['Relationship to client (Emergency contact)'] = find_in_fields("relationship to client (emergency contact)", "relationship to client")
         
         # Extract Person Signing the Agreement fields
         person_signing = find_in_fields("person signing the agreement", "who is signing", "signatory")
@@ -582,13 +584,12 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
         if not data.get('Work phone (Emergency contact)'):
             data['Work phone (Emergency contact)'] = find_value_in_section(['Work phone'], "emergency")
         if not data.get('Relationship to client (Emergency contact)'):
-            # Try multiple variations of the relationship field name
-            relationship = find_value_in_section(['Relationship to client (Emergency contact)', 'Relationship to client', 'Relationship (Emergency contact)', 'Relationship'], "emergency")
+            # ONLY search in the emergency section for "Relationship to client"
+            # If not found, leave it empty - no fallback searches
+            relationship = find_value_in_section(['Relationship to client'], "emergency")
             if relationship:
                 data['Relationship to client (Emergency contact)'] = relationship
-            else:
-                # Also try general search as fallback
-                data['Relationship to client (Emergency contact)'] = find_value_after_label(['Relationship to client (Emergency contact)', 'Relationship to client (Emergency)', 'Relationship (Emergency contact)'])
+            # If not found, leave it empty - don't do fallback searches
         
         # Extract other fields that might be in the PDF
         if not data.get('Preferred method of contact'):
@@ -2251,20 +2252,10 @@ def get_emergency_contact_phone(csv_data):
     """Get emergency contact phone numbers (Home phone + Mobile phone + Work phone)"""
     phones = []
     
-    # Try to get emergency contact phone fields
+    # ONLY get emergency contact phone fields - no fallback to primary carer
     home_phone = csv_data.get('Home phone (Emergency contact)', '').strip()
     mobile_phone = csv_data.get('Mobile phone (Emergency contact)', '').strip()
     work_phone = csv_data.get('Work phone (Emergency contact)', '').strip()
-    
-    # If emergency contact fields don't exist, check if primary carer is emergency contact
-    if not home_phone and not mobile_phone and not work_phone:
-        is_primary_carer = csv_data.get('Is the primary carer also the emergency contact for the participant?', '').strip()
-        is_primary_carer_clean = is_primary_carer.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip().lower()
-        
-        if 'yes' in is_primary_carer_clean:
-            home_phone = csv_data.get('Home phone (Primary carer)', '').strip()
-            mobile_phone = csv_data.get('Mobile phone (Primary carer)', '').strip()
-            work_phone = csv_data.get('Work phone (Primary carer)', '').strip()
     
     # Clean phone numbers of any special characters that might cause rendering issues
     def clean_phone(phone):
@@ -2287,17 +2278,10 @@ def get_emergency_contact_phone(csv_data):
 
 def get_emergency_contact_relationship(csv_data):
     """Get emergency contact relationship to client"""
-    # First try the emergency contact relationship field
+    # ONLY get from emergency contact field - no fallback to primary carer
     relationship = csv_data.get('Relationship to client (Emergency contact)', '').strip()
     
-    if not relationship:
-        # Check if primary carer is emergency contact
-        is_primary_carer = csv_data.get('Is the primary carer also the emergency contact for the participant?', '').strip()
-        is_primary_carer_clean = is_primary_carer.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip().lower()
-        
-        if 'yes' in is_primary_carer_clean:
-            relationship = csv_data.get('Relationship to client (Primary carer)', '').strip()
-    
+    # If not found, return empty - no fallback searches
     return relationship if relationship else ''
 
 def get_client_phone_numbers(csv_data):
