@@ -2263,7 +2263,9 @@ def get_emergency_contact_phone(csv_data):
             return ''
         # Remove any special unicode characters that might render as black squares
         cleaned = phone.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '')
-        # Remove any other problematic characters
+        # Remove semicolons and any other problematic characters
+        cleaned = cleaned.replace(';', '').replace(',', '')  # Remove semicolons and commas from phone numbers
+        # Keep only printable characters and common phone characters
         cleaned = ''.join(c for c in cleaned if c.isprintable() or c in [' ', '-', '(', ')', '+'])
         return cleaned.strip()
     
@@ -2274,6 +2276,7 @@ def get_emergency_contact_phone(csv_data):
     if work_phone:
         phones.append(clean_phone(work_phone))
     
+    # Join with semicolons (but semicolons are removed from individual phone numbers)
     return '; '.join(phones) if phones else ''
 
 def get_emergency_contact_relationship(csv_data):
@@ -2375,8 +2378,19 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     )
     
     # Title
-    story.append(Paragraph("Emergency & Disaster Plan", title_style))
+    story.append(Paragraph("Emergency and Disaster Plan for Participants", title_style))
     story.append(Spacer(1, 0.2*inch))
+    
+    # Introductory text
+    intro_text = ("This Emergency and Disaster plan is to assist you to understand potential risks and how to protect "
+                  "yourself and the people who support you. Your Neighbourhood Care Support Team will assist you to fill "
+                  "this form out. Please refer to other relevant plans before completing this plan; such as support plan, "
+                  "risk assessment, individual COVID-19 response plan & mediation assistance plan (if applicable).")
+    story.append(Paragraph(intro_text, normal_style))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Section 1 heading
+    story.append(Paragraph("1. Contact Information", heading_style))
     
     # General Information table
     first_name = csv_data.get('First name (Details of the Client)', '').strip()
@@ -2427,8 +2441,10 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     emergency_phone_clean = str(emergency_phone) if emergency_phone else ''
     # Remove any problematic unicode characters that render as black squares
     emergency_phone_clean = emergency_phone_clean.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '')
-    # Keep only printable ASCII characters and common phone characters
-    emergency_phone_clean = ''.join(c for c in emergency_phone_clean if (c.isprintable() and ord(c) < 128) or c in [' ', '-', '(', ')', '+', ';'])
+    # Remove semicolons - they shouldn't be in phone numbers
+    emergency_phone_clean = emergency_phone_clean.replace(';', '')
+    # Keep only printable ASCII characters and common phone characters (no semicolons)
+    emergency_phone_clean = ''.join(c for c in emergency_phone_clean if (c.isprintable() and ord(c) < 128) or c in [' ', '-', '(', ')', '+', ','])
     emergency_phone_clean = emergency_phone_clean.strip()
     
     # Ensure relationship is displayed correctly
@@ -2536,7 +2552,8 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('VALIGN', (0, 0), (-1, -1), 'TOP')
     ]))
     
-    story.append(Paragraph("What are the main risks in your community?", heading_style))
+    story.append(Paragraph("2. Identify Risks", heading_style))
+    story.append(Paragraph("What are the main risks in your community?", normal_style))
     story.append(risks_table)
     story.append(Spacer(1, 0.2*inch))
     
@@ -2579,26 +2596,71 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     story.append(emergency_affect_table)
     story.append(Spacer(1, 0.2*inch))
     
-    # Complete all applicable sections table
-    sections = [
-        'My Emergency & Disaster Plan',
-        'Communication',
-        'Management of Health',
-        'Assistive Technology (AT)',
-        'Personal Support',
-        'Assistance animals and pets',
-        'Transportation',
-        'Living Situation',
-        'Social Connectedness',
-        'Other'
-    ]
+    # Section 3 heading
+    story.append(Paragraph("3. My Emergency & Disaster Plan", heading_style))
     
-    sections_data = []
-    for i, section in enumerate(sections):
-        if i == 0:  # First section gets blue background and white text
-            sections_data.append([Paragraph(section, ParagraphStyle('TableTextBlue', parent=table_text_style, fontSize=10, textColor=colors.white)), ''])
-        else:
-            sections_data.append([section, ''])
+    # Complete all applicable sections table
+    # Define content for each section
+    communication_content = (
+        "• I have my phone, computer, or table to be able to stay in touch with people or call people in an emergency?\n"
+        "• I have informed my supports about the best way to communicate with me.\n"
+        "• I have friends or family who maintain regular contact who will seek assistance if unable to contact me."
+    )
+    communication_field = "Other important information about my communication:\n\n\n"
+    
+    health_content = (
+        "• I know if I'm in an emergency - call 000.\n"
+        "• I have copies of concession cards, health insurance cards and prescriptions.\n"
+        "• I have discussed with my doctor how I will access controlled medications during and after an emergency.\n"
+        "• I registered for MyGov."
+    )
+    health_field = (
+        "Instructions for people in my support network so they can help me collect what I need if I have to evacuate:\n\n\n"
+        "Things I need to manage my health & medical devices:\n\n\n"
+    )
+    
+    at_content = "• I have a list of items I would need to take with me if I needed to leave my home."
+    at_field = "How I will transport critical equipment I have to evacuate:\n\n\n"
+    
+    support_content = (
+        "• I have a plan for when I get separated from the people who normally provide assistance.\n"
+        "• I have discussed my plan with my emergency contact."
+    )
+    support_field = "Write down the back-up plan for assistance in emergencies:\n\n\n"
+    
+    pets_content = "• I have a plan for who will look after my animal in case of an emergency."
+    pets_field = "Write down your animals needs here:\n\n\n"
+    
+    transport_content = "• I have thought about different plans to make sure that we leave in time for safe evacuation."
+    transport_field = "\n\n\n"
+    
+    living_content = (
+        "• My smoke alarms are texted regularly.\n"
+        "• I have a fire extinguisher and/or fire blanket present.\n"
+        "• I keep a mobility device (if applicable) by my bed in case I have to evacuate quickly."
+    )
+    living_field = (
+        "<i>Contact Fire and Rescue Services in your state to see if you are eligible for a home safety visit.</i>\n\n\n"
+    )
+    
+    social_content = (
+        "• I have a plan for staying connected and in touch with people.\n"
+        "• I have introduced myself to my neighbours."
+    )
+    social_field = ""
+    
+    sections_data = [
+        [Paragraph('My Emergency & Disaster Plan', ParagraphStyle('TableTextBlue', parent=table_text_style, fontSize=10, textColor=colors.white)), ''],
+        ['Communication', Paragraph(communication_content + '\n\n' + communication_field, table_text_style)],
+        ['Management of Health', Paragraph(health_content + '\n\n' + health_field, table_text_style)],
+        ['Assistive Technology (AT)', Paragraph(at_content + '\n\n' + at_field, table_text_style)],
+        ['Personal Support', Paragraph(support_content + '\n\n' + support_field, table_text_style)],
+        ['Assistance animals and pets', Paragraph(pets_content + '\n\n' + pets_field, table_text_style)],
+        ['Transportation', Paragraph(transport_content + transport_field, table_text_style)],
+        ['Living Situation', Paragraph(living_content + '\n\n' + living_field, table_text_style)],
+        ['Social Connectedness', Paragraph(social_content, table_text_style)],
+        ['Other', '']
+    ]
     
     sections_table = Table(sections_data, colWidths=[2.5*inch, 3.5*inch])
     sections_table.setStyle(TableStyle([
@@ -2620,7 +2682,6 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('VALIGN', (0, 0), (-1, -1), 'TOP')
     ]))
     
-    story.append(Paragraph("Complete all applicable sections & if not applicable, mark as \"N/A\"", heading_style))
     story.append(sections_table)
     story.append(Spacer(1, 0.2*inch))
     
