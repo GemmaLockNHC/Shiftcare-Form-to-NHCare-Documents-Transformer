@@ -463,8 +463,9 @@ def upload_file():
     # Check what to generate
     generate_csv = request.form.get('generate_csv') == '1'
     generate_service_agreement = request.form.get('generate_service_agreement') == '1'
+    generate_emergency_plan = request.form.get('generate_emergency_plan') == '1'
     
-    if not generate_csv and not generate_service_agreement:
+    if not generate_csv and not generate_service_agreement and not generate_emergency_plan:
         flash('Please select at least one output to generate')
         return redirect(request.url)
     
@@ -526,6 +527,15 @@ def upload_file():
                 # Pass source PDF path for signature extraction
                 create_service_agreement_from_data(pdf_data, sa_path, contact_name, filepath)
                 output_files.append(('pdf', sa_path, 'Service Agreement.pdf'))
+            
+            # Generate Emergency & Disaster Plan PDF if requested
+            if generate_emergency_plan:
+                # Import the emergency plan generation function
+                from create_final_tables import create_emergency_disaster_plan_from_data
+                edp_filename = f"emergency_disaster_plan_{unique_filename}.pdf"
+                edp_path = os.path.join(app.config['UPLOAD_FOLDER'], edp_filename)
+                create_emergency_disaster_plan_from_data(pdf_data, edp_path)
+                output_files.append(('pdf', edp_path, 'Emergency & Disaster Plan.pdf'))
             
             # Clean up input file
             os.remove(filepath)
