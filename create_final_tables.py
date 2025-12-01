@@ -2267,7 +2267,7 @@ def get_emergency_contact_phone(csv_data):
     if work_phone:
         phones.append(work_phone)
     
-    return ', '.join(phones) if phones else 'N/A'
+    return '; '.join(phones) if phones else ''
 
 def get_emergency_contact_relationship(csv_data):
     """Get emergency contact relationship to client"""
@@ -2281,7 +2281,7 @@ def get_emergency_contact_relationship(csv_data):
         if 'yes' in is_primary_carer_clean:
             relationship = csv_data.get('Relationship to client (Primary carer)', '').strip()
     
-    return relationship if relationship else 'N/A'
+    return relationship if relationship else ''
 
 def get_client_phone_numbers(csv_data):
     """Get client phone numbers (Home phone + Mobile phone + Work phone)"""
@@ -2298,7 +2298,7 @@ def get_client_phone_numbers(csv_data):
     if work_phone:
         phones.append(work_phone)
     
-    return ', '.join(phones) if phones else 'N/A'
+    return '; '.join(phones) if phones else ''
 
 def create_emergency_disaster_plan_from_data(csv_data, output_path):
     """
@@ -2362,32 +2362,36 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
     # General Information table
     first_name = csv_data.get('First name (Details of the Client)', '').strip()
     surname = csv_data.get('Surname (Details of the Client)', '').strip()
-    client_name = ' '.join([p for p in [first_name, surname] if p]).strip() or 'N/A'
+    client_name = ' '.join([p for p in [first_name, surname] if p]).strip() or ''
     client_phone = get_client_phone_numbers(csv_data)
     
     general_info_data = [
+        [Paragraph("General Information", ParagraphStyle('TableHeading', parent=table_text_style, fontSize=12, textColor=colors.white, alignment=TA_CENTER))],
         ['Your name', Paragraph(client_name, table_text_style)],
         ['Your phone number', Paragraph(client_phone, table_text_style)]
     ]
     
     general_info_table = Table(general_info_data, colWidths=[2.5*inch, 3.5*inch])
     general_info_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Heading row
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 1), (1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('SPAN', (0, 0), (-1, 0))  # Span heading across all columns
     ]))
     
-    story.append(Paragraph("General Information", heading_style))
     story.append(general_info_table)
     story.append(Spacer(1, 0.2*inch))
     
@@ -2403,69 +2407,79 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
         emergency_first = csv_data.get('First name (Primary carer)', '').strip()
         emergency_surname = csv_data.get('Surname (Primary carer)', '').strip()
     
-    emergency_name = ' '.join([p for p in [emergency_first, emergency_surname] if p]).strip() or 'N/A'
+    emergency_name = ' '.join([p for p in [emergency_first, emergency_surname] if p]).strip() or ''
     emergency_phone = get_emergency_contact_phone(csv_data)
     emergency_relationship = get_emergency_contact_relationship(csv_data)
     
     emergency_contacts_data = [
-        ['Name', Paragraph(emergency_name, table_text_style)],
-        ['Phone', Paragraph(emergency_phone, table_text_style)],
-        ['Relationship', Paragraph(emergency_relationship, table_text_style)]
+        [Paragraph("Key Emergency Contacts", ParagraphStyle('TableHeading', parent=table_text_style, fontSize=12, textColor=colors.white, alignment=TA_CENTER))],
+        [Paragraph("Name", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph("Phone", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph("Relationship", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER))],
+        [Paragraph(emergency_name, table_text_style), Paragraph(emergency_phone, table_text_style), Paragraph(emergency_relationship, table_text_style)]
     ]
     
-    emergency_contacts_table = Table(emergency_contacts_data, colWidths=[2.5*inch, 3.5*inch])
+    emergency_contacts_table = Table(emergency_contacts_data, colWidths=[2*inch, 2*inch, 2*inch])
     emergency_contacts_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Heading row
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('BACKGROUND', (0, 1), (-1, 1), BLUE_COLOR),  # Header row
+        ('TEXTCOLOR', (0, 1), (-1, 1), colors.white),
+        ('BACKGROUND', (0, 2), (-1, 2), colors.white),  # Data row
+        ('TEXTCOLOR', (0, 2), (-1, 2), colors.black),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('ALIGN', (0, 1), (-1, 1), 'CENTER'),
+        ('ALIGN', (0, 2), (-1, 2), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('SPAN', (0, 0), (-1, 0))  # Span heading across all columns
     ]))
     
-    story.append(Paragraph("Key Emergency Contacts", heading_style))
     story.append(emergency_contacts_table)
     story.append(Spacer(1, 0.2*inch))
     
     # My Important Contacts table
     important_contacts_data = [
-        ['Advocate', 'N/A'],
-        ['Power of Attorney/Guardian', 'N/A'],
-        ['Solicitor', 'N/A'],
-        ['Insurer (home)', 'N/A'],
-        ['Insurer (vehicle)', 'N/A'],
-        ['Childcare/School Contact', 'N/A'],
-        ['Workplace/Volunteer Contact', 'N/A'],
-        ['Doctor', 'N/A'],
-        ['Specialist Practitioner', 'N/A'],
-        ['Private Health Cover', 'N/A']
+        [Paragraph("My Important Contacts", ParagraphStyle('TableHeading', parent=table_text_style, fontSize=12, textColor=colors.white, alignment=TA_CENTER))],
+        ['Advocate', ''],
+        ['Power of Attorney/Guardian', ''],
+        ['Solicitor', ''],
+        ['Insurer (home)', ''],
+        ['Insurer (vehicle)', ''],
+        ['Childcare/School Contact', ''],
+        ['Workplace/Volunteer Contact', ''],
+        ['Doctor', ''],
+        ['Specialist Practitioner', ''],
+        ['Private Health Cover', '']
     ]
     
     important_contacts_table = Table(important_contacts_data, colWidths=[2.5*inch, 3.5*inch])
     important_contacts_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Heading row
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 1), (1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('SPAN', (0, 0), (-1, 0))  # Span heading across all columns
     ]))
     
-    story.append(Paragraph("My Important Contacts", heading_style))
     story.append(important_contacts_table)
     story.append(Spacer(1, 0.2*inch))
     
@@ -2485,7 +2499,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
         ('BACKGROUND', (0, 0), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
@@ -2501,19 +2515,31 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
     story.append(Spacer(1, 0.2*inch))
     
     # How would the emergency affect you? table
-    emergency_affect_data = [
-        ['Emergency Type', ''],
-        ['How you\'re affected', '']
+    emergency_types = [
+        'Heatwave', 'Storm', 'Cyclone', 'Bushfire', 'Flood', 'Earthquake',
+        'Landslide', 'Tsunami', 'Assault', 'Power outage', 'Gas outage',
+        'Health emergency', 'House fire', 'Burglary/break-in'
     ]
+    
+    emergency_affect_data = [
+        [Paragraph("Emergency Type", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph("How you're affected", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER))]
+    ]
+    
+    # Add rows for each emergency type
+    for emergency_type in emergency_types:
+        emergency_affect_data.append([Paragraph(emergency_type, table_text_style), ''])
     
     emergency_affect_table = Table(emergency_affect_data, colWidths=[2.5*inch, 3.5*inch])
     emergency_affect_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Header row
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
@@ -2542,13 +2568,19 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
     ]
     
     sections_data = []
-    for section in sections:
-        sections_data.append([section, 'N/A'])
+    for i, section in enumerate(sections):
+        if i == 0:  # First section gets blue background and white text
+            sections_data.append([Paragraph(section, ParagraphStyle('TableTextBlue', parent=table_text_style, fontSize=10, textColor=colors.white)), ''])
+        else:
+            sections_data.append([section, ''])
     
     sections_table = Table(sections_data, colWidths=[2.5*inch, 3.5*inch])
     sections_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('BACKGROUND', (0, 0), (0, 0), BLUE_COLOR),  # First row first column
+        ('TEXTCOLOR', (0, 0), (0, 0), colors.white),
+        ('BACKGROUND', (1, 0), (1, 0), colors.white),  # First row second column
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),  # Rest of rows
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
@@ -2566,28 +2598,29 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
     story.append(sections_table)
     story.append(Spacer(1, 0.2*inch))
     
-    # Final table with signatures
+    # Final table with signatures (4 columns, 3 rows)
     # Get modification date - try to get from PDF file modification time or use current date
     from datetime import datetime
     mod_date = datetime.now().strftime('%d/%m/%Y')
     
     final_data = [
-        ['Client\'s Name', Paragraph(client_name, table_text_style)],
-        ['Signature', ''],
-        ['Date', mod_date],
-        ['Team member\'s name', ''],
-        ['Signature', ''],
-        ['Date', mod_date]
+        ['Client\'s Name', Paragraph(client_name, table_text_style), 'Team member\'s name', ''],
+        ['Signature', '', 'Signature', ''],
+        ['Date', mod_date, 'Date', mod_date]
     ]
     
-    final_table = Table(final_data, colWidths=[2.5*inch, 3.5*inch])
+    final_table = Table(final_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
     final_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('ALIGN', (2, 0), (2, -1), 'LEFT'),
+        ('ALIGN', (3, 0), (3, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
         ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTNAME', (3, 0), (3, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 10),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
@@ -2597,7 +2630,6 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
         ('VALIGN', (0, 0), (-1, -1), 'TOP')
     ]))
     
-    story.append(Paragraph("Signatures", heading_style))
     story.append(final_table)
     
     # Build PDF
