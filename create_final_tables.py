@@ -368,6 +368,10 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
             pass
         data['Surname (Emergency contact)'] = find_in_fields("surname (emergency contact)", "emergency contact surname", "emergency contact last name", "emergency surname", "emergency last name")
         data['Is the primary carer also the emergency contact for the participant?'] = find_in_fields("primary carer also emergency contact", "is primary carer emergency contact")
+        data['Home phone (Emergency contact)'] = find_in_fields("home phone (emergency contact)", "emergency contact home phone", "emergency home phone")
+        data['Mobile phone (Emergency contact)'] = find_in_fields("mobile phone (emergency contact)", "emergency contact mobile phone", "emergency mobile phone", "emergency contact mobile")
+        data['Work phone (Emergency contact)'] = find_in_fields("work phone (emergency contact)", "emergency contact work phone", "emergency work phone")
+        data['Relationship to client (Emergency contact)'] = find_in_fields("relationship to client (emergency contact)", "emergency contact relationship", "emergency relationship")
         
         # Extract Person Signing the Agreement fields
         person_signing = find_in_fields("person signing the agreement", "who is signing", "signatory")
@@ -570,6 +574,15 @@ def parse_pdf_to_data(pdf_path: str) -> dict:
                 data['Surname (Emergency contact)'] = find_value_after_label(['Surname (Emergency contact)'])
         if not data.get('Is the primary carer also the emergency contact for the participant?'):
             data['Is the primary carer also the emergency contact for the participant?'] = find_value_after_label(['Is the primary carer also the emergency contact'])
+        # Extract emergency contact phone and relationship fields
+        if not data.get('Home phone (Emergency contact)'):
+            data['Home phone (Emergency contact)'] = find_value_in_section(['Home phone'], "emergency")
+        if not data.get('Mobile phone (Emergency contact)'):
+            data['Mobile phone (Emergency contact)'] = find_value_in_section(['Mobile phone'], "emergency")
+        if not data.get('Work phone (Emergency contact)'):
+            data['Work phone (Emergency contact)'] = find_value_in_section(['Work phone'], "emergency")
+        if not data.get('Relationship to client (Emergency contact)'):
+            data['Relationship to client (Emergency contact)'] = find_value_in_section(['Relationship to client', 'Relationship'], "emergency")
     
     # Extract other fields that might be in the PDF
         if not data.get('Preferred method of contact'):
@@ -2180,6 +2193,416 @@ def get_plan_manager_email(csv_data):
         return ''
     else:
         return csv_data.get('Plan manager email address', 'Plan manager email address (Support Items Required)')
+
+def format_date_for_display(date_str):
+    """Format date string to DD/MM/YYYY format"""
+    if not date_str:
+        return ""
+    
+    date_str = date_str.strip()
+    if not date_str:
+        return ""
+    
+    from datetime import datetime
+    
+    # Try to parse common date formats
+    date_formats = [
+        '%Y-%m-%d',      # 2023-12-25
+        '%d/%m/%Y',      # 25/12/2023
+        '%m/%d/%Y',      # 12/25/2023
+        '%d-%m-%Y',      # 25-12-2023
+        '%Y/%m/%d',      # 2023/12/25
+        '%d.%m.%Y',      # 25.12.2023
+    ]
+    
+    for fmt in date_formats:
+        try:
+            dt = datetime.strptime(date_str, fmt)
+            return dt.strftime('%d/%m/%Y')
+        except ValueError:
+            continue
+    
+    # If no format matched, try to extract numbers
+    try:
+        numbers = re.findall(r'\d+', date_str)
+        if len(numbers) >= 3:
+            if len(numbers[0]) == 4:
+                year, month, day = numbers[0], numbers[1], numbers[2]
+            elif len(numbers[-1]) == 4:
+                day, month, year = numbers[0], numbers[1], numbers[2]
+            else:
+                day, month, year = numbers[0], numbers[1], numbers[2]
+            
+            day = day.zfill(2)
+            month = month.zfill(2)
+            return f"{day}/{month}/{year}"
+    except (ValueError, IndexError, AttributeError):
+        pass
+    
+    return date_str
+
+def get_emergency_contact_phone(csv_data):
+    """Get emergency contact phone numbers (Home phone + Mobile phone + Work phone)"""
+    phones = []
+    
+    # Try to get emergency contact phone fields
+    home_phone = csv_data.get('Home phone (Emergency contact)', '').strip()
+    mobile_phone = csv_data.get('Mobile phone (Emergency contact)', '').strip()
+    work_phone = csv_data.get('Work phone (Emergency contact)', '').strip()
+    
+    # If emergency contact fields don't exist, check if primary carer is emergency contact
+    if not home_phone and not mobile_phone and not work_phone:
+        is_primary_carer = csv_data.get('Is the primary carer also the emergency contact for the participant?', '').strip()
+        is_primary_carer_clean = is_primary_carer.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip().lower()
+        
+        if 'yes' in is_primary_carer_clean:
+            home_phone = csv_data.get('Home phone (Primary carer)', '').strip()
+            mobile_phone = csv_data.get('Mobile phone (Primary carer)', '').strip()
+            work_phone = csv_data.get('Work phone (Primary carer)', '').strip()
+    
+    if home_phone:
+        phones.append(home_phone)
+    if mobile_phone:
+        phones.append(mobile_phone)
+    if work_phone:
+        phones.append(work_phone)
+    
+    return ', '.join(phones) if phones else 'N/A'
+
+def get_emergency_contact_relationship(csv_data):
+    """Get emergency contact relationship to client"""
+    relationship = csv_data.get('Relationship to client (Emergency contact)', '').strip()
+    
+    if not relationship:
+        # Check if primary carer is emergency contact
+        is_primary_carer = csv_data.get('Is the primary carer also the emergency contact for the participant?', '').strip()
+        is_primary_carer_clean = is_primary_carer.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip().lower()
+        
+        if 'yes' in is_primary_carer_clean:
+            relationship = csv_data.get('Relationship to client (Primary carer)', '').strip()
+    
+    return relationship if relationship else 'N/A'
+
+def get_client_phone_numbers(csv_data):
+    """Get client phone numbers (Home phone + Mobile phone + Work phone)"""
+    phones = []
+    
+    home_phone = csv_data.get('Home phone (Contact Details of the Client)', '').strip()
+    mobile_phone = csv_data.get('Mobile phone (Contact Details of the Client)', '').strip()
+    work_phone = csv_data.get('Work phone (Contact Details of the Client)', '').strip()
+    
+    if home_phone:
+        phones.append(home_phone)
+    if mobile_phone:
+        phones.append(mobile_phone)
+    if work_phone:
+        phones.append(work_phone)
+    
+    return ', '.join(phones) if phones else 'N/A'
+
+def create_emergency_disaster_plan_from_data(csv_data, output_path):
+    """
+    Create an Emergency & Disaster Plan PDF from provided data dictionary.
+    
+    Args:
+        csv_data: Dictionary containing form data
+        output_path: Path where the PDF should be saved
+    """
+    # Create PDF document
+    doc = SimpleDocTemplate(output_path, pagesize=A4)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Create custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=18,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=12,
+        leftIndent=0
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=BLUE_COLOR,
+        alignment=TA_LEFT,
+        spaceAfter=8,
+        spaceBefore=12,
+        leftIndent=0
+    )
+    
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=TA_LEFT,
+        spaceAfter=6,
+        leading=14,
+        leftIndent=0
+    )
+    
+    table_text_style = ParagraphStyle(
+        'TableText',
+        parent=styles['Normal'],
+        fontSize=10,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=12,
+        leftIndent=0
+    )
+    
+    # Title
+    story.append(Paragraph("Emergency & Disaster Plan", title_style))
+    story.append(Spacer(1, 0.2*inch))
+    
+    # General Information table
+    first_name = csv_data.get('First name (Details of the Client)', '').strip()
+    surname = csv_data.get('Surname (Details of the Client)', '').strip()
+    client_name = ' '.join([p for p in [first_name, surname] if p]).strip() or 'N/A'
+    client_phone = get_client_phone_numbers(csv_data)
+    
+    general_info_data = [
+        ['Your name', Paragraph(client_name, table_text_style)],
+        ['Your phone number', Paragraph(client_phone, table_text_style)]
+    ]
+    
+    general_info_table = Table(general_info_data, colWidths=[2.5*inch, 3.5*inch])
+    general_info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    
+    story.append(Paragraph("General Information", heading_style))
+    story.append(general_info_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Key Emergency Contacts table
+    emergency_first = csv_data.get('First name (Emergency contact)', '').strip()
+    emergency_surname = csv_data.get('Surname (Emergency contact)', '').strip()
+    
+    # Check if primary carer is emergency contact
+    is_primary_carer = csv_data.get('Is the primary carer also the emergency contact for the participant?', '').strip()
+    is_primary_carer_clean = is_primary_carer.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip().lower()
+    
+    if 'yes' in is_primary_carer_clean:
+        emergency_first = csv_data.get('First name (Primary carer)', '').strip()
+        emergency_surname = csv_data.get('Surname (Primary carer)', '').strip()
+    
+    emergency_name = ' '.join([p for p in [emergency_first, emergency_surname] if p]).strip() or 'N/A'
+    emergency_phone = get_emergency_contact_phone(csv_data)
+    emergency_relationship = get_emergency_contact_relationship(csv_data)
+    
+    emergency_contacts_data = [
+        ['Name', Paragraph(emergency_name, table_text_style)],
+        ['Phone', Paragraph(emergency_phone, table_text_style)],
+        ['Relationship', Paragraph(emergency_relationship, table_text_style)]
+    ]
+    
+    emergency_contacts_table = Table(emergency_contacts_data, colWidths=[2.5*inch, 3.5*inch])
+    emergency_contacts_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    
+    story.append(Paragraph("Key Emergency Contacts", heading_style))
+    story.append(emergency_contacts_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # My Important Contacts table
+    important_contacts_data = [
+        ['Advocate', 'N/A'],
+        ['Power of Attorney/Guardian', 'N/A'],
+        ['Solicitor', 'N/A'],
+        ['Insurer (home)', 'N/A'],
+        ['Insurer (vehicle)', 'N/A'],
+        ['Childcare/School Contact', 'N/A'],
+        ['Workplace/Volunteer Contact', 'N/A'],
+        ['Doctor', 'N/A'],
+        ['Specialist Practitioner', 'N/A'],
+        ['Private Health Cover', 'N/A']
+    ]
+    
+    important_contacts_table = Table(important_contacts_data, colWidths=[2.5*inch, 3.5*inch])
+    important_contacts_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    
+    story.append(Paragraph("My Important Contacts", heading_style))
+    story.append(important_contacts_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # What are the main risks in your community table
+    risks = [
+        'Heatwave', 'Storm', 'Cyclone', 'Bushfire', 'Flood', 'Earthquake',
+        'Landslide', 'Tsunami', 'Assault', 'Power outage', 'Gas outage',
+        'Health emergency', 'House fire', 'Burglary/break-in'
+    ]
+    
+    risks_data = []
+    for risk in risks:
+        risks_data.append([risk, '☐'])
+    
+    risks_table = Table(risks_data, colWidths=[2.5*inch, 3.5*inch])
+    risks_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    
+    story.append(Paragraph("What are the main risks in your community?", heading_style))
+    story.append(risks_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # How would the emergency affect you? table
+    emergency_affect_data = [
+        ['Emergency Type', ''],
+        ['How you\'re affected', '']
+    ]
+    
+    emergency_affect_table = Table(emergency_affect_data, colWidths=[2.5*inch, 3.5*inch])
+    emergency_affect_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    
+    story.append(Paragraph("How would the emergency affect you?", heading_style))
+    story.append(emergency_affect_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Complete all applicable sections table
+    sections = [
+        'My Emergency & Disaster Plan',
+        'Communication',
+        'Management of Health',
+        'Assistive Technology (AT)',
+        'Personal Support',
+        'Assistance animals and pets',
+        'Transportation',
+        'Living Situation',
+        'Social Connectedness',
+        'Other'
+    ]
+    
+    sections_data = []
+    for section in sections:
+        sections_data.append([section, 'N/A'])
+    
+    sections_table = Table(sections_data, colWidths=[2.5*inch, 3.5*inch])
+    sections_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    
+    story.append(Paragraph("Complete all applicable sections & if not applicable, mark as \"N/A\"", heading_style))
+    story.append(sections_table)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Final table with signatures
+    # Get modification date - try to get from PDF file modification time or use current date
+    from datetime import datetime
+    mod_date = datetime.now().strftime('%d/%m/%Y')
+    
+    final_data = [
+        ['Client\'s Name', Paragraph(client_name, table_text_style)],
+        ['Signature', ''],
+        ['Date', mod_date],
+        ['Team member\'s name', ''],
+        ['Signature', ''],
+        ['Date', mod_date]
+    ]
+    
+    final_table = Table(final_data, colWidths=[2.5*inch, 3.5*inch])
+    final_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+    ]))
+    
+    story.append(Paragraph("Signatures", heading_style))
+    story.append(final_table)
+    
+    # Build PDF
+    doc.build(story)
+    print("Emergency & Disaster Plan PDF created successfully!")
 
 if __name__ == "__main__":
     create_service_agreement()
