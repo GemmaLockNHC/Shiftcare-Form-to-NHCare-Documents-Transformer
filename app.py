@@ -532,9 +532,11 @@ def upload_file():
             if generate_emergency_plan:
                 # Import the emergency plan generation function
                 from create_final_tables import create_emergency_disaster_plan_from_data
+                # Get contact name from form (same as service agreement)
+                contact_name = request.form.get('contact_name', '').strip()
                 edp_filename = f"emergency_disaster_plan_{unique_filename}.pdf"
                 edp_path = os.path.join(app.config['UPLOAD_FOLDER'], edp_filename)
-                create_emergency_disaster_plan_from_data(pdf_data, edp_path)
+                create_emergency_disaster_plan_from_data(pdf_data, edp_path, contact_name)
                 output_files.append(('pdf', edp_path, 'Emergency & Disaster Plan.pdf'))
             
             # Clean up input file
