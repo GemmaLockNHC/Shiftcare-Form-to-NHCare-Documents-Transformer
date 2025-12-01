@@ -2337,7 +2337,11 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     # Get team member name (similar to Key Contact lookup)
     team_member_name_to_use = contact_name or csv_data.get('Respondent', '')
     team_member_data = lookup_user_data(active_users, team_member_name_to_use) if team_member_name_to_use else {'name': '', 'mobile': '', 'email': ''}
+    # Use the name from lookup if available, otherwise use the provided name
     team_member_name = team_member_name_to_use if team_member_name_to_use else team_member_data.get('name', '')
+    # If we have lookup data, prefer the name from the lookup (similar to Key Contact)
+    if team_member_data.get('name') and team_member_data.get('name') != '[Not Found]':
+        team_member_name = team_member_data.get('name', team_member_name)
     
     # Create PDF document
     doc = SimpleDocTemplate(output_path, pagesize=A4)
@@ -2442,8 +2446,14 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     emergency_phone = get_emergency_contact_phone(csv_data)
     emergency_relationship = get_emergency_contact_relationship(csv_data)
     
-    # Ensure phone is a clean plain string (not Paragraph)
-    emergency_phone_clean = emergency_phone if emergency_phone else ''
+    # Ensure phone is a clean plain string (not Paragraph) - strip all special characters
+    emergency_phone_clean = str(emergency_phone) if emergency_phone else ''
+    # Remove any problematic unicode characters that render as black squares
+    emergency_phone_clean = emergency_phone_clean.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '')
+    # Keep only printable ASCII characters and common phone characters
+    emergency_phone_clean = ''.join(c for c in emergency_phone_clean if (c.isprintable() and ord(c) < 128) or c in [' ', '-', '(', ')', '+', ';'])
+    emergency_phone_clean = emergency_phone_clean.strip()
+    
     # Ensure relationship is displayed correctly
     emergency_relationship_clean = emergency_relationship if emergency_relationship else ''
     
@@ -2453,7 +2463,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
          Paragraph("Phone", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER)),
          Paragraph("Relationship", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER))],
         [Paragraph(emergency_name, table_text_style) if emergency_name else '', 
-         emergency_phone_clean,  # Plain string, not Paragraph
+         emergency_phone_clean,  # Plain string, not Paragraph - already cleaned
          Paragraph(emergency_relationship_clean, table_text_style) if emergency_relationship_clean else '']
     ]
     
@@ -2530,8 +2540,8 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     risks_data = []
     for risk in risks:
-        # Use plain text checkbox - simple square brackets that will render correctly
-        risks_data.append([risk, '[  ]'])  # Use simple brackets with space for checkbox
+        # Use plain ASCII characters for checkbox - avoid any unicode that might render as black squares
+        risks_data.append([risk, '[ ]'])  # Simple ASCII brackets - no unicode characters
     
     risks_table = Table(risks_data, colWidths=[2.5*inch, 3.5*inch])
     risks_table.setStyle(TableStyle([
