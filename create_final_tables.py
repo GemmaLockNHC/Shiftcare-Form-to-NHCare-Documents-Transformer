@@ -2271,6 +2271,7 @@ def get_emergency_contact_phone(csv_data):
 
 def get_emergency_contact_relationship(csv_data):
     """Get emergency contact relationship to client"""
+    # First try the emergency contact relationship field
     relationship = csv_data.get('Relationship to client (Emergency contact)', '').strip()
     
     if not relationship:
@@ -2300,14 +2301,28 @@ def get_client_phone_numbers(csv_data):
     
     return '; '.join(phones) if phones else ''
 
-def create_emergency_disaster_plan_from_data(csv_data, output_path):
+def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name=None):
     """
     Create an Emergency & Disaster Plan PDF from provided data dictionary.
     
     Args:
         csv_data: Dictionary containing form data
         output_path: Path where the PDF should be saved
+        contact_name: Optional name to use for Team member lookup
     """
+    # Get team value to determine which active users CSV to use
+    team_value = csv_data.get('Neighbourhood Care representative team', '')
+    # Clean up checkbox characters
+    team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+    
+    # Load active users based on team
+    active_users = load_active_users(team_value)
+    
+    # Get team member name (similar to Key Contact lookup)
+    team_member_name_to_use = contact_name or csv_data.get('Respondent', '')
+    team_member_data = lookup_user_data(active_users, team_member_name_to_use) if team_member_name_to_use else {'name': '', 'mobile': '', 'email': ''}
+    team_member_name = team_member_name_to_use if team_member_name_to_use else team_member_data.get('name', '')
+    
     # Create PDF document
     doc = SimpleDocTemplate(output_path, pagesize=A4)
     story = []
@@ -2416,7 +2431,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
         [Paragraph("Name", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER)),
          Paragraph("Phone", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER)),
          Paragraph("Relationship", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER))],
-        [Paragraph(emergency_name, table_text_style), Paragraph(emergency_phone, table_text_style), Paragraph(emergency_relationship, table_text_style)]
+        [Paragraph(emergency_name, table_text_style), emergency_phone, Paragraph(emergency_relationship, table_text_style)]
     ]
     
     emergency_contacts_table = Table(emergency_contacts_data, colWidths=[2*inch, 2*inch, 2*inch])
@@ -2492,7 +2507,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
     
     risks_data = []
     for risk in risks:
-        risks_data.append([risk, '☐'])
+        risks_data.append([risk, '[ ]'])  # Use simple brackets instead of checkbox character
     
     risks_table = Table(risks_data, colWidths=[2.5*inch, 3.5*inch])
     risks_table.setStyle(TableStyle([
@@ -2604,7 +2619,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path):
     mod_date = datetime.now().strftime('%d/%m/%Y')
     
     final_data = [
-        ['Client\'s Name', Paragraph(client_name, table_text_style), 'Team member\'s name', ''],
+        ['Client\'s Name', Paragraph(client_name, table_text_style), 'Team member\'s name', Paragraph(team_member_name, table_text_style)],
         ['Signature', '', 'Signature', ''],
         ['Date', mod_date, 'Date', mod_date]
     ]
