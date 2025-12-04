@@ -1485,7 +1485,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
                     ('TEXTCOLOR', (1, 0), (1, 0), colors.black),
                     ('FONTNAME', (1, 0), (1, 0), 'Helvetica'),
                     ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 10),
+                    ('FONTSIZE', (0, 0), (-1, -1), 11),
                     ('TOPPADDING', (0, 0), (-1, -1), 8),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
                     ('LEFTPADDING', (0, 0), (-1, -1), 6),
@@ -2339,7 +2339,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Title'],
-        fontSize=18,
+        fontSize=16,
         textColor=BLUE_COLOR,
         alignment=TA_LEFT,
         spaceAfter=12,
@@ -2349,7 +2349,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     heading_style = ParagraphStyle(
         'CustomHeading',
         parent=styles['Heading2'],
-        fontSize=14,
+        fontSize=16,
         textColor=BLUE_COLOR,
         alignment=TA_LEFT,
         spaceAfter=8,
@@ -2370,7 +2370,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     table_text_style = ParagraphStyle(
         'TableText',
         parent=styles['Normal'],
-        fontSize=10,
+        fontSize=11,
         alignment=TA_LEFT,
         spaceAfter=0,
         leading=12,
@@ -2399,7 +2399,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     client_phone = get_client_phone_numbers(csv_data)
     
     general_info_data = [
-        [Paragraph("General Information", ParagraphStyle('TableHeading', parent=table_text_style, fontSize=12, textColor=colors.white, alignment=TA_CENTER))],
+        [Paragraph("<b>General Information</b>", ParagraphStyle('TableHeading', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))],
         ['Your name', Paragraph(client_name, table_text_style)],
         ['Your phone number', Paragraph(client_phone, table_text_style)]
     ]
@@ -2415,7 +2415,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('ALIGN', (1, 1), (1, -1), 'LEFT'),
         ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
         ('FONTNAME', (1, 1), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
@@ -2451,10 +2451,10 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     emergency_relationship_clean = emergency_relationship if emergency_relationship else ''
     
     emergency_contacts_data = [
-        [Paragraph("Key Emergency Contacts", ParagraphStyle('TableHeading', parent=table_text_style, fontSize=12, textColor=colors.white, alignment=TA_CENTER))],
-        [Paragraph("Name", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph("Phone", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph("Relationship", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER))],
+        [Paragraph("<b>Key Emergency Contacts</b>", ParagraphStyle('TableHeading', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))],
+        [Paragraph("<b>Name</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph("<b>Phone</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph("<b>Relationship</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))],
         [Paragraph(emergency_name, table_text_style) if emergency_name else '', 
          emergency_phone_clean,  # Plain string, not Paragraph - already cleaned
          Paragraph(emergency_relationship_clean, table_text_style) if emergency_relationship_clean else '']
@@ -2472,7 +2472,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('ALIGN', (0, 1), (-1, 1), 'CENTER'),
         ('ALIGN', (0, 2), (-1, 2), 'LEFT'),
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
@@ -2487,7 +2487,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     # My Important Contacts table
     important_contacts_data = [
-        [Paragraph("My Important Contacts", ParagraphStyle('TableHeading', parent=table_text_style, fontSize=12, textColor=colors.white, alignment=TA_CENTER))],
+        [Paragraph("<b>My Important Contacts</b>", ParagraphStyle('TableHeading', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))],
         ['Advocate', ''],
         ['Power of Attorney/Guardian', ''],
         ['Solicitor', ''],
@@ -2511,7 +2511,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('ALIGN', (1, 1), (1, -1), 'LEFT'),
         ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
         ('FONTNAME', (1, 1), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
@@ -2543,7 +2543,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
@@ -2565,8 +2565,8 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     ]
     
     emergency_affect_data = [
-        [Paragraph("Emergency Type", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph("How you're affected", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white, alignment=TA_CENTER))]
+        [Paragraph("<b>Emergency Type</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph("<b>How you're affected</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))]
     ]
     
     # Add rows for each emergency type - make them bold
@@ -2589,7 +2589,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Header row bold
         ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),  # Left column bold
         ('FONTNAME', (1, 1), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
@@ -2598,7 +2598,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('VALIGN', (0, 0), (-1, -1), 'TOP')
     ]))
     
-    story.append(Paragraph("<i>How would the emergency affect you?</i>", heading_style))
+    story.append(Paragraph("<i>How would the emergency affect you?</i>", ParagraphStyle('ItalicHeading', parent=normal_style, fontSize=11, textColor=colors.black)))
     story.append(emergency_affect_table)
     story.append(Spacer(1, 0.2*inch))
     
@@ -2612,7 +2612,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     bold_text_style = ParagraphStyle(
         'BoldText',
         parent=table_text_style,
-        fontSize=10,
+        fontSize=11,
         fontName='Helvetica-Bold',
         alignment=TA_LEFT,
         spaceAfter=0,
@@ -2622,17 +2622,17 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     communication_left = (
         "<b>Communication</b><br/><br/>"
-        "[ ] I have my phone, computer, or table to be able to stay in touch with people or call people in an emergency.<br/>"
-        "[ ] I have informed my supports about the best way to communicate with me.<br/>"
+        "[ ] I have my phone, computer, or tablet to be able to stay in touch with people or call people in an emergency.<br/><br/>"
+        "[ ] I have informed my supports about the best way to communicate with me.<br/><br/>"
         "[ ] I have friends or family who maintain regular contact who will seek assistance if unable to contact me."
     )
     communication_right = "Other important information about my communication:\n\n\n"
     
     health_left = (
         "<b>Management of Health</b><br/><br/>"
-        "[ ] I know if I'm in an emergency - call 000.<br/>"
-        "[ ] I have copies of concession cards, health insurance cards and prescriptions.<br/>"
-        "[ ] I have discussed with my doctor how I will access controlled medications during and after an emergency.<br/>"
+        "[ ] I know if I'm in an emergency - call 000.<br/><br/>"
+        "[ ] I have copies of concession cards, health insurance cards and prescriptions.<br/><br/>"
+        "[ ] I have discussed with my doctor how I will access controlled medications during and after an emergency.<br/><br/>"
         "[ ] I registered for MyGov."
     )
     health_right = (
@@ -2648,7 +2648,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     support_left = (
         "<b>Personal Support</b><br/><br/>"
-        "[ ] I have a plan for when I get separated from the people who normally provide assistance.<br/>"
+        "[ ] I have a plan for when I get separated from the people who normally provide assistance.<br/><br/>"
         "[ ] I have discussed my plan with my emergency contact."
     )
     support_right = "Write down the back-up plan for assistance in emergencies:\n\n\n"
@@ -2667,8 +2667,8 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     living_left = (
         "<b>Living Situation</b><br/><br/>"
-        "[ ] My smoke alarms are texted regularly.<br/>"
-        "[ ] I have a fire extinguisher and/or fire blanket present.<br/>"
+        "[ ] My smoke alarms are tested regularly.<br/><br/>"
+        "[ ] I have a fire extinguisher and/or fire blanket present.<br/><br/>"
         "[ ] I keep a mobility device (if applicable) by my bed in case I have to evacuate quickly."
     )
     living_right = (
@@ -2678,13 +2678,13 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     social_left = (
         "<b>Social Connectedness</b><br/><br/>"
-        "[ ] I have a plan for staying connected and in touch with people.<br/>"
+        "[ ] I have a plan for staying connected and in touch with people.<br/><br/>"
         "[ ] I have introduced myself to my neighbours."
     )
     social_right = "Write any notes here:\n\n\n"
     
     sections_data = [
-        [Paragraph('My Emergency & Disaster Plan', ParagraphStyle('TableTextBlue', parent=table_text_style, fontSize=10, textColor=colors.white)), ''],
+        [Paragraph('<b>My Emergency & Disaster Plan</b>', ParagraphStyle('TableTextBlue', parent=table_text_style, fontSize=11, textColor=colors.white)), ''],
         [Paragraph(communication_left, table_text_style), Paragraph(communication_right, table_text_style)],
         [Paragraph(health_left, table_text_style), Paragraph(health_right, table_text_style)],
         [Paragraph(at_left, table_text_style), Paragraph(at_right, table_text_style)],
@@ -2693,7 +2693,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         [Paragraph(transport_left, table_text_style), Paragraph(transport_right, table_text_style)],
         [Paragraph(living_left, table_text_style), Paragraph(living_right, table_text_style)],
         [Paragraph(social_left, table_text_style), Paragraph(social_right, table_text_style)],
-        [Paragraph("<b>Other</b>", table_text_style), Paragraph("Write any notes here:\n\n\n", table_text_style)]
+        [Paragraph("<b>Other</b>", table_text_style), Paragraph("Write any notes here:\n\n\n\n", table_text_style)]
     ]
     
     sections_table = Table(sections_data, colWidths=[2.5*inch, 3.5*inch])
@@ -2711,7 +2711,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),  # All left column bold
         ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
@@ -2729,9 +2729,9 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     mod_date = datetime.now().strftime('%d/%m/%Y')
     
     final_data = [
-        [Paragraph("Client's Name", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), Paragraph(client_name, table_text_style), Paragraph("Team member's name", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), Paragraph(team_member_name, table_text_style)],
-        [Paragraph("Signature", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), '', Paragraph("Signature", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), ''],
-        [Paragraph("Date", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), mod_date, Paragraph("Date", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=10, textColor=colors.white)), mod_date]
+        [Paragraph("<b>Client's Name</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white)), Paragraph(client_name, table_text_style), Paragraph("<b>Team member's name</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white)), Paragraph(team_member_name, table_text_style)],
+        [Paragraph("<b>Signature</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white)), '', Paragraph("<b>Signature</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white)), ''],
+        [Paragraph("<b>Date</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white)), mod_date, Paragraph("<b>Date</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white)), mod_date]
     ]
     
     final_table = Table(final_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
@@ -2759,7 +2759,7 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
         ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
         ('FONTNAME', (3, 0), (3, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
@@ -2770,8 +2770,8 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     
     story.append(final_table)
     
-    # Build PDF
-    doc.build(story)
+    # Build PDF with headers and footers
+    doc.build(story, onFirstPage=_add_first_page_header, onLaterPages=_add_header_footer)
     print("Emergency & Disaster Plan PDF created successfully!")
 
 if __name__ == "__main__":
