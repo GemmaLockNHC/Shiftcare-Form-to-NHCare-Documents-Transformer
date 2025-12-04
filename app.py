@@ -464,8 +464,9 @@ def upload_file():
     generate_csv = request.form.get('generate_csv') == '1'
     generate_service_agreement = request.form.get('generate_service_agreement') == '1'
     generate_emergency_plan = request.form.get('generate_emergency_plan') == '1'
+    generate_service_estimate = request.form.get('generate_service_estimate') == '1'
     
-    if not generate_csv and not generate_service_agreement and not generate_emergency_plan:
+    if not generate_csv and not generate_service_agreement and not generate_emergency_plan and not generate_service_estimate:
         flash('Please select at least one output to generate')
         return redirect(request.url)
     
@@ -538,6 +539,17 @@ def upload_file():
                 edp_path = os.path.join(app.config['UPLOAD_FOLDER'], edp_filename)
                 create_emergency_disaster_plan_from_data(pdf_data, edp_path, contact_name)
                 output_files.append(('pdf', edp_path, 'Emergency & Disaster Plan.pdf'))
+            
+            # Generate Service Estimate CSV if requested
+            if generate_service_estimate:
+                # Import the service estimate generation function
+                from create_final_tables import create_service_estimate_csv
+                # Get contact name from form (not used for CSV but kept for consistency)
+                contact_name = request.form.get('contact_name', '').strip()
+                se_filename = f"service_estimate_{unique_filename}.csv"
+                se_path = os.path.join(app.config['UPLOAD_FOLDER'], se_filename)
+                create_service_estimate_csv(pdf_data, se_path, contact_name)
+                output_files.append(('csv', se_path, 'Service Estimate.csv'))
             
             # Clean up input file
             os.remove(filepath)
