@@ -2774,5 +2774,153 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     doc.build(story, onFirstPage=_add_first_page_header, onLaterPages=_add_header_footer)
     print("Emergency & Disaster Plan PDF created successfully!")
 
+def extract_time_from_item_name(item_name):
+    """
+    Extract time information from support item name.
+    Examples:
+    - "Assistance With Self-Care Activities - Standard - Weekday Daytime" -> "Weekday Daytime"
+    - "Assistance With Self-Care Activities - Standard - Weekday Night" -> "Weekday Night"
+    - "Assistance With Self-Care Activities - Standard - Saturday" -> "Saturday"
+    - "Assistance With Self-Care Activities - Standard - Public Holiday" -> "Public Holiday"
+    """
+    if not item_name:
+        return ''
+    
+    # Common time patterns
+    time_patterns = [
+        'Weekday Daytime',
+        'Weekday Night',
+        'Weekday Evening',
+        'Night-Time Sleepover',
+        'Saturday',
+        'Sunday',
+        'Public Holiday',
+        'Weekend',
+        'After Hours',
+        'Daytime',
+        'Evening',
+        'Night'
+    ]
+    
+    # Check if any time pattern is in the name
+    for pattern in time_patterns:
+        if pattern in item_name:
+            return pattern
+    
+    # If no pattern found, try to extract the last part after the last dash
+    parts = item_name.split(' - ')
+    if len(parts) > 1:
+        last_part = parts[-1].strip()
+        # If the last part looks like a time descriptor, return it
+        if any(word in last_part for word in ['Day', 'Night', 'Evening', 'Weekend', 'Holiday', 'Saturday', 'Sunday']):
+            return last_part
+    
+    return ''
+
+def create_service_estimate_csv(csv_data, output_path, contact_name=None):
+    """
+    Create a Service Estimate CSV file from provided data dictionary.
+    
+    Args:
+        csv_data: Dictionary containing form data
+        output_path: Path where the CSV should be saved
+        contact_name: Optional name (not used for CSV, but kept for consistency)
+    """
+    # Load NDIS support items - need to also load the full CSV to get item names with time
+    ndis_items = load_ndis_support_items()
+    
+    # Also load the full NDIS CSV to get the actual item names (which contain time info)
+    ndis_item_names = {}
+    try:
+        with open('outputs/other/NDIS Support Items - NDIS Support Items.csv', 'r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                item_name = row['Support Item Name'].strip()
+                # Store mapping from normalized name to full name
+                normalized_name = item_name.lower().strip()
+                ndis_item_names[normalized_name] = item_name
+    except Exception as e:
+        print(f"Error loading NDIS item names: {e}")
+    
+    # Get team value to determine which state's price to use
+    team_value = csv_data.get('Neighbourhood Care representative team', '')
+    # Clean up checkbox characters
+    team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+    
+    # Determine which state's price to use
+    price_state = get_price_state(team_value)
+    price_key = 'wa_price' if price_state == 'WA' else 'qld_price'
+    
+    # Extract support items 1-8 from Support Items Required section
+    support_items_data = []
+    for i in range(1, 9):  # Support items 1-8
+        key = f'Support item ({i}) (Support Items Required)'
+        item_name = csv_data.get(key, '').strip()
+        
+        if item_name:
+            # Look up the item in NDIS items
+            item_details = lookup_support_item(ndis_items, item_name)
+            
+            # Find the matching NDIS item name (which has time info)
+            matched_ndis_name = item_name
+            item_found = False
+            if item_name in ndis_items:
+                matched_ndis_name = item_name
+                item_found = True
+            else:
+                # Try to find a match in ndis_item_names
+                item_name_lower = item_name.lower().strip()
+                for ndis_name_lower, ndis_name_full in ndis_item_names.items():
+                    if item_name_lower in ndis_name_lower or ndis_name_lower in item_name_lower:
+                        matched_ndis_name = ndis_name_full
+                        item_found = True
+                        break
+            
+            # Extract time from the matched NDIS item name (which has the time info)
+            time = extract_time_from_item_name(matched_ndis_name)
+            
+            # Get the price based on state
+            price = item_details.get(price_key, '')
+            
+            if item_found:
+                support_items_data.append({
+                    'Name': item_name,
+                    'Number': item_details.get('number', ''),
+                    'Unit': item_details.get('unit', ''),
+                    'Price': price,
+                    'Time': time,
+                    'Variable': 'TRUE',
+                    'Category': 'Core'
+                })
+            else:
+                # Item not found - still add it but with placeholder values
+                # Try to extract time from the original item name as fallback
+                time = extract_time_from_item_name(item_name)
+                support_items_data.append({
+                    'Name': item_name,
+                    'Number': '[Not Found]',
+                    'Unit': '[Not Found]',
+                    'Price': '[Not Found]',
+                    'Time': time,
+                    'Variable': 'TRUE',
+                    'Category': 'Core'
+                })
+    
+    # Write CSV file
+    if support_items_data:
+        fieldnames = ['Name', 'Number', 'Unit', 'Price', 'Time', 'Variable', 'Category']
+        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(support_items_data)
+        print(f"Service Estimate CSV created successfully with {len(support_items_data)} items!")
+    else:
+        # Create empty CSV with headers if no items found
+        fieldnames = ['Name', 'Number', 'Unit', 'Price', 'Time', 'Variable', 'Category']
+        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+        print("Service Estimate CSV created successfully (empty - no support items found)!")
+
 if __name__ == "__main__":
     create_service_agreement()
