@@ -3032,11 +3032,18 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     role = 'Support Worker'
     assessment_date = datetime.now().strftime('%d/%m/%Y')
     
+    # Create style for white text labels
+    white_label_style = ParagraphStyle(
+        'WhiteLabel',
+        parent=table_text_style,
+        textColor=colors.white
+    )
+    
     first_table_data = [
-        [Paragraph('<b>Participant</b>', table_text_style), Paragraph(participant_name + '\n\n', table_text_style)],
-        [Paragraph('<b>Person Completing this assessment</b>', table_text_style), Paragraph(person_completing + '\n\n', table_text_style)],
-        [Paragraph('<b>Role</b>', table_text_style), Paragraph(role + '\n\n', table_text_style)],
-        [Paragraph('<b>Date of Assessment</b>', table_text_style), Paragraph(assessment_date + '\n\n', table_text_style)]
+        [Paragraph('<b>Participant</b>', white_label_style), Paragraph(participant_name + '\n\n', table_text_style)],
+        [Paragraph('<b>Person Completing this assessment</b>', white_label_style), Paragraph(person_completing + '\n\n', table_text_style)],
+        [Paragraph('<b>Role</b>', white_label_style), Paragraph(role + '\n\n', table_text_style)],
+        [Paragraph('<b>Date of Assessment</b>', white_label_style), Paragraph(assessment_date + '\n\n', table_text_style)]
     ]
     
     # Define custom colors for Risk Assessment
@@ -3051,7 +3058,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     first_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (0, -1), FIRST_TABLE_HEADER_COLOR),  # Left column (labels)
         ('BACKGROUND', (1, 0), (1, -1), FIRST_TABLE_VALUE_COLOR),  # Right column (values)
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.white),  # White text for labels
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.black),  # Black text for values
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
