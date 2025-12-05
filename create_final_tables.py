@@ -3178,7 +3178,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     common_hazards_table = Table(common_hazards_data, colWidths=[1.8*inch, 1.2*inch, 1.2*inch, 1.8*inch, 1*inch])
     common_hazards_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Header row
+        ('BACKGROUND', (0, 0), (-1, 0), FIRST_TABLE_HEADER_COLOR),  # Header row - #027bc4
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
