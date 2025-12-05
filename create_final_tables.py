@@ -7,11 +7,42 @@ from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 import csv
 import os
 import re
 import io
 import tempfile
+
+# Try to register Verdana font if available
+try:
+    # Common paths for Verdana font on different systems
+    verdana_paths = [
+        '/System/Library/Fonts/Supplemental/Verdana.ttf',  # macOS
+        '/System/Library/Fonts/Supplemental/Verdana Bold.ttf',  # macOS Bold
+        'C:/Windows/Fonts/verdana.ttf',  # Windows
+        'C:/Windows/Fonts/verdanab.ttf',  # Windows Bold
+        '/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf',  # Linux fallback
+    ]
+    verdana_registered = False
+    for path in verdana_paths:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont('Verdana', path))
+                verdana_registered = True
+                print(f"Verdana font registered from: {path}")
+                break
+            except Exception as e:
+                continue
+    if not verdana_registered:
+        print("Verdana font not found, will use Helvetica as fallback")
+        VERDANA_FONT = 'Helvetica'
+    else:
+        VERDANA_FONT = 'Verdana'
+except Exception as e:
+    print(f"Could not register Verdana font: {e}, using Helvetica")
+    VERDANA_FONT = 'Helvetica'
 
 # Try to import Excel library for formatted output
 try:
@@ -2956,7 +2987,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         alignment=TA_LEFT,
         spaceAfter=0,
         leftIndent=0,
-        fontName='Verdana'
+        fontName=VERDANA_FONT
     )
     
     heading_style = ParagraphStyle(
