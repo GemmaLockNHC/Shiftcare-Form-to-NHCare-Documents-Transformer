@@ -465,8 +465,9 @@ def upload_file():
     generate_service_agreement = request.form.get('generate_service_agreement') == '1'
     generate_emergency_plan = request.form.get('generate_emergency_plan') == '1'
     generate_service_estimate = request.form.get('generate_service_estimate') == '1'
+    generate_risk_assessment = request.form.get('generate_risk_assessment') == '1'
     
-    if not generate_csv and not generate_service_agreement and not generate_emergency_plan and not generate_service_estimate:
+    if not generate_csv and not generate_service_agreement and not generate_emergency_plan and not generate_service_estimate and not generate_risk_assessment:
         flash('Please select at least one output to generate')
         return redirect(request.url)
     
@@ -540,16 +541,27 @@ def upload_file():
                 create_emergency_disaster_plan_from_data(pdf_data, edp_path, contact_name)
                 output_files.append(('pdf', edp_path, 'Emergency & Disaster Plan.pdf'))
             
-            # Generate Service Estimate CSV if requested
+            # Generate Service Estimate Excel file if requested
             if generate_service_estimate:
                 # Import the service estimate generation function
                 from create_final_tables import create_service_estimate_csv
-                # Get contact name from form (not used for CSV but kept for consistency)
+                # Get contact name from form (not used for Excel but kept for consistency)
                 contact_name = request.form.get('contact_name', '').strip()
-                se_filename = f"service_estimate_{unique_filename}.csv"
+                se_filename = f"service_estimate_{unique_filename}.xlsx"
                 se_path = os.path.join(app.config['UPLOAD_FOLDER'], se_filename)
                 create_service_estimate_csv(pdf_data, se_path, contact_name)
-                output_files.append(('csv', se_path, 'Service Estimate.csv'))
+                output_files.append(('xlsx', se_path, 'Service Estimate.xlsx'))
+            
+            # Generate Risk Assessment PDF if requested
+            if generate_risk_assessment:
+                # Import the risk assessment generation function
+                from create_final_tables import create_risk_assessment_from_data
+                # Get contact name from form for "Person Completing this assessment"
+                contact_name = request.form.get('contact_name', '').strip()
+                ra_filename = f"risk_assessment_{unique_filename}.pdf"
+                ra_path = os.path.join(app.config['UPLOAD_FOLDER'], ra_filename)
+                create_risk_assessment_from_data(pdf_data, ra_path, contact_name)
+                output_files.append(('pdf', ra_path, 'Risk Assessment.pdf'))
             
             # Clean up input file
             os.remove(filepath)
