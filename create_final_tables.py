@@ -44,6 +44,64 @@ except Exception as e:
     print(f"Could not register Verdana font: {e}, using Helvetica")
     VERDANA_FONT = 'Helvetica'
 
+# Try to register Calibri font if available
+try:
+    # Common paths for Calibri font on different systems
+    calibri_paths = [
+        '/System/Library/Fonts/Supplemental/Calibri.ttf',  # macOS
+        '/Library/Fonts/Calibri.ttf',  # macOS alternative
+        '~/Library/Fonts/Calibri.ttf',  # macOS user fonts
+        'C:/Windows/Fonts/calibri.ttf',  # Windows
+        'C:/Windows/Fonts/CALIBRI.TTF',  # Windows uppercase
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',  # Linux fallback
+        '/usr/share/fonts/truetype/msttcorefonts/arial.ttf',  # Linux alternative
+    ]
+    calibri_bold_paths = [
+        '/System/Library/Fonts/Supplemental/Calibri Bold.ttf',  # macOS Bold
+        '/Library/Fonts/Calibri Bold.ttf',  # macOS alternative
+        '~/Library/Fonts/Calibri Bold.ttf',  # macOS user fonts
+        'C:/Windows/Fonts/calibrib.ttf',  # Windows Bold
+        'C:/Windows/Fonts/CALIBRIB.TTF',  # Windows uppercase
+        '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',  # Linux fallback
+        '/usr/share/fonts/truetype/msttcorefonts/arialbd.ttf',  # Linux alternative
+    ]
+    calibri_registered = False
+    calibri_bold_registered = False
+    
+    # Register regular Calibri
+    for path in calibri_paths:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont('Calibri', path))
+                calibri_registered = True
+                print(f"Calibri font registered from: {path}")
+                break
+            except Exception as e:
+                continue
+    
+    # Register Calibri Bold
+    for path in calibri_bold_paths:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont('Calibri-Bold', path))
+                calibri_bold_registered = True
+                print(f"Calibri Bold font registered from: {path}")
+                break
+            except Exception as e:
+                continue
+    
+    if not calibri_registered:
+        print("Calibri font not found, will use Helvetica as fallback")
+        CALIBRI_FONT = 'Helvetica'
+        CALIBRI_BOLD_FONT = 'Helvetica-Bold'
+    else:
+        CALIBRI_FONT = 'Calibri'
+        CALIBRI_BOLD_FONT = 'Calibri-Bold' if calibri_bold_registered else 'Helvetica-Bold'
+except Exception as e:
+    print(f"Could not register Calibri font: {e}, using Helvetica")
+    CALIBRI_FONT = 'Helvetica'
+    CALIBRI_BOLD_FONT = 'Helvetica-Bold'
+
 # Try to import Excel library for formatted output
 try:
     from openpyxl import Workbook
@@ -2987,18 +3045,19 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         alignment=TA_LEFT,
         spaceAfter=0,
         leftIndent=0,
-        fontName=VERDANA_FONT
+        fontName=CALIBRI_BOLD_FONT
     )
     
     heading_style = ParagraphStyle(
         'CustomHeading',
         parent=styles['Heading2'],
-        fontSize=14,
+        fontSize=11,
         textColor=BLUE_COLOR,
         alignment=TA_LEFT,
         spaceAfter=8,
         spaceBefore=12,
-        leftIndent=0
+        leftIndent=0,
+        fontName=CALIBRI_FONT
     )
     
     normal_style = ParagraphStyle(
@@ -3008,7 +3067,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         alignment=TA_LEFT,
         spaceAfter=6,
         leading=14,
-        leftIndent=0
+        leftIndent=0,
+        fontName=CALIBRI_FONT
     )
     
     table_text_style = ParagraphStyle(
@@ -3018,7 +3078,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         alignment=TA_LEFT,
         spaceAfter=0,
         leading=12,
-        leftIndent=0
+        leftIndent=0,
+        fontName=CALIBRI_FONT
     )
     
     # Title
@@ -3036,7 +3097,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     white_label_style = ParagraphStyle(
         'WhiteLabel',
         parent=table_text_style,
-        textColor=colors.white
+        textColor=colors.white,
+        fontName=CALIBRI_FONT
     )
     
     first_table_data = [
@@ -3062,8 +3124,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         ('TEXTCOLOR', (1, 0), (1, -1), colors.black),  # Black text for values
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+        ('FONTNAME', (0, 0), (0, -1), CALIBRI_BOLD_FONT),
+        ('FONTNAME', (1, 0), (1, -1), CALIBRI_FONT),
         ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
@@ -3123,8 +3185,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('ALIGN', (0, 1), (0, -1), 'LEFT'),
         ('ALIGN', (1, 1), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTNAME', (0, 0), (-1, 0), CALIBRI_BOLD_FONT),
+        ('FONTNAME', (0, 1), (-1, -1), CALIBRI_FONT),
         ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
@@ -3184,8 +3246,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('ALIGN', (0, 1), (0, -1), 'LEFT'),
         ('ALIGN', (1, 1), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTNAME', (0, 0), (-1, 0), CALIBRI_BOLD_FONT),
+        ('FONTNAME', (0, 1), (-1, -1), CALIBRI_FONT),
         ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
@@ -3219,8 +3281,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTNAME', (0, 0), (-1, 0), CALIBRI_BOLD_FONT),
+        ('FONTNAME', (0, 1), (-1, -1), CALIBRI_FONT),
         ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
@@ -3319,8 +3381,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         ('ALIGN', (0, 1), (-1, 1), 'CENTER'),
         ('ALIGN', (0, 2), (0, -1), 'LEFT'),
         ('ALIGN', (1, 2), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 1), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 2), (-1, -1), 'Helvetica'),
+        ('FONTNAME', (0, 0), (-1, 1), CALIBRI_BOLD_FONT),
+        ('FONTNAME', (0, 2), (-1, -1), CALIBRI_FONT),
         ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
