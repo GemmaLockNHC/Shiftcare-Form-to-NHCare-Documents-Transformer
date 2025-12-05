@@ -3039,9 +3039,18 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         [Paragraph('<b>Date of Assessment</b>', table_text_style), Paragraph(assessment_date + '\n\n', table_text_style)]
     ]
     
+    # Define custom colors for Risk Assessment
+    FIRST_TABLE_HEADER_COLOR = colors.HexColor('#027bc4')
+    FIRST_TABLE_VALUE_COLOR = colors.HexColor('#d3dfee')
+    ENV_HAZARDS_COLOR = colors.HexColor('#00b050')
+    MEDICATION_COLOR = colors.HexColor('#943734')
+    LIVING_ALONE_COLOR = colors.HexColor('#5f497a')
+    LIVING_ALONE_FIELD_COLOR = colors.HexColor('#d3dfee')
+    
     first_table = Table(first_table_data, colWidths=[2.8*inch, 3.2*inch])
     first_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+        ('BACKGROUND', (0, 0), (0, -1), FIRST_TABLE_HEADER_COLOR),  # Left column (labels)
+        ('BACKGROUND', (1, 0), (1, -1), FIRST_TABLE_VALUE_COLOR),  # Right column (values)
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
@@ -3160,7 +3169,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     environmental_hazards_table = Table(environmental_hazards_data, colWidths=[1.8*inch, 1.2*inch, 1.2*inch, 1.8*inch, 1*inch])
     environmental_hazards_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Header row
+        ('BACKGROUND', (0, 0), (-1, 0), ENV_HAZARDS_COLOR),  # Header row
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
@@ -3196,7 +3205,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     medication_table = Table(medication_data, colWidths=[1.5*inch, 1.2*inch, 1.5*inch, 1.2*inch, 1.6*inch])
     medication_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Header row
+        ('BACKGROUND', (0, 0), (-1, 0), MEDICATION_COLOR),  # Header row
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
@@ -3291,12 +3300,12 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     living_alone_table = Table(living_alone_data, colWidths=[2*inch, 1.5*inch, 2*inch, 1.5*inch])
     living_alone_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Title row
+        ('BACKGROUND', (0, 0), (-1, 0), LIVING_ALONE_COLOR),  # Title row
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('SPAN', (0, 0), (-1, 0)),  # Merge title row across all columns
-        ('BACKGROUND', (0, 1), (-1, 1), BLUE_COLOR),  # Header row
+        ('BACKGROUND', (0, 1), (-1, 1), LIVING_ALONE_COLOR),  # Header row
         ('TEXTCOLOR', (0, 1), (-1, 1), colors.white),
-        ('BACKGROUND', (0, 2), (-1, -1), colors.white),
+        ('BACKGROUND', (0, 2), (-1, -1), LIVING_ALONE_FIELD_COLOR),  # All data rows
         ('TEXTCOLOR', (0, 2), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('ALIGN', (0, 1), (-1, 1), 'CENTER'),
