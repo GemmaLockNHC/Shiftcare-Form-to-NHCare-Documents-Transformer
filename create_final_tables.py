@@ -2917,56 +2917,19 @@ def create_service_estimate_csv(csv_data, output_path, contact_name=None):
     # Column order: Name, Category, Number, Unit, Price, Variable, Time
     fieldnames = ['Name', 'Category', 'Number', 'Unit', 'Price', 'Variable', 'Time']
     
-    # Create Excel file with formatting if openpyxl is available, otherwise fall back to CSV
-    if openpyxl_available and output_path.endswith('.xlsx'):
-        # Create Excel workbook
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Service Estimate"
-        
-        # Define formatting: black, bold, size 12, Calibri
-        header_font = Font(name='Calibri', size=12, bold=True, color='000000')
-        cell_font = Font(name='Calibri', size=12, bold=True, color='000000')
-        alignment = Alignment(horizontal='left', vertical='center')
-        
-        # Write headers
-        for col_idx, header in enumerate(fieldnames, start=1):
-            cell = ws.cell(row=1, column=col_idx, value=header)
-            cell.font = header_font
-            cell.alignment = alignment
-        
-        # Write data rows
-        for row_idx, item in enumerate(support_items_data, start=2):
-            for col_idx, field in enumerate(fieldnames, start=1):
-                cell = ws.cell(row=row_idx, column=col_idx, value=item.get(field, ''))
-                cell.font = cell_font
-                cell.alignment = alignment
-        
-        # Auto-adjust column widths
-        for col_idx, header in enumerate(fieldnames, start=1):
-            column_letter = ws.cell(row=1, column=col_idx).column_letter
-            max_length = len(str(header))
-            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=col_idx, max_col=col_idx):
-                if row[0].value:
-                    max_length = max(max_length, len(str(row[0].value)))
-            ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
-        
-        wb.save(output_path)
-        print(f"Service Estimate Excel file created successfully with {len(support_items_data)} items!")
+    # Write CSV file
+    if support_items_data:
+        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(support_items_data)
+        print(f"Service Estimate CSV created successfully with {len(support_items_data)} items!")
     else:
-        # Fall back to CSV if openpyxl not available or if output path is .csv
-        if support_items_data:
-            with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(support_items_data)
-            print(f"Service Estimate CSV created successfully with {len(support_items_data)} items!")
-        else:
-            # Create empty CSV with headers if no items found
-            with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                writer.writeheader()
-            print("Service Estimate CSV created successfully (empty - no support items found)!")
+        # Create empty CSV with headers if no items found
+        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+        print("Service Estimate CSV created successfully (empty - no support items found)!")
 
 def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     """
@@ -3039,13 +3002,13 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     assessment_date = datetime.now().strftime('%d/%m/%Y')
     
     first_table_data = [
-        ['Participant', participant_name],
-        ['Person Completing this assessment', person_completing],
-        ['Role', role],
-        ['Date of assessment', assessment_date]
+        [Paragraph('Participant', table_text_style), Paragraph(participant_name + '\n\n', table_text_style)],
+        [Paragraph('Person Completing this assessment', table_text_style), Paragraph(person_completing + '\n\n', table_text_style)],
+        [Paragraph('Role', table_text_style), Paragraph(role + '\n\n', table_text_style)],
+        [Paragraph('Date of assessment', table_text_style), Paragraph(assessment_date + '\n\n', table_text_style)]
     ]
     
-    first_table = Table(first_table_data, colWidths=[2.5*inch, 3.5*inch])
+    first_table = Table(first_table_data, colWidths=[2.8*inch, 3.2*inch])
     first_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
@@ -3096,11 +3059,11 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     for hazard in common_hazards:
         common_hazards_data.append([
-            Paragraph(hazard, table_text_style),
-            '',
-            '',
-            '',
-            ''
+            Paragraph(hazard + '\n\n', table_text_style),
+            '\n\n',
+            '\n\n',
+            '\n\n',
+            '\n\n'
         ])
     
     common_hazards_table = Table(common_hazards_data, colWidths=[1.8*inch, 1.2*inch, 1.2*inch, 1.8*inch, 1*inch])
@@ -3157,11 +3120,11 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     for hazard in environmental_hazards:
         environmental_hazards_data.append([
-            Paragraph(hazard, table_text_style),
-            '',
-            '',
-            '',
-            ''
+            Paragraph(hazard + '\n\n', table_text_style),
+            '\n\n',
+            '\n\n',
+            '\n\n',
+            '\n\n'
         ])
     
     environmental_hazards_table = Table(environmental_hazards_data, colWidths=[1.8*inch, 1.2*inch, 1.2*inch, 1.8*inch, 1*inch])
@@ -3198,7 +3161,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     # Add empty rows for medication entries
     for i in range(5):
-        medication_data.append(['', '', '', '', ''])
+        medication_data.append(['\n\n', '\n\n', '\n\n', '\n\n', '\n\n'])
     
     medication_table = Table(medication_data, colWidths=[1.5*inch, 1.2*inch, 1.5*inch, 1.2*inch, 1.6*inch])
     medication_table.setStyle(TableStyle([
@@ -3223,9 +3186,6 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     story.append(Spacer(1, 0.3*inch))
     
     # Living Alone Assessment table
-    story.append(Paragraph("Living Alone Assessment (To be completed if the client is living alone)", heading_style))
-    story.append(Spacer(1, 0.1*inch))
-    
     living_alone_fields = [
         'Do you feel safe at home, work, in the community?',
         'Are there any places you don\'t feel safe?',
@@ -3240,6 +3200,10 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     ]
     
     living_alone_data = [
+        # Title row - merged across all columns
+        [Paragraph('Living Alone Assessment (To be completed if the client is living alone)', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         '', '', ''],
+        # Header row
         [Paragraph('Identified Gap / Risk / Hazard', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
          Paragraph('Notes', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
          Paragraph('Proposed Control (Action taken to prevent/minimise the risk)', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
@@ -3248,32 +3212,29 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     for field in living_alone_fields:
         living_alone_data.append([
-            Paragraph(field, table_text_style),
-            '',
-            '',
-            ''
+            Paragraph(field + '\n\n', table_text_style),
+            '\n\n',
+            '\n\n',
+            '\n\n'
         ])
     
-    # Add Violence, Abuse section
+    # Add Violence, Abuse section - span all columns
     living_alone_data.append([
         Paragraph('<b>Violence, Abuse, Sexual Abuse, Discrimination, Exploitation</b>', table_text_style),
-        '',
-        '',
-        ''
+        '', '', ''
     ])
     
     living_alone_data.append([
-        Paragraph('Are there any people you do not feel safe with?* Can you tell me more about this?', table_text_style),
-        '',
-        '',
-        ''
+        Paragraph('Are there any people you do not feel safe with?* Can you tell me more about this?\n\n', table_text_style),
+        '\n\n',
+        '\n\n',
+        '\n\n'
     ])
     
+    # Add note - span all columns
     living_alone_data.append([
         Paragraph('(*Only ask questions below if triggered by a positive response to above question.)', table_text_style),
-        '',
-        '',
-        ''
+        '', '', ''
     ])
     
     violence_abuse_fields = [
@@ -3286,30 +3247,41 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     for field in violence_abuse_fields:
         living_alone_data.append([
-            Paragraph(field, table_text_style),
-            '',
-            '',
-            ''
+            Paragraph(field + '\n\n', table_text_style),
+            '\n\n',
+            '\n\n',
+            '\n\n'
         ])
+    
+    # Find rows for Violence/Abuse and note to span across all columns
+    # Violence/Abuse is after the 10 living_alone_fields, so row index (0-based: title=0, header=1, fields=2-11, violence=12)
+    violence_row = 2 + len(living_alone_fields)  # Row index for Violence/Abuse
+    note_row = violence_row + 2  # Row index for the note
     
     living_alone_table = Table(living_alone_data, colWidths=[2*inch, 1.5*inch, 2*inch, 1.5*inch])
     living_alone_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Header row
+        ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Title row
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('SPAN', (0, 0), (-1, 0)),  # Merge title row across all columns
+        ('BACKGROUND', (0, 1), (-1, 1), BLUE_COLOR),  # Header row
+        ('TEXTCOLOR', (0, 1), (-1, 1), colors.white),
+        ('BACKGROUND', (0, 2), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 2), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('ALIGN', (0, 1), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 1), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('ALIGN', (0, 1), (-1, 1), 'CENTER'),
+        ('ALIGN', (0, 2), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 2), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 1), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 2), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP')
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('SPAN', (0, violence_row), (-1, violence_row)),  # Merge Violence/Abuse row
+        ('SPAN', (0, note_row), (-1, note_row))  # Merge note row
     ]))
     
     story.append(living_alone_table)
