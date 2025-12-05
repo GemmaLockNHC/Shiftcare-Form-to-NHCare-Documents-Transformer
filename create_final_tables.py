@@ -2954,8 +2954,9 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         fontSize=16,
         textColor=BLUE_COLOR,
         alignment=TA_LEFT,
-        spaceAfter=12,
-        leftIndent=0
+        spaceAfter=0,
+        leftIndent=0,
+        fontName='Verdana'
     )
     
     heading_style = ParagraphStyle(
@@ -2990,8 +2991,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     )
     
     # Title
-    story.append(Paragraph("Risk Assessment", title_style))
-    story.append(Spacer(1, 0.2*inch))
+    story.append(Paragraph("PRO025 - Client Risk Assessment", title_style))
     
     # First table: Participant, Person Completing, Role, Date
     first_name = csv_data.get('First name (Details of the Client)', '').strip()
@@ -3002,10 +3002,10 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     assessment_date = datetime.now().strftime('%d/%m/%Y')
     
     first_table_data = [
-        [Paragraph('Participant', table_text_style), Paragraph(participant_name + '\n\n', table_text_style)],
-        [Paragraph('Person Completing this assessment', table_text_style), Paragraph(person_completing + '\n\n', table_text_style)],
-        [Paragraph('Role', table_text_style), Paragraph(role + '\n\n', table_text_style)],
-        [Paragraph('Date of assessment', table_text_style), Paragraph(assessment_date + '\n\n', table_text_style)]
+        [Paragraph('<b>Participant</b>', table_text_style), Paragraph(participant_name + '\n\n', table_text_style)],
+        [Paragraph('<b>Person Completing this assessment</b>', table_text_style), Paragraph(person_completing + '\n\n', table_text_style)],
+        [Paragraph('<b>Role</b>', table_text_style), Paragraph(role + '\n\n', table_text_style)],
+        [Paragraph('<b>Date of Assessment</b>', table_text_style), Paragraph(assessment_date + '\n\n', table_text_style)]
     ]
     
     first_table = Table(first_table_data, colWidths=[2.8*inch, 3.2*inch])
@@ -3050,11 +3050,11 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     ]
     
     common_hazards_data = [
-        [Paragraph('Common Hazards', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Risk Identified', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Who is at Risk', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Proposed Control (Action taken to prevent/minimise the risk)', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Implemented (Date)', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))]
+        [Paragraph('<b>Common Hazards</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Risk Identified</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Who is at Risk</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Proposed Control (Action taken to prevent/minimise the risk)</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Implemented (Date)</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))]
     ]
     
     for hazard in common_hazards:
@@ -3111,11 +3111,11 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     ]
     
     environmental_hazards_data = [
-        [Paragraph('Environmental Hazards', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Risk Identified', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Who is at Risk', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Proposed Control (Action taken to prevent/minimise the risk)', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Implemented (Date)', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))]
+        [Paragraph('<b>Environmental Hazards</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Risk Identified</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Who is at Risk</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Proposed Control (Action taken to prevent/minimise the risk)</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Implemented (Date)</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))]
     ]
     
     for hazard in environmental_hazards:
@@ -3152,11 +3152,11 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     # Medication table
     medication_data = [
-        [Paragraph('Medication', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Dose and time', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Side effects or interactions to be aware of', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Administered by', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Is Neighbourhood Care involved in medication management?', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))]
+        [Paragraph('<b>Medication</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Dose and time</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Side effects or interactions to be aware of</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Administered by</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Is Neighbourhood Care involved in medication management?</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))]
     ]
     
     # Add empty rows for medication entries
@@ -3201,13 +3201,13 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     living_alone_data = [
         # Title row - merged across all columns
-        [Paragraph('Living Alone Assessment (To be completed if the client is living alone)', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+        [Paragraph('<b>Living Alone Assessment (To be completed if the client is living alone)</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
          '', '', ''],
         # Header row
-        [Paragraph('Identified Gap / Risk / Hazard', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Notes', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Proposed Control (Action taken to prevent/minimise the risk)', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
-         Paragraph('Implemented (Date)', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))]
+        [Paragraph('<b>Identified Gap / Risk / Hazard</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Notes</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Proposed Control (Action taken to prevent/minimise the risk)</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER)),
+         Paragraph('<b>Implemented (Date)</b>', ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white, alignment=TA_CENTER))]
     ]
     
     for field in living_alone_fields:
@@ -3233,7 +3233,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     # Add note - span all columns
     living_alone_data.append([
-        Paragraph('(*Only ask questions below if triggered by a positive response to above question.)', table_text_style),
+        Paragraph('<b>(*Only ask questions below if triggered by a positive response to above question.)</b>', table_text_style),
         '', '', ''
     ])
     
