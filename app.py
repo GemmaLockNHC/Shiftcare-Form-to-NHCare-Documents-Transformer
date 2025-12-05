@@ -541,16 +541,16 @@ def upload_file():
                 create_emergency_disaster_plan_from_data(pdf_data, edp_path, contact_name)
                 output_files.append(('pdf', edp_path, 'Emergency & Disaster Plan.pdf'))
             
-            # Generate Service Estimate Excel file if requested
+            # Generate Service Estimate CSV if requested
             if generate_service_estimate:
                 # Import the service estimate generation function
                 from create_final_tables import create_service_estimate_csv
-                # Get contact name from form (not used for Excel but kept for consistency)
+                # Get contact name from form (not used for CSV but kept for consistency)
                 contact_name = request.form.get('contact_name', '').strip()
-                se_filename = f"service_estimate_{unique_filename}.xlsx"
+                se_filename = f"service_estimate_{unique_filename}.csv"
                 se_path = os.path.join(app.config['UPLOAD_FOLDER'], se_filename)
                 create_service_estimate_csv(pdf_data, se_path, contact_name)
-                output_files.append(('xlsx', se_path, 'Service Estimate.xlsx'))
+                output_files.append(('csv', se_path, 'Service Estimate.csv'))
             
             # Generate Risk Assessment PDF if requested
             if generate_risk_assessment:
