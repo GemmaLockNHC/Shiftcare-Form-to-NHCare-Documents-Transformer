@@ -3338,9 +3338,16 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
             '\n\n'
         ])
     
+    # Create bold style for Violence/Abuse section
+    bold_text_style = ParagraphStyle(
+        'BoldText',
+        parent=table_text_style,
+        fontName=CALIBRI_BOLD_FONT
+    )
+    
     # Add Violence, Abuse section - span all columns
     living_alone_data.append([
-        Paragraph('<b>Violence, Abuse, Sexual Abuse, Discrimination, Exploitation</b>', table_text_style),
+        Paragraph('Violence, Abuse, Sexual Abuse, Discrimination, Exploitation', bold_text_style),
         '', '', ''
     ])
     
@@ -3353,7 +3360,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     
     # Add note - span all columns
     living_alone_data.append([
-        Paragraph('<b>(*Only ask questions below if triggered by a positive response to above question.)</b>', table_text_style),
+        Paragraph('(*Only ask questions below if triggered by a positive response to above question.)', bold_text_style),
         '', '', ''
     ])
     
