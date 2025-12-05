@@ -466,8 +466,9 @@ def upload_file():
     generate_emergency_plan = request.form.get('generate_emergency_plan') == '1'
     generate_service_estimate = request.form.get('generate_service_estimate') == '1'
     generate_risk_assessment = request.form.get('generate_risk_assessment') == '1'
+    generate_support_plan = request.form.get('generate_support_plan') == '1'
     
-    if not generate_csv and not generate_service_agreement and not generate_emergency_plan and not generate_service_estimate and not generate_risk_assessment:
+    if not generate_csv and not generate_service_agreement and not generate_emergency_plan and not generate_service_estimate and not generate_risk_assessment and not generate_support_plan:
         flash('Please select at least one output to generate')
         return redirect(request.url)
     
@@ -562,6 +563,50 @@ def upload_file():
                 ra_path = os.path.join(app.config['UPLOAD_FOLDER'], ra_filename)
                 create_risk_assessment_from_data(pdf_data, ra_path, contact_name)
                 output_files.append(('pdf', ra_path, 'Risk Assessment.pdf'))
+            
+            # Generate Support Plan DOCX if requested
+            if generate_support_plan:
+                # Import the support plan generation function
+                from create_final_tables import create_support_plan_from_data
+                from datetime import datetime
+                import re
+                
+                # Extract client information for filename
+                first_name = pdf_data.get('First name (Details of the Client)', '').strip()
+                surname = pdf_data.get('Surname (Details of the Client)', '').strip()
+                dob_str = pdf_data.get('Date of birth (Details of the Client)', '').strip()
+                ndis_number = pdf_data.get('NDIS number (Details of the Client)', '').strip()
+                
+                # Extract year from date of birth
+                year = None
+                if dob_str:
+                    year_match = re.search(r'\b(19|20)\d{2}\b', dob_str)
+                    if year_match:
+                        year = year_match.group(0)
+                
+                # If no year from DOB, use current year
+                if not year:
+                    year = datetime.now().strftime('%Y')
+                
+                # Extract ID from NDIS number (first 6 digits) or generate one
+                client_id = ''
+                if ndis_number:
+                    digits = re.sub(r'\D', '', ndis_number)
+                    if len(digits) >= 6:
+                        client_id = digits[:6]
+                    elif len(digits) > 0:
+                        client_id = digits.ljust(6, '0')
+                
+                # If no ID from NDIS, generate a simple ID from timestamp
+                if not client_id:
+                    client_id = datetime.now().strftime('%H%M%S')
+                
+                # Build filename: "Support Plan - [First Name] [Last Name] [Year] - [ID].docx"
+                name_part = f"{first_name} {surname}".strip() if (first_name or surname) else "test test"
+                sp_filename = f"Support Plan - {name_part} {year} - {client_id}.docx"
+                sp_path = os.path.join(app.config['UPLOAD_FOLDER'], sp_filename)
+                create_support_plan_from_data(pdf_data, sp_path, contact_name)
+                output_files.append(('docx', sp_path, sp_filename))
             
             # Clean up input file
             os.remove(filepath)
