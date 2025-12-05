@@ -3417,5 +3417,108 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     doc.build(story, onFirstPage=_add_first_page_header, onLaterPages=_add_header_footer)
     print("Risk Assessment PDF created successfully!")
 
+def create_support_plan_from_data(csv_data, output_path, contact_name=None):
+    """
+    Create a Support Plan Word document (.docx) from provided data dictionary.
+    
+    Args:
+        csv_data: Dictionary containing form data
+        output_path: Path where the .docx should be saved
+        contact_name: Optional name (not currently used but kept for consistency)
+    """
+    try:
+        from docx import Document
+        from docx.shared import Pt, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from datetime import datetime
+        import re
+    except ImportError:
+        raise ImportError("python-docx is required for Support Plan generation. Please install it: pip install python-docx")
+    
+    # Extract client information for filename and content
+    first_name = csv_data.get('First name (Details of the Client)', '').strip()
+    surname = csv_data.get('Surname (Details of the Client)', '').strip()
+    dob_str = csv_data.get('Date of birth (Details of the Client)', '').strip()
+    ndis_number = csv_data.get('NDIS number (Details of the Client)', '').strip()
+    
+    # Extract year from date of birth (try various formats)
+    year = None
+    if dob_str:
+        # Try to extract year from date string (could be DD/MM/YYYY, YYYY-MM-DD, etc.)
+        year_match = re.search(r'\b(19|20)\d{2}\b', dob_str)
+        if year_match:
+            year = year_match.group(0)
+    
+    # If no year from DOB, use current year
+    if not year:
+        year = datetime.now().strftime('%Y')
+    
+    # Extract ID from NDIS number (first 6 digits) or generate one
+    client_id = ''
+    if ndis_number:
+        # Extract digits only
+        digits = re.sub(r'\D', '', ndis_number)
+        if len(digits) >= 6:
+            client_id = digits[:6]
+        elif len(digits) > 0:
+            # Pad with zeros if less than 6 digits
+            client_id = digits.ljust(6, '0')
+    
+    # If no ID from NDIS, generate a simple ID from timestamp
+    if not client_id:
+        client_id = datetime.now().strftime('%H%M%S')  # Use time as fallback
+    
+    # Create Word document
+    doc = Document()
+    
+    # Set default font to Calibri, size 11
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = 'Calibri'
+    font.size = Pt(11)
+    
+    # Add title
+    title = doc.add_heading('Support Plan', 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    title_run = title.runs[0]
+    title_run.font.size = Pt(16)
+    title_run.font.bold = True
+    
+    # Add client information section
+    doc.add_heading('Client Information', level=1)
+    
+    # Add client details
+    if first_name or surname:
+        p = doc.add_paragraph()
+        p.add_run('Name: ').bold = True
+        p.add_run(f'{first_name} {surname}'.strip())
+    
+    if dob_str:
+        p = doc.add_paragraph()
+        p.add_run('Date of Birth: ').bold = True
+        p.add_run(dob_str)
+    
+    if ndis_number:
+        p = doc.add_paragraph()
+        p.add_run('NDIS Number: ').bold = True
+        p.add_run(ndis_number)
+    
+    # Add placeholder sections
+    doc.add_heading('Support Goals', level=1)
+    doc.add_paragraph('Support goals and objectives will be documented here.')
+    
+    doc.add_heading('Support Services', level=1)
+    doc.add_paragraph('Support services and activities will be documented here.')
+    
+    doc.add_heading('Support Schedule', level=1)
+    doc.add_paragraph('Support schedule and frequency will be documented here.')
+    
+    doc.add_heading('Review Information', level=1)
+    doc.add_paragraph('Review dates and outcomes will be documented here.')
+    
+    # Save document
+    doc.save(output_path)
+    print(f"Support Plan Word document created successfully: {output_path}")
+
 if __name__ == "__main__":
     create_service_agreement()
