@@ -1177,7 +1177,7 @@ def _extract_signatures_from_pdf_removed(source_pdf_path):
     
     return {}  # Always return empty - signature extraction disabled
 
-def create_service_agreement_from_data(csv_data, output_path, contact_name=None, source_pdf_path=None):
+def create_service_agreement_from_data(csv_data, output_path, contact_name=None, source_pdf_path=None, ndis_items=None, active_users=None):
     """
     Create a service agreement PDF from provided data dictionary.
     
@@ -1186,17 +1186,21 @@ def create_service_agreement_from_data(csv_data, output_path, contact_name=None,
         output_path: Path where the PDF should be saved
         contact_name: Optional name to use for Key Contact lookup
         source_pdf_path: Optional path to source PDF for signature extraction
+        ndis_items: Optional pre-loaded NDIS items (for performance)
+        active_users: Optional pre-loaded active users (for performance)
     """
-    # Load NDIS support items
-    ndis_items = load_ndis_support_items()
+    # Load NDIS support items if not provided
+    if ndis_items is None:
+        ndis_items = load_ndis_support_items()
     
     # Get team value to determine which active users CSV to use
     team_value = csv_data.get('Neighbourhood Care representative team', '')
     # Clean up checkbox characters
     team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
     
-    # Load active users based on team
-    active_users = load_active_users(team_value)
+    # Load active users based on team if not provided
+    if active_users is None:
+        active_users = load_active_users(team_value)
     
     # Signature extraction removed to prevent timeouts
     signatures = {}
@@ -2401,7 +2405,7 @@ def get_client_phone_numbers(csv_data):
     
     return '; '.join(phones) if phones else ''
 
-def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name=None):
+def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name=None, active_users=None):
     """
     Create an Emergency & Disaster Plan PDF from provided data dictionary.
     
@@ -2409,14 +2413,16 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
         csv_data: Dictionary containing form data
         output_path: Path where the PDF should be saved
         contact_name: Optional name to use for Team member lookup
+        active_users: Optional pre-loaded active users (for performance)
     """
     # Get team value to determine which active users CSV to use
     team_value = csv_data.get('Neighbourhood Care representative team', '')
     # Clean up checkbox characters
     team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
     
-    # Load active users based on team
-    active_users = load_active_users(team_value)
+    # Load active users based on team if not provided
+    if active_users is None:
+        active_users = load_active_users(team_value)
     
     # Get team member name (similar to Key Contact lookup)
     team_member_name_to_use = contact_name or csv_data.get('Respondent', '')
@@ -2914,7 +2920,7 @@ def extract_time_from_item_name(item_name):
     
     return ''
 
-def create_service_estimate_csv(csv_data, output_path, contact_name=None):
+def create_service_estimate_csv(csv_data, output_path, contact_name=None, ndis_items=None):
     """
     Create a Service Estimate CSV file from provided data dictionary.
     
@@ -2922,9 +2928,11 @@ def create_service_estimate_csv(csv_data, output_path, contact_name=None):
         csv_data: Dictionary containing form data
         output_path: Path where the CSV should be saved
         contact_name: Optional name (not used for CSV, but kept for consistency)
+        ndis_items: Optional pre-loaded NDIS items (for performance)
     """
-    # Load NDIS support items - need to also load the full CSV to get item names with time
-    ndis_items = load_ndis_support_items()
+    # Load NDIS support items if not provided - need to also load the full CSV to get item names with time
+    if ndis_items is None:
+        ndis_items = load_ndis_support_items()
     
     # Also load the full NDIS CSV to get the actual item names (which contain time info)
     ndis_item_names = {}
@@ -3020,7 +3028,7 @@ def create_service_estimate_csv(csv_data, output_path, contact_name=None):
             writer.writeheader()
         print("Service Estimate CSV created successfully (empty - no support items found)!")
 
-def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
+def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, active_users=None):
     """
     Create a Risk Assessment PDF from provided data dictionary.
     
@@ -3028,6 +3036,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
         csv_data: Dictionary containing form data
         output_path: Path where the PDF should be saved
         contact_name: Optional name for "Person Completing this assessment"
+        active_users: Optional pre-loaded active users (for performance, not currently used but kept for consistency)
     """
     from datetime import datetime
     
@@ -3417,7 +3426,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None):
     doc.build(story, onFirstPage=_add_first_page_header, onLaterPages=_add_header_footer)
     print("Risk Assessment PDF created successfully!")
 
-def create_support_plan_from_data(csv_data, output_path, contact_name=None):
+def create_support_plan_from_data(csv_data, output_path, contact_name=None, active_users=None):
     """
     Create a Support Plan Word document (.docx) from provided data dictionary.
     
@@ -3425,6 +3434,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None):
         csv_data: Dictionary containing form data
         output_path: Path where the .docx should be saved
         contact_name: Optional name to use for Key Contact lookup
+        active_users: Optional pre-loaded active users (for performance)
     """
     try:
         from docx import Document
@@ -3442,8 +3452,9 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None):
     # Clean up checkbox characters
     team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
     
-    # Load active users based on team
-    active_users = load_active_users(team_value)
+    # Load active users based on team if not provided
+    if active_users is None:
+        active_users = load_active_users(team_value)
     
     # Get key contact information
     key_contact_name_to_use = contact_name or csv_data.get('Respondent', '')
@@ -3458,11 +3469,12 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None):
     # Create Word document
     doc = Document()
     
-    # Set default font to Calibri, size 11
+    # Set default font to Calibri, size 11, centered
     style = doc.styles['Normal']
     font = style.font
     font.name = 'Calibri'
     font.size = Pt(11)
+    style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     # Helper function to create a boxed section
     def create_boxed_section():
@@ -3485,21 +3497,27 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None):
     
     # Header section
     p = doc.add_paragraph()
-    p.add_run('My Name: ').bold = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('My Name: ')
     p.add_run(f'{first_name} {surname}'.strip() if (first_name or surname) else '')
     
     p = doc.add_paragraph()
-    p.add_run('My Date of Birth: ').bold = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('My Date of Birth: ')
     p.add_run(dob_str if dob_str else '')
     
     p = doc.add_paragraph()
-    p.add_run('My Address: ').bold = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('My Address: ')
     p.add_run(home_address if home_address else '')
     
     doc.add_paragraph()  # Empty line
     
-    # About this Plan section
-    doc.add_paragraph('About this Plan')
+    # About this Plan section - in one box
+    about_plan_cell = create_boxed_section()
+    p = about_plan_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('About this Plan').bold = True
     bullet_points = [
         'This plan lets you share information about who you are, what your life is like and your dreams',
         'You can make this plan by yourself, with your support worker or with someone you choose',
@@ -3507,112 +3525,141 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None):
         'This plan has the supports you have now around you and how they can help you achieve your goals'
     ]
     for point in bullet_points:
-        p = doc.add_paragraph(point, style='List Bullet')
+        p = about_plan_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.add_run(point)
     
     doc.add_paragraph()  # Empty line
     
-    # My Support Team section
-    p = doc.add_paragraph()
+    # My Support Team section - in one box
+    support_team_cell = create_boxed_section()
+    p = support_team_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('My Support Team: ').bold = True
     p.add_run(key_contact_data.get('team', '') if key_contact_data.get('team') else '')
     
-    p = doc.add_paragraph()
+    p = support_team_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('My Key Contact: ').bold = True
     p.add_run(key_contact_data.get('name', '') if key_contact_data.get('name') and key_contact_data.get('name') != '[Not Found]' else '')
     
-    p = doc.add_paragraph()
+    p = support_team_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Contact Number: ').bold = True
     p.add_run(key_contact_data.get('mobile', '') if key_contact_data.get('mobile') and key_contact_data.get('mobile') != '[Not Found]' else '')
     
-    p = doc.add_paragraph()
+    p = support_team_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Email: ').bold = True
     p.add_run(key_contact_data.get('email', '') if key_contact_data.get('email') and key_contact_data.get('email') != '[Not Found]' else '')
     
     doc.add_paragraph()  # Empty line
     
     # What are some of the things section
-    doc.add_paragraph('What are some of the things that you want the people supporting you to know about you?')
+    p = doc.add_paragraph('What are some of the things that you want the people supporting you to know about you?')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     # About Me box
     about_me_cell = create_boxed_section()
     p = about_me_cell.add_paragraph()
-    p.add_run('About Me').bold = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('About Me')
     p = about_me_cell.add_paragraph()
-    run = p.add_run('For example, your living situation, study, friends, family/relationships, your personality, things that are important to you, how you spend your leisure time')
-    run.italic = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('For example, your living situation, study, friends, family/relationships, your personality, things that are important to you, how you spend your leisure time')
     for _ in range(4):
-        about_me_cell.add_paragraph()
+        p = about_me_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # My NDIS Goals box
     ndis_goals_cell = create_boxed_section()
     p = ndis_goals_cell.add_paragraph()
-    p.add_run('My NDIS Goals').bold = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('My NDIS Goals')
     p = ndis_goals_cell.add_paragraph()
-    p.add_run('Short term goals').bold = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('Short term goals')
     for _ in range(4):
-        ndis_goals_cell.add_paragraph()
+        p = ndis_goals_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = ndis_goals_cell.add_paragraph()
-    p.add_run('Medium & Long term goals').bold = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('Medium & Long term goals')
     for _ in range(4):
-        ndis_goals_cell.add_paragraph()
+        p = ndis_goals_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # Gift of the Head, Heart & Hand box
     gift_cell = create_boxed_section()
     p = gift_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Gift of the Head, Heart & Hand').bold = True
     p = gift_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('GIFTS OF THE HEAD').bold = True
     p = gift_cell.add_paragraph()
-    run = p.add_run('(What special knowledge, expertise, life experience do you have that you can share with others?)')
-    run.italic = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('(What special knowledge, expertise, life experience do you have that you can share with others?)')
     for _ in range(4):
-        gift_cell.add_paragraph()
+        p = gift_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = gift_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('GIFTS OF THE HEART').bold = True
     p = gift_cell.add_paragraph()
-    run = p.add_run('(What things are really important to you, that you deeply care about and would welcome to share with others?)')
-    run.italic = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('(What things are really important to you, that you deeply care about and would welcome to share with others?)')
     for _ in range(4):
-        gift_cell.add_paragraph()
+        p = gift_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = gift_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('GIFTS OF THE HAND').bold = True
     p = gift_cell.add_paragraph()
-    run = p.add_run('(What practical skill do you bring with you, that you are good at, proud of and you may wish to share with others?)')
-    run.italic = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('(What practical skill do you bring with you, that you are good at, proud of and you may wish to share with others?)')
     for _ in range(4):
-        gift_cell.add_paragraph()
+        p = gift_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # My Dreams box
     dreams_cell = create_boxed_section()
     p = dreams_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('My Dreams').bold = True
     for _ in range(4):
-        dreams_cell.add_paragraph()
+        p = dreams_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # People in My Life box
     people_cell = create_boxed_section()
     p = people_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('People in My Life').bold = True
     for _ in range(4):
-        people_cell.add_paragraph()
+        p = people_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # My Week box
     week_cell = create_boxed_section()
     p = week_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('My Week').bold = True
     p = week_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports')
-    week_cell.add_paragraph()  # Empty line
+    p = week_cell.add_paragraph()  # Empty line
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     # Add table inside the box
     week_table = week_cell.add_table(rows=6, cols=8)
@@ -3623,100 +3670,149 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None):
     header_cells = week_table.rows[0].cells
     for i, day in enumerate(days):
         p = header_cells[i].paragraphs[0]
-        p.add_run(day).bold = True
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        if day:  # Only bold the day names, not the empty first cell
+            p.add_run(day).bold = True
     
     # Time rows
     times = ['Early Morning', 'Morning', 'Afternoon', 'Evening', 'Overnight']
     for i, time in enumerate(times):
         p = week_table.rows[i + 1].cells[0].paragraphs[0]
-        p.add_run(time).bold = True
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.add_run(time)  # Not bold per user requirements
+        # Center align all other cells in this row
+        for j in range(1, 8):
+            week_table.rows[i + 1].cells[j].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # My Safety box
     safety_cell = create_boxed_section()
     p = safety_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('My Safety').bold = True
     p = safety_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Following on from the risk assessment, were there people, places or times that you feel unsafe? What changes need to be made and what support is needed so that you feel safe? Is there a formal safety plan in place? Is one needed?')
     for _ in range(4):
-        safety_cell.add_paragraph()
+        p = safety_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # My Medications box
     med_cell = create_boxed_section()
     p = med_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('My Medications and how I manage them').bold = True
     p = med_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Do you need assistance with organising and taking your medication?')
     for _ in range(4):
-        med_cell.add_paragraph()
+        p = med_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # My special supports box
     special_cell = create_boxed_section()
     p = special_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('My special supports').bold = True
     p = special_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:')
     for _ in range(4):
-        special_cell.add_paragraph()
+        p = special_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # My Goals box
     goals_cell = create_boxed_section()
     p = goals_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('My Goals').bold = True
     p = goals_cell.add_paragraph()
-    p.add_run('My SMART Goal 1').bold = True
-    goals_cell.add_paragraph()  # Empty line
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('My SMART Goal 1')
+    p = goals_cell.add_paragraph()  # Empty line
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = goals_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
     for _ in range(4):
-        goals_cell.add_paragraph()
+        p = goals_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = goals_cell.add_paragraph()
-    p.add_run('My SMART Goal 2').bold = True
-    goals_cell.add_paragraph()  # Empty line
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('My SMART Goal 2')
+    p = goals_cell.add_paragraph()  # Empty line
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = goals_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
     for _ in range(4):
-        goals_cell.add_paragraph()
+        p = goals_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = goals_cell.add_paragraph()
-    p.add_run('My SMART Goal 3').bold = True
-    goals_cell.add_paragraph()  # Empty line
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('My SMART Goal 3')
+    p = goals_cell.add_paragraph()  # Empty line
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = goals_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
-    goals_cell.add_paragraph()  # Empty line
+    for _ in range(4):
+        p = goals_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p = goals_cell.add_paragraph()
-    p.add_run('My SMART Goal 4').bold = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('My SMART Goal 4')
     p = goals_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    for _ in range(4):
+        p = goals_cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     doc.add_paragraph()  # Empty line
     
     # How I Will Celebrate box
     celebrate_cell = create_boxed_section()
     p = celebrate_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('How I Will Celebrate Achieving My Goals').bold = True
-    celebrate_cell.add_paragraph('Goal 1 ____________________________________________________________________________')
-    celebrate_cell.add_paragraph('Goal 2 ____________________________________________________________________________')
-    celebrate_cell.add_paragraph('Goal 3 ____________________________________________________________________________')
-    celebrate_cell.add_paragraph('Goal 4 ____________________________________________________________________________')
+    p = celebrate_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('Goal 1 ____________________________________________________________________________')
+    p = celebrate_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('Goal 2 ____________________________________________________________________________')
+    p = celebrate_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('Goal 3 ____________________________________________________________________________')
+    p = celebrate_cell.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('Goal 4 ____________________________________________________________________________')
     
     doc.add_paragraph()  # Empty line
     
     # Final signature section
     p = doc.add_paragraph()
-    p.add_run('This Is My Plan')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('This Is My Plan').bold = True
     
     p = doc.add_paragraph()
-    p.add_run('Signature: ')
-    p.add_run('My Name: ').bold = True
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.add_run('Signature: ').bold = True
+    p.add_run('My Name: ')
     p.add_run(f'{first_name} {surname}'.strip() if (first_name or surname) else '')
-    p.add_run(' ')
+    
+    doc.add_paragraph()  # Empty line between Signature and Date
+    
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Date: ').bold = True
     p.add_run(datetime.now().strftime('%d/%m/%Y'))
     
