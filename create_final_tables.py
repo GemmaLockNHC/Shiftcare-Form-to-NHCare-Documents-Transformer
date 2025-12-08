@@ -3742,8 +3742,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run.italic = True
     set_font_size_12(run)
     for _ in range(4):
-        p = about_me_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(about_me_cell)
     
     doc.add_paragraph()  # Empty line between boxes
     
@@ -3753,64 +3752,60 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run = p.add_run('My NDIS Goals')
     run.font.color.rgb = border_color
     run.bold = True
-    p = ndis_goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(ndis_goals_cell)
     run = p.add_run('Short term goals')
     run.font.color.rgb = border_color
+    set_font_size_12(run)
     for _ in range(4):
-        p = ndis_goals_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p = ndis_goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(ndis_goals_cell)
+    p = add_paragraph_no_spacing(ndis_goals_cell)
     run = p.add_run('Medium & Long term goals')
     run.font.color.rgb = border_color
+    set_font_size_12(run)
     for _ in range(4):
-        p = ndis_goals_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(ndis_goals_cell)
     
     doc.add_paragraph()  # Empty line between boxes
     
     # Gift of the Head, Heart & Hand box
     gift_cell = create_boxed_section()
-    p = gift_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(gift_cell)
     run = p.add_run('Gift of the Head, Heart & Hand')
     run.font.color.rgb = border_color
     run.bold = True
-    gift_cell.add_paragraph()  # Empty line after "Gift of the Head, Heart & Hand"
-    p = gift_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_font_size_12(run)
+    add_paragraph_no_spacing(gift_cell)  # Empty line after "Gift of the Head, Heart & Hand"
+    p = add_paragraph_no_spacing(gift_cell)
     run = p.add_run('GIFTS OF THE HEAD')
     run.font.color.rgb = border_color
     run.bold = True
-    p = gift_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('(What special knowledge, expertise, life experience do you have that you can share with others?)')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(gift_cell)
+    run = p.add_run('(What special knowledge, expertise, life experience do you have that you can share with others?)')
+    set_font_size_12(run)
     for _ in range(4):
-        p = gift_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p = gift_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(gift_cell)
+    p = add_paragraph_no_spacing(gift_cell)
     run = p.add_run('GIFTS OF THE HEART')
     run.font.color.rgb = border_color
     run.bold = True
-    p = gift_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('(What things are really important to you, that you deeply care about and would welcome to share with others?)')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(gift_cell)
+    run = p.add_run('(What things are really important to you, that you deeply care about and would welcome to share with others?)')
+    set_font_size_12(run)
     for _ in range(4):
-        p = gift_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p = gift_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(gift_cell)
+    p = add_paragraph_no_spacing(gift_cell)
     run = p.add_run('GIFTS OF THE HAND')
     run.font.color.rgb = border_color
     run.bold = True
-    p = gift_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('(What practical skill do you bring with you, that you are good at, proud of and you may wish to share with others?)')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(gift_cell)
+    run = p.add_run('(What practical skill do you bring with you, that you are good at, proud of and you may wish to share with others?)')
+    set_font_size_12(run)
     for _ in range(4):
-        p = gift_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(gift_cell)
     
     doc.add_paragraph()  # Empty line between boxes
     
@@ -3820,9 +3815,9 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run = p.add_run('My Dreams')
     run.font.color.rgb = border_color
     run.bold = True
+    set_font_size_12(run)
     for _ in range(4):
-        p = dreams_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(dreams_cell)
     
     doc.add_paragraph()  # Empty line between boxes
     
@@ -3832,9 +3827,9 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run = p.add_run('People in My Life')
     run.font.color.rgb = border_color
     run.bold = True
+    set_font_size_12(run)
     for _ in range(4):
-        p = people_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(people_cell)
     
     doc.add_paragraph()  # Empty line between boxes
     
@@ -3847,7 +3842,8 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     add_paragraph_no_spacing(week_cell)  # Empty line after "My Week"
     p = add_paragraph_no_spacing(week_cell)
     p.paragraph_format.space_after = Pt(12)  # Add space after description text
-    p.add_run('Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports')
+    run = p.add_run('Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports')
+    set_font_size_12(run)
     
     # Add table inside the box - centered with proper spacing
     # Add a paragraph before table for spacing
@@ -3916,10 +3912,10 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run.font.color.rgb = border_color
     run.bold = True
     p = add_paragraph_no_spacing(safety_cell)
-    p.add_run('Following on from the risk assessment, were there people, places or times that you feel unsafe? What changes need to be made and what support is needed so that you feel safe? Is there a formal safety plan in place? Is one needed?')
+    run = p.add_run('Following on from the risk assessment, were there people, places or times that you feel unsafe? What changes need to be made and what support is needed so that you feel safe? Is there a formal safety plan in place? Is one needed?')
+    set_font_size_12(run)
     for _ in range(4):
-        p = safety_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(safety_cell)
     
     doc.add_paragraph()  # Empty line between boxes
     
@@ -3930,10 +3926,10 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run.font.color.rgb = border_color
     run.bold = True
     p = add_paragraph_no_spacing(med_cell)
-    p.add_run('Do you need assistance with organising and taking your medication?')
+    run = p.add_run('Do you need assistance with organising and taking your medication?')
+    set_font_size_12(run)
     for _ in range(4):
-        p = med_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(med_cell)
     
     doc.add_paragraph()  # Empty line between boxes
     
@@ -3944,10 +3940,10 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run.font.color.rgb = border_color
     run.bold = True
     p = add_paragraph_no_spacing(special_cell)
-    p.add_run('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:')
+    run = p.add_run('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:')
+    set_font_size_12(run)
     for _ in range(4):
-        p = special_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(special_cell)
     
     doc.add_paragraph()  # Empty line between boxes
     
@@ -3958,48 +3954,41 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run.font.color.rgb = border_color
     run.bold = True
     add_paragraph_no_spacing(goals_cell)  # Empty line after "My Goals"
-    p = goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('My SMART Goal 1')
-    p = goals_cell.add_paragraph()  # Empty line
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p = goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    p = add_paragraph_no_spacing(goals_cell)
+    run = p.add_run('My SMART Goal 1')
+    set_font_size_12(run)
+    add_paragraph_no_spacing(goals_cell)  # Empty line
+    p = add_paragraph_no_spacing(goals_cell)
+    run = p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    set_font_size_12(run)
     for _ in range(4):
-        p = goals_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p = goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('My SMART Goal 2')
-    p = goals_cell.add_paragraph()  # Empty line
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p = goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+        add_paragraph_no_spacing(goals_cell)
+    p = add_paragraph_no_spacing(goals_cell)
+    run = p.add_run('My SMART Goal 2')
+    set_font_size_12(run)
+    add_paragraph_no_spacing(goals_cell)  # Empty line
+    p = add_paragraph_no_spacing(goals_cell)
+    run = p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    set_font_size_12(run)
     for _ in range(4):
-        p = goals_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p = goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('My SMART Goal 3')
-    p = goals_cell.add_paragraph()  # Empty line
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p = goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+        add_paragraph_no_spacing(goals_cell)
+    p = add_paragraph_no_spacing(goals_cell)
+    run = p.add_run('My SMART Goal 3')
+    set_font_size_12(run)
+    add_paragraph_no_spacing(goals_cell)  # Empty line
+    p = add_paragraph_no_spacing(goals_cell)
+    run = p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    set_font_size_12(run)
     for _ in range(4):
-        p = goals_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p = goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('My SMART Goal 4')
-    p = goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+        add_paragraph_no_spacing(goals_cell)
+    p = add_paragraph_no_spacing(goals_cell)
+    run = p.add_run('My SMART Goal 4')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(goals_cell)
+    run = p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    set_font_size_12(run)
     for _ in range(4):
-        p = goals_cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        add_paragraph_no_spacing(goals_cell)
     
     # How I Will Celebrate box
     celebrate_cell = create_boxed_section()
@@ -4008,22 +3997,22 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run.font.color.rgb = border_color
     run.bold = True
     add_paragraph_no_spacing(celebrate_cell)  # Empty line after "How I Will Celebrate Achieving My Goals"
-    p = celebrate_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run('Goal 1 ____________________________________________________________________________')
+    p = add_paragraph_no_spacing(celebrate_cell)
+    run = p.add_run('Goal 1')
     run.font.color.rgb = border_color
-    p = celebrate_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run('Goal 2 ____________________________________________________________________________')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(celebrate_cell)
+    run = p.add_run('Goal 2')
     run.font.color.rgb = border_color
-    p = celebrate_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run('Goal 3 ____________________________________________________________________________')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(celebrate_cell)
+    run = p.add_run('Goal 3')
     run.font.color.rgb = border_color
-    p = celebrate_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run('Goal 4 ____________________________________________________________________________')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(celebrate_cell)
+    run = p.add_run('Goal 4')
     run.font.color.rgb = border_color
+    set_font_size_12(run)
     
     doc.add_paragraph()  # Empty line between boxes
     
@@ -4035,18 +4024,18 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run.bold = True
     p.paragraph_format.space_after = Pt(12)  # One space below "This Is My Plan"
     
-    p = signature_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(signature_cell)
     run1 = p.add_run('Signature: ')
     run1.font.color.rgb = border_color
     run1.bold = True
+    set_font_size_12(run1)
     run2 = p.add_run(f'{first_name} {surname}'.strip() if (first_name or surname) else '')
     run2.font.color.rgb = border_color  # Data following Signature: should be colored
+    set_font_size_12(run2)
     
-    signature_cell.add_paragraph()  # Empty line between Signature and Date
+    add_paragraph_no_spacing(signature_cell)  # Empty line between Signature and Date
     
-    p = signature_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(signature_cell)
     run1 = p.add_run('Date: ')
     run1.font.color.rgb = border_color
     run1.bold = True
