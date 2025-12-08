@@ -467,8 +467,9 @@ def upload_file():
     generate_service_estimate = request.form.get('generate_service_estimate') == '1'
     generate_risk_assessment = request.form.get('generate_risk_assessment') == '1'
     generate_support_plan = request.form.get('generate_support_plan') == '1'
+    generate_medication_plan = request.form.get('generate_medication_plan') == '1'
     
-    if not generate_csv and not generate_service_agreement and not generate_emergency_plan and not generate_service_estimate and not generate_risk_assessment and not generate_support_plan:
+    if not generate_csv and not generate_service_agreement and not generate_emergency_plan and not generate_service_estimate and not generate_risk_assessment and not generate_support_plan and not generate_medication_plan:
         flash('Please select at least one output to generate')
         return redirect(request.url)
     
@@ -502,7 +503,7 @@ def upload_file():
             # Pre-load CSV files if any document needs them
             if generate_service_agreement or generate_service_estimate:
                 ndis_items = load_ndis_support_items()
-            if generate_service_agreement or generate_emergency_plan or generate_risk_assessment or generate_support_plan:
+            if generate_service_agreement or generate_emergency_plan or generate_risk_assessment or generate_support_plan or generate_medication_plan:
                 active_users = load_active_users(team_value)
             
             output_files = []
@@ -615,6 +616,41 @@ def upload_file():
                 sp_path = os.path.join(app.config['UPLOAD_FOLDER'], sp_filename)
                 create_support_plan_from_data(pdf_data, sp_path, contact_name, active_users)
                 output_files.append(('docx', sp_path, sp_filename))
+            
+            # Generate Medication Assistance Plan DOCX if requested
+            if generate_medication_plan:
+                from create_final_tables import create_medication_assistance_plan_from_data
+                from datetime import datetime
+                import re
+                
+                first_name = pdf_data.get('First name (Details of the Client)', '').strip()
+                surname = pdf_data.get('Surname (Details of the Client)', '').strip()
+                dob_str = pdf_data.get('Date of birth (Details of the Client)', '').strip()
+                ndis_number = pdf_data.get('NDIS number (Details of the Client)', '').strip()
+                
+                year = None
+                if dob_str:
+                    year_match = re.search(r'\b(19|20)\d{2}\b', dob_str)
+                    if year_match:
+                        year = year_match.group(0)
+                if not year:
+                    year = datetime.now().strftime('%Y')
+                
+                client_id = ''
+                if ndis_number:
+                    digits = re.sub(r'\D', '', ndis_number)
+                    if len(digits) >= 6:
+                        client_id = digits[:6]
+                    elif len(digits) > 0:
+                        client_id = digits.ljust(6, '0')
+                if not client_id:
+                    client_id = datetime.now().strftime('%H%M%S')
+                
+                name_part = f"{first_name} {surname}".strip() if (first_name or surname) else "test test"
+                mp_filename = f"Medication Assistance Plan - {name_part} {year} - {client_id}.docx"
+                mp_path = os.path.join(app.config['UPLOAD_FOLDER'], mp_filename)
+                create_medication_assistance_plan_from_data(pdf_data, mp_path, contact_name, active_users)
+                output_files.append(('docx', mp_path, mp_filename))
             
             # Clean up input file
             os.remove(filepath)
