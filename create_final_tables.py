@@ -3631,6 +3631,25 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         """Set font size to 12 for a run"""
         run.font.size = Pt(12)
     
+    # Helper function to add an empty paragraph that's actually visible (for spacing)
+    def add_empty_line(cell):
+        """Add an empty paragraph that will be visible as a blank line"""
+        p = cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # Set minimal spacing to ensure the empty line is visible
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.line_spacing = 1.0
+        # Set line height via XML to ensure it's visible
+        pPr = p._element.get_or_add_pPr()
+        spacing = OxmlElement('w:spacing')
+        spacing.set(qn('w:before'), '0')
+        spacing.set(qn('w:after'), '0')
+        spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
+        spacing.set(qn('w:lineRule'), 'auto')
+        pPr.append(spacing)
+        return p
+    
     # Title box - "My Support Plan"
     title_cell = create_boxed_section()
     # Fill background with #256eb7
@@ -3704,7 +3723,8 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p.paragraph_format.line_spacing = 1.0  # Single line spacing
         # Force zero spacing via XML to override style defaults
         pPr = p._element.get_or_add_pPr()
-        for spacing_elem in pPr.xpath('.//w:spacing'):
+        existing_spacing = pPr.xpath('.//w:spacing')
+        for spacing_elem in existing_spacing:
             pPr.remove(spacing_elem)
         spacing = OxmlElement('w:spacing')
         spacing.set(qn('w:before'), '0')
@@ -4038,22 +4058,22 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run.font.color.rgb = border_color
     run.bold = True
     set_font_size_12(run)
-    add_paragraph_no_spacing(celebrate_cell)  # Empty line after "How I Will Celebrate Achieving My Goals"
+    add_empty_line(celebrate_cell)  # Empty line after "How I Will Celebrate Achieving My Goals"
     p = add_paragraph_no_spacing(celebrate_cell)
     run = p.add_run('Goal 1')
     run.font.color.rgb = border_color
     set_font_size_12(run)
-    add_paragraph_no_spacing(celebrate_cell)  # Empty line between goals
+    add_empty_line(celebrate_cell)  # Empty line between goals
     p = add_paragraph_no_spacing(celebrate_cell)
     run = p.add_run('Goal 2')
     run.font.color.rgb = border_color
     set_font_size_12(run)
-    add_paragraph_no_spacing(celebrate_cell)  # Empty line between goals
+    add_empty_line(celebrate_cell)  # Empty line between goals
     p = add_paragraph_no_spacing(celebrate_cell)
     run = p.add_run('Goal 3')
     run.font.color.rgb = border_color
     set_font_size_12(run)
-    add_paragraph_no_spacing(celebrate_cell)  # Empty line between goals
+    add_empty_line(celebrate_cell)  # Empty line between goals
     p = add_paragraph_no_spacing(celebrate_cell)
     run = p.add_run('Goal 4')
     run.font.color.rgb = border_color
