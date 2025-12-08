@@ -3424,49 +3424,36 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None):
     Args:
         csv_data: Dictionary containing form data
         output_path: Path where the .docx should be saved
-        contact_name: Optional name (not currently used but kept for consistency)
+        contact_name: Optional name to use for Key Contact lookup
     """
     try:
         from docx import Document
-        from docx.shared import Pt, RGBColor
+        from docx.shared import Pt, RGBColor, Inches
         from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
         from datetime import datetime
         import re
     except ImportError:
         raise ImportError("python-docx is required for Support Plan generation. Please install it: pip install python-docx")
     
-    # Extract client information for filename and content
+    # Get team value to determine which active users CSV to use
+    team_value = csv_data.get('Neighbourhood Care representative team', '')
+    # Clean up checkbox characters
+    team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+    
+    # Load active users based on team
+    active_users = load_active_users(team_value)
+    
+    # Get key contact information
+    key_contact_name_to_use = contact_name or csv_data.get('Respondent', '')
+    key_contact_data = lookup_user_data(active_users, key_contact_name_to_use) if key_contact_name_to_use else {'name': '', 'mobile': '', 'email': '', 'team': ''}
+    
+    # Extract client information
     first_name = csv_data.get('First name (Details of the Client)', '').strip()
     surname = csv_data.get('Surname (Details of the Client)', '').strip()
     dob_str = csv_data.get('Date of birth (Details of the Client)', '').strip()
-    ndis_number = csv_data.get('NDIS number (Details of the Client)', '').strip()
-    
-    # Extract year from date of birth (try various formats)
-    year = None
-    if dob_str:
-        # Try to extract year from date string (could be DD/MM/YYYY, YYYY-MM-DD, etc.)
-        year_match = re.search(r'\b(19|20)\d{2}\b', dob_str)
-        if year_match:
-            year = year_match.group(0)
-    
-    # If no year from DOB, use current year
-    if not year:
-        year = datetime.now().strftime('%Y')
-    
-    # Extract ID from NDIS number (first 6 digits) or generate one
-    client_id = ''
-    if ndis_number:
-        # Extract digits only
-        digits = re.sub(r'\D', '', ndis_number)
-        if len(digits) >= 6:
-            client_id = digits[:6]
-        elif len(digits) > 0:
-            # Pad with zeros if less than 6 digits
-            client_id = digits.ljust(6, '0')
-    
-    # If no ID from NDIS, generate a simple ID from timestamp
-    if not client_id:
-        client_id = datetime.now().strftime('%H%M%S')  # Use time as fallback
+    home_address = csv_data.get('Home address (Contact Details of the Client)', '').strip()
     
     # Create Word document
     doc = Document()
@@ -3477,44 +3464,261 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None):
     font.name = 'Calibri'
     font.size = Pt(11)
     
-    # Add title
-    title = doc.add_heading('Support Plan', 0)
-    title.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    title_run = title.runs[0]
-    title_run.font.size = Pt(16)
-    title_run.font.bold = True
+    # Helper function to create a boxed section
+    def create_boxed_section():
+        """Create a table with one cell that acts as a box"""
+        table = doc.add_table(rows=1, cols=1)
+        table.style = 'Table Grid'
+        cell = table.rows[0].cells[0]
+        
+        # Set cell padding
+        tc_pr = cell._element.get_or_add_tcPr()
+        tc_mar = OxmlElement('w:tcMar')
+        for margin in ['top', 'left', 'bottom', 'right']:
+            margin_elem = OxmlElement(f'w:{margin}')
+            margin_elem.set(qn('w:w'), '144')  # 0.1 inch
+            margin_elem.set(qn('w:type'), 'dxa')
+            tc_mar.append(margin_elem)
+        tc_pr.append(tc_mar)
+        
+        return cell
     
-    # Add client information section
-    doc.add_heading('Client Information', level=1)
+    # Header section
+    p = doc.add_paragraph()
+    p.add_run('My Name: ').bold = True
+    p.add_run(f'{first_name} {surname}'.strip() if (first_name or surname) else '')
     
-    # Add client details
-    if first_name or surname:
-        p = doc.add_paragraph()
-        p.add_run('Name: ').bold = True
-        p.add_run(f'{first_name} {surname}'.strip())
+    p = doc.add_paragraph()
+    p.add_run('My Date of Birth: ').bold = True
+    p.add_run(dob_str if dob_str else '')
     
-    if dob_str:
-        p = doc.add_paragraph()
-        p.add_run('Date of Birth: ').bold = True
-        p.add_run(dob_str)
+    p = doc.add_paragraph()
+    p.add_run('My Address: ').bold = True
+    p.add_run(home_address if home_address else '')
     
-    if ndis_number:
-        p = doc.add_paragraph()
-        p.add_run('NDIS Number: ').bold = True
-        p.add_run(ndis_number)
+    doc.add_paragraph()  # Empty line
     
-    # Add placeholder sections
-    doc.add_heading('Support Goals', level=1)
-    doc.add_paragraph('Support goals and objectives will be documented here.')
+    # About this Plan section
+    doc.add_paragraph('About this Plan')
+    bullet_points = [
+        'This plan lets you share information about who you are, what your life is like and your dreams',
+        'You can make this plan by yourself, with your support worker or with someone you choose',
+        'This plan contains your goals and what supports you need to help you achieve them',
+        'This plan has the supports you have now around you and how they can help you achieve your goals'
+    ]
+    for point in bullet_points:
+        p = doc.add_paragraph(point, style='List Bullet')
     
-    doc.add_heading('Support Services', level=1)
-    doc.add_paragraph('Support services and activities will be documented here.')
+    doc.add_paragraph()  # Empty line
     
-    doc.add_heading('Support Schedule', level=1)
-    doc.add_paragraph('Support schedule and frequency will be documented here.')
+    # My Support Team section
+    p = doc.add_paragraph()
+    p.add_run('My Support Team: ').bold = True
+    p.add_run(key_contact_data.get('team', '') if key_contact_data.get('team') else '')
     
-    doc.add_heading('Review Information', level=1)
-    doc.add_paragraph('Review dates and outcomes will be documented here.')
+    p = doc.add_paragraph()
+    p.add_run('My Key Contact: ').bold = True
+    p.add_run(key_contact_data.get('name', '') if key_contact_data.get('name') and key_contact_data.get('name') != '[Not Found]' else '')
+    
+    p = doc.add_paragraph()
+    p.add_run('Contact Number: ').bold = True
+    p.add_run(key_contact_data.get('mobile', '') if key_contact_data.get('mobile') and key_contact_data.get('mobile') != '[Not Found]' else '')
+    
+    p = doc.add_paragraph()
+    p.add_run('Email: ').bold = True
+    p.add_run(key_contact_data.get('email', '') if key_contact_data.get('email') and key_contact_data.get('email') != '[Not Found]' else '')
+    
+    doc.add_paragraph()  # Empty line
+    
+    # What are some of the things section
+    doc.add_paragraph('What are some of the things that you want the people supporting you to know about you?')
+    
+    # About Me box
+    about_me_cell = create_boxed_section()
+    p = about_me_cell.add_paragraph()
+    p.add_run('About Me').bold = True
+    p = about_me_cell.add_paragraph()
+    run = p.add_run('For example, your living situation, study, friends, family/relationships, your personality, things that are important to you, how you spend your leisure time')
+    run.italic = True
+    for _ in range(4):
+        about_me_cell.add_paragraph()
+    
+    doc.add_paragraph()  # Empty line
+    
+    # My NDIS Goals box
+    ndis_goals_cell = create_boxed_section()
+    p = ndis_goals_cell.add_paragraph()
+    p.add_run('My NDIS Goals').bold = True
+    p = ndis_goals_cell.add_paragraph()
+    p.add_run('Short term goals').bold = True
+    for _ in range(4):
+        ndis_goals_cell.add_paragraph()
+    p = ndis_goals_cell.add_paragraph()
+    p.add_run('Medium & Long term goals').bold = True
+    for _ in range(4):
+        ndis_goals_cell.add_paragraph()
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Gift of the Head, Heart & Hand box
+    gift_cell = create_boxed_section()
+    p = gift_cell.add_paragraph()
+    p.add_run('Gift of the Head, Heart & Hand').bold = True
+    p = gift_cell.add_paragraph()
+    p.add_run('GIFTS OF THE HEAD').bold = True
+    p = gift_cell.add_paragraph()
+    run = p.add_run('(What special knowledge, expertise, life experience do you have that you can share with others?)')
+    run.italic = True
+    for _ in range(4):
+        gift_cell.add_paragraph()
+    p = gift_cell.add_paragraph()
+    p.add_run('GIFTS OF THE HEART').bold = True
+    p = gift_cell.add_paragraph()
+    run = p.add_run('(What things are really important to you, that you deeply care about and would welcome to share with others?)')
+    run.italic = True
+    for _ in range(4):
+        gift_cell.add_paragraph()
+    p = gift_cell.add_paragraph()
+    p.add_run('GIFTS OF THE HAND').bold = True
+    p = gift_cell.add_paragraph()
+    run = p.add_run('(What practical skill do you bring with you, that you are good at, proud of and you may wish to share with others?)')
+    run.italic = True
+    for _ in range(4):
+        gift_cell.add_paragraph()
+    
+    doc.add_paragraph()  # Empty line
+    
+    # My Dreams box
+    dreams_cell = create_boxed_section()
+    p = dreams_cell.add_paragraph()
+    p.add_run('My Dreams').bold = True
+    for _ in range(4):
+        dreams_cell.add_paragraph()
+    
+    doc.add_paragraph()  # Empty line
+    
+    # People in My Life box
+    people_cell = create_boxed_section()
+    p = people_cell.add_paragraph()
+    p.add_run('People in My Life').bold = True
+    for _ in range(4):
+        people_cell.add_paragraph()
+    
+    doc.add_paragraph()  # Empty line
+    
+    # My Week box
+    week_cell = create_boxed_section()
+    p = week_cell.add_paragraph()
+    p.add_run('My Week').bold = True
+    p = week_cell.add_paragraph()
+    p.add_run('Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports')
+    week_cell.add_paragraph()  # Empty line
+    
+    # Add table inside the box
+    week_table = week_cell.add_table(rows=6, cols=8)
+    week_table.style = 'Table Grid'
+    
+    # Header row
+    days = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    header_cells = week_table.rows[0].cells
+    for i, day in enumerate(days):
+        p = header_cells[i].paragraphs[0]
+        p.add_run(day).bold = True
+    
+    # Time rows
+    times = ['Early Morning', 'Morning', 'Afternoon', 'Evening', 'Overnight']
+    for i, time in enumerate(times):
+        p = week_table.rows[i + 1].cells[0].paragraphs[0]
+        p.add_run(time).bold = True
+    
+    doc.add_paragraph()  # Empty line
+    
+    # My Safety box
+    safety_cell = create_boxed_section()
+    p = safety_cell.add_paragraph()
+    p.add_run('My Safety').bold = True
+    p = safety_cell.add_paragraph()
+    p.add_run('Following on from the risk assessment, were there people, places or times that you feel unsafe? What changes need to be made and what support is needed so that you feel safe? Is there a formal safety plan in place? Is one needed?')
+    for _ in range(4):
+        safety_cell.add_paragraph()
+    
+    doc.add_paragraph()  # Empty line
+    
+    # My Medications box
+    med_cell = create_boxed_section()
+    p = med_cell.add_paragraph()
+    p.add_run('My Medications and how I manage them').bold = True
+    p = med_cell.add_paragraph()
+    p.add_run('Do you need assistance with organising and taking your medication?')
+    for _ in range(4):
+        med_cell.add_paragraph()
+    
+    doc.add_paragraph()  # Empty line
+    
+    # My special supports box
+    special_cell = create_boxed_section()
+    p = special_cell.add_paragraph()
+    p.add_run('My special supports').bold = True
+    p = special_cell.add_paragraph()
+    p.add_run('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:')
+    for _ in range(4):
+        special_cell.add_paragraph()
+    
+    doc.add_paragraph()  # Empty line
+    
+    # My Goals box
+    goals_cell = create_boxed_section()
+    p = goals_cell.add_paragraph()
+    p.add_run('My Goals').bold = True
+    p = goals_cell.add_paragraph()
+    p.add_run('My SMART Goal 1').bold = True
+    goals_cell.add_paragraph()  # Empty line
+    p = goals_cell.add_paragraph()
+    p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    for _ in range(4):
+        goals_cell.add_paragraph()
+    p = goals_cell.add_paragraph()
+    p.add_run('My SMART Goal 2').bold = True
+    goals_cell.add_paragraph()  # Empty line
+    p = goals_cell.add_paragraph()
+    p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    for _ in range(4):
+        goals_cell.add_paragraph()
+    p = goals_cell.add_paragraph()
+    p.add_run('My SMART Goal 3').bold = True
+    goals_cell.add_paragraph()  # Empty line
+    p = goals_cell.add_paragraph()
+    p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    goals_cell.add_paragraph()  # Empty line
+    p = goals_cell.add_paragraph()
+    p.add_run('My SMART Goal 4').bold = True
+    p = goals_cell.add_paragraph()
+    p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
+    
+    doc.add_paragraph()  # Empty line
+    
+    # How I Will Celebrate box
+    celebrate_cell = create_boxed_section()
+    p = celebrate_cell.add_paragraph()
+    p.add_run('How I Will Celebrate Achieving My Goals').bold = True
+    celebrate_cell.add_paragraph('Goal 1 ____________________________________________________________________________')
+    celebrate_cell.add_paragraph('Goal 2 ____________________________________________________________________________')
+    celebrate_cell.add_paragraph('Goal 3 ____________________________________________________________________________')
+    celebrate_cell.add_paragraph('Goal 4 ____________________________________________________________________________')
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Final signature section
+    p = doc.add_paragraph()
+    p.add_run('This Is My Plan')
+    
+    p = doc.add_paragraph()
+    p.add_run('Signature: ')
+    p.add_run('My Name: ').bold = True
+    p.add_run(f'{first_name} {surname}'.strip() if (first_name or surname) else '')
+    p.add_run(' ')
+    p.add_run('Date: ').bold = True
+    p.add_run(datetime.now().strftime('%d/%m/%Y'))
     
     # Save document
     doc.save(output_path)
