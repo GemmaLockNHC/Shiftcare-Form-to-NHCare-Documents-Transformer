@@ -489,8 +489,21 @@ def upload_file():
         
         try:
             # Parse PDF data using the working function from create_final_tables
-            from create_final_tables import parse_pdf_to_data
+            from create_final_tables import parse_pdf_to_data, load_ndis_support_items, load_active_users
             pdf_data = parse_pdf_to_data(filepath)
+            
+            # Load CSV files once (performance optimization - avoid loading multiple times)
+            ndis_items = None
+            active_users = None
+            team_value = pdf_data.get('Neighbourhood Care representative team', '')
+            # Clean up checkbox characters
+            team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+            
+            # Pre-load CSV files if any document needs them
+            if generate_service_agreement or generate_service_estimate:
+                ndis_items = load_ndis_support_items()
+            if generate_service_agreement or generate_emergency_plan or generate_risk_assessment or generate_support_plan:
+                active_users = load_active_users(team_value)
             
             output_files = []
             
@@ -519,49 +532,44 @@ def upload_file():
                     writer.writerow(build_output_row(parsed))
                 output_files.append(('csv', output_path, 'client_export.csv'))
             
+            # Get contact name once (used by multiple documents)
+            contact_name = request.form.get('contact_name', '').strip()
+            
             # Generate Service Agreement PDF if requested
             if generate_service_agreement:
                 # Import the service agreement generation function
                 from create_final_tables import create_service_agreement_from_data
-                # Get contact name from form
-                contact_name = request.form.get('contact_name', '').strip()
                 sa_filename = f"service_agreement_{unique_filename}.pdf"
                 sa_path = os.path.join(app.config['UPLOAD_FOLDER'], sa_filename)
-                # Pass source PDF path for signature extraction
-                create_service_agreement_from_data(pdf_data, sa_path, contact_name, filepath)
+                # Pass source PDF path for signature extraction and pre-loaded data
+                create_service_agreement_from_data(pdf_data, sa_path, contact_name, filepath, ndis_items, active_users)
                 output_files.append(('pdf', sa_path, 'Service Agreement.pdf'))
             
             # Generate Emergency & Disaster Plan PDF if requested
             if generate_emergency_plan:
                 # Import the emergency plan generation function
                 from create_final_tables import create_emergency_disaster_plan_from_data
-                # Get contact name from form (same as service agreement)
-                contact_name = request.form.get('contact_name', '').strip()
                 edp_filename = f"emergency_disaster_plan_{unique_filename}.pdf"
                 edp_path = os.path.join(app.config['UPLOAD_FOLDER'], edp_filename)
-                create_emergency_disaster_plan_from_data(pdf_data, edp_path, contact_name)
+                create_emergency_disaster_plan_from_data(pdf_data, edp_path, contact_name, active_users)
                 output_files.append(('pdf', edp_path, 'Emergency & Disaster Plan.pdf'))
             
             # Generate Service Estimate CSV if requested
             if generate_service_estimate:
                 # Import the service estimate generation function
                 from create_final_tables import create_service_estimate_csv
-                # Get contact name from form (not used for CSV but kept for consistency)
-                contact_name = request.form.get('contact_name', '').strip()
                 se_filename = f"service_estimate_{unique_filename}.csv"
                 se_path = os.path.join(app.config['UPLOAD_FOLDER'], se_filename)
-                create_service_estimate_csv(pdf_data, se_path, contact_name)
+                create_service_estimate_csv(pdf_data, se_path, contact_name, ndis_items)
                 output_files.append(('csv', se_path, 'Service Estimate.csv'))
             
             # Generate Risk Assessment PDF if requested
             if generate_risk_assessment:
                 # Import the risk assessment generation function
                 from create_final_tables import create_risk_assessment_from_data
-                # Get contact name from form for "Person Completing this assessment"
-                contact_name = request.form.get('contact_name', '').strip()
                 ra_filename = f"risk_assessment_{unique_filename}.pdf"
                 ra_path = os.path.join(app.config['UPLOAD_FOLDER'], ra_filename)
-                create_risk_assessment_from_data(pdf_data, ra_path, contact_name)
+                create_risk_assessment_from_data(pdf_data, ra_path, contact_name, active_users)
                 output_files.append(('pdf', ra_path, 'Risk Assessment.pdf'))
             
             # Generate Support Plan DOCX if requested
@@ -605,7 +613,7 @@ def upload_file():
                 name_part = f"{first_name} {surname}".strip() if (first_name or surname) else "test test"
                 sp_filename = f"Support Plan - {name_part} {year} - {client_id}.docx"
                 sp_path = os.path.join(app.config['UPLOAD_FOLDER'], sp_filename)
-                create_support_plan_from_data(pdf_data, sp_path, contact_name)
+                create_support_plan_from_data(pdf_data, sp_path, contact_name, active_users)
                 output_files.append(('docx', sp_path, sp_filename))
             
             # Clean up input file
