@@ -3608,8 +3608,22 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         else:
             p = cell.add_paragraph()
         p.alignment = alignment
+        # Force zero spacing using XML to override any style defaults
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.line_spacing = 1.0  # Single line spacing
+        # Also set via XML to ensure it's truly zero
+        pPr = p._element.get_or_add_pPr()
+        # Remove any existing spacing
+        for spacing_elem in pPr.xpath('.//w:spacing'):
+            pPr.remove(spacing_elem)
+        # Add explicit zero spacing
+        spacing = OxmlElement('w:spacing')
+        spacing.set(qn('w:before'), '0')
+        spacing.set(qn('w:after'), '0')
+        spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
+        spacing.set(qn('w:lineRule'), 'auto')
+        pPr.append(spacing)
         return p
     
     # Helper function to ensure font size 12 for runs
@@ -3687,6 +3701,17 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_before = Pt(0)
         p.paragraph_format.space_after = Pt(0)  # Remove space below all bullet points
+        p.paragraph_format.line_spacing = 1.0  # Single line spacing
+        # Force zero spacing via XML to override style defaults
+        pPr = p._element.get_or_add_pPr()
+        for spacing_elem in pPr.xpath('.//w:spacing'):
+            pPr.remove(spacing_elem)
+        spacing = OxmlElement('w:spacing')
+        spacing.set(qn('w:before'), '0')
+        spacing.set(qn('w:after'), '0')
+        spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
+        spacing.set(qn('w:lineRule'), 'auto')
+        pPr.append(spacing)
         for run in p.runs:
             set_font_size_12(run)
     
@@ -4018,14 +4043,17 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run = p.add_run('Goal 1')
     run.font.color.rgb = border_color
     set_font_size_12(run)
+    add_paragraph_no_spacing(celebrate_cell)  # Empty line between goals
     p = add_paragraph_no_spacing(celebrate_cell)
     run = p.add_run('Goal 2')
     run.font.color.rgb = border_color
     set_font_size_12(run)
+    add_paragraph_no_spacing(celebrate_cell)  # Empty line between goals
     p = add_paragraph_no_spacing(celebrate_cell)
     run = p.add_run('Goal 3')
     run.font.color.rgb = border_color
     set_font_size_12(run)
+    add_paragraph_no_spacing(celebrate_cell)  # Empty line between goals
     p = add_paragraph_no_spacing(celebrate_cell)
     run = p.add_run('Goal 4')
     run.font.color.rgb = border_color
