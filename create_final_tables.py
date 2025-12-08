@@ -3537,6 +3537,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     about_plan_cell = create_boxed_section()
     p = about_plan_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('About this Plan')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3547,14 +3548,19 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         'This plan contains your goals and what supports you need to help you achieve them',
         'This plan has the supports you have now around you and how they can help you achieve your goals'
     ]
-    for point in bullet_points:
+    for i, point in enumerate(bullet_points):
         p = about_plan_cell.add_paragraph(point, style='List Bullet')
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        if i == len(bullet_points) - 1:  # Last bullet point
+            p.paragraph_format.space_after = Pt(0)  # Remove space below
+    
+    doc.add_paragraph()  # Empty line between boxes
     
     # My Support Team section - in one box
     support_team_cell = create_boxed_section()
     p = support_team_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     p.add_run('My Support Team: ')  # Not bold
     p.add_run(key_contact_data.get('team', '') if key_contact_data.get('team') else '')
     
@@ -3579,23 +3585,31 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     p = doc.add_paragraph('What are some of the things that you want the people supporting you to know about you?')
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
+    doc.add_paragraph()  # Empty line between boxes
+    
     # About Me box
     about_me_cell = create_boxed_section()
     p = about_me_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('About Me')
     run.font.color.rgb = border_color
+    run.bold = True
     p = about_me_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('For example, your living situation, study, friends, family/relationships, your personality, things that are important to you, how you spend your leisure time')
+    run = p.add_run('For example, your living situation, study, friends, family/relationships, your personality, things that are important to you, how you spend your leisure time')
+    run.italic = True
     for _ in range(4):
         p = about_me_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # My NDIS Goals box (no empty line before)
+    doc.add_paragraph()  # Empty line between boxes
+    
+    # My NDIS Goals box
     ndis_goals_cell = create_boxed_section()
     p = ndis_goals_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('My NDIS Goals')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3613,6 +3627,8 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     for _ in range(4):
         p = ndis_goals_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    doc.add_paragraph()  # Empty line between boxes
     
     # Gift of the Head, Heart & Hand box
     gift_cell = create_boxed_section()
@@ -3656,10 +3672,13 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = gift_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
+    doc.add_paragraph()  # Empty line between boxes
+    
     # My Dreams box
     dreams_cell = create_boxed_section()
     p = dreams_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('My Dreams')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3667,10 +3686,13 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = dreams_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
+    doc.add_paragraph()  # Empty line between boxes
+    
     # People in My Life box
     people_cell = create_boxed_section()
     p = people_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('People in My Life')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3678,21 +3700,33 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = people_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
+    doc.add_paragraph()  # Empty line between boxes
+    
     # My Week box
     week_cell = create_boxed_section()
     p = week_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('My Week')
     run.font.color.rgb = border_color
     run.bold = True
     week_cell.add_paragraph()  # Empty line after "My Week"
     p = week_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_after = Pt(12)  # Add space after description text
     p.add_run('Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports')
     
-    # Add table inside the box
+    # Add table inside the box - centered
     week_table = week_cell.add_table(rows=6, cols=8)
     week_table.style = 'Table Grid'
+    # Center the table by setting alignment on the table element
+    tbl_pr = week_table._element.tblPr
+    if tbl_pr is None:
+        tbl_pr = OxmlElement('w:tblPr')
+        week_table._element.insert(0, tbl_pr)
+    jc = OxmlElement('w:jc')
+    jc.set(qn('w:val'), 'center')
+    tbl_pr.append(jc)
     
     # Set table border color to #256eb7 for all cells
     for row in week_table.rows:
@@ -3730,14 +3764,17 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         for j in range(1, 8):
             week_table.rows[i + 1].cells[j].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     
+    doc.add_paragraph()  # Empty line between boxes
+    
     # My Safety box
     safety_cell = create_boxed_section()
     p = safety_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('My Safety')
     run.font.color.rgb = border_color
     run.bold = True
-    safety_cell.add_paragraph()  # Empty line after "My Safety"
+    p.paragraph_format.space_after = Pt(0)  # Remove space below
     p = safety_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Following on from the risk assessment, were there people, places or times that you feel unsafe? What changes need to be made and what support is needed so that you feel safe? Is there a formal safety plan in place? Is one needed?')
@@ -3745,14 +3782,17 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = safety_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
+    doc.add_paragraph()  # Empty line between boxes
+    
     # My Medications box
     med_cell = create_boxed_section()
     p = med_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('My Medications and how I manage them')
     run.font.color.rgb = border_color
     run.bold = True
-    med_cell.add_paragraph()  # Empty line after "My Medications and how I manage them"
+    p.paragraph_format.space_after = Pt(0)  # Remove space below
     p = med_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Do you need assistance with organising and taking your medication?')
@@ -3760,14 +3800,17 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = med_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
+    doc.add_paragraph()  # Empty line between boxes
+    
     # My special supports box
     special_cell = create_boxed_section()
     p = special_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('My special supports')
     run.font.color.rgb = border_color
     run.bold = True
-    special_cell.add_paragraph()  # Empty line after "My special supports"
+    p.paragraph_format.space_after = Pt(0)  # Remove space below
     p = special_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:')
@@ -3775,10 +3818,13 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = special_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
+    doc.add_paragraph()  # Empty line between boxes
+    
     # My Goals box
     goals_cell = create_boxed_section()
     p = goals_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('My Goals')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3851,13 +3897,17 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run = p.add_run('Goal 4 ____________________________________________________________________________')
     run.font.color.rgb = border_color
     
+    doc.add_paragraph()  # Empty line between boxes
+    
     # Final signature section - in a box
     signature_cell = create_boxed_section()
     p = signature_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)  # Remove space above
     run = p.add_run('This Is My Plan')
     run.font.color.rgb = border_color
     run.bold = True
+    p.paragraph_format.space_after = Pt(12)  # One space below "This Is My Plan"
     
     p = signature_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
