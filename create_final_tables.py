@@ -16,15 +16,26 @@ import io
 import tempfile
 
 # Try to register Verdana font if available
+# Optimized: Check platform first to avoid checking irrelevant paths
+VERDANA_FONT = 'Helvetica'  # Default fallback
 try:
-    # Common paths for Verdana font on different systems
-    verdana_paths = [
-        '/System/Library/Fonts/Supplemental/Verdana.ttf',  # macOS
-        '/System/Library/Fonts/Supplemental/Verdana Bold.ttf',  # macOS Bold
-        'C:/Windows/Fonts/verdana.ttf',  # Windows
-        'C:/Windows/Fonts/verdanab.ttf',  # Windows Bold
-        '/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf',  # Linux fallback
-    ]
+    import platform
+    system = platform.system()
+    
+    # Only check paths relevant to current platform
+    if system == 'Darwin':  # macOS
+        verdana_paths = [
+            '/System/Library/Fonts/Supplemental/Verdana.ttf',
+        ]
+    elif system == 'Windows':
+        verdana_paths = [
+            'C:/Windows/Fonts/verdana.ttf',
+        ]
+    else:  # Linux (including Render)
+        verdana_paths = [
+            '/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf',
+        ]
+    
     verdana_registered = False
     for path in verdana_paths:
         if os.path.exists(path):
@@ -35,36 +46,54 @@ try:
                 break
             except Exception as e:
                 continue
-    if not verdana_registered:
-        print("Verdana font not found, will use Helvetica as fallback")
-        VERDANA_FONT = 'Helvetica'
-    else:
+    if verdana_registered:
         VERDANA_FONT = 'Verdana'
+    else:
+        print("Verdana font not found, will use Helvetica as fallback")
 except Exception as e:
     print(f"Could not register Verdana font: {e}, using Helvetica")
-    VERDANA_FONT = 'Helvetica'
 
 # Try to register Calibri font if available
+# Optimized: Check platform first to avoid checking irrelevant paths
+CALIBRI_FONT = 'Helvetica'  # Default fallback
+CALIBRI_BOLD_FONT = 'Helvetica-Bold'
 try:
-    # Common paths for Calibri font on different systems
-    calibri_paths = [
-        '/System/Library/Fonts/Supplemental/Calibri.ttf',  # macOS
-        '/Library/Fonts/Calibri.ttf',  # macOS alternative
-        '~/Library/Fonts/Calibri.ttf',  # macOS user fonts
-        'C:/Windows/Fonts/calibri.ttf',  # Windows
-        'C:/Windows/Fonts/CALIBRI.TTF',  # Windows uppercase
-        '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',  # Linux fallback
-        '/usr/share/fonts/truetype/msttcorefonts/arial.ttf',  # Linux alternative
-    ]
-    calibri_bold_paths = [
-        '/System/Library/Fonts/Supplemental/Calibri Bold.ttf',  # macOS Bold
-        '/Library/Fonts/Calibri Bold.ttf',  # macOS alternative
-        '~/Library/Fonts/Calibri Bold.ttf',  # macOS user fonts
-        'C:/Windows/Fonts/calibrib.ttf',  # Windows Bold
-        'C:/Windows/Fonts/CALIBRIB.TTF',  # Windows uppercase
-        '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',  # Linux fallback
-        '/usr/share/fonts/truetype/msttcorefonts/arialbd.ttf',  # Linux alternative
-    ]
+    import platform
+    system = platform.system()
+    
+    # Only check paths relevant to current platform
+    if system == 'Darwin':  # macOS
+        calibri_paths = [
+            '/System/Library/Fonts/Supplemental/Calibri.ttf',
+            '/Library/Fonts/Calibri.ttf',
+        ]
+        calibri_bold_paths = [
+            '/System/Library/Fonts/Supplemental/Calibri Bold.ttf',
+            '/Library/Fonts/Calibri Bold.ttf',
+        ]
+        # Expand ~ paths for macOS
+        home = os.path.expanduser('~')
+        calibri_paths.append(os.path.join(home, 'Library/Fonts/Calibri.ttf'))
+        calibri_bold_paths.append(os.path.join(home, 'Library/Fonts/Calibri Bold.ttf'))
+    elif system == 'Windows':
+        calibri_paths = [
+            'C:/Windows/Fonts/calibri.ttf',
+            'C:/Windows/Fonts/CALIBRI.TTF',
+        ]
+        calibri_bold_paths = [
+            'C:/Windows/Fonts/calibrib.ttf',
+            'C:/Windows/Fonts/CALIBRIB.TTF',
+        ]
+    else:  # Linux (including Render)
+        calibri_paths = [
+            '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+            '/usr/share/fonts/truetype/msttcorefonts/arial.ttf',
+        ]
+        calibri_bold_paths = [
+            '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+            '/usr/share/fonts/truetype/msttcorefonts/arialbd.ttf',
+        ]
+    
     calibri_registered = False
     calibri_bold_registered = False
     
@@ -90,17 +119,13 @@ try:
             except Exception as e:
                 continue
     
-    if not calibri_registered:
-        print("Calibri font not found, will use Helvetica as fallback")
-        CALIBRI_FONT = 'Helvetica'
-        CALIBRI_BOLD_FONT = 'Helvetica-Bold'
-    else:
+    if calibri_registered:
         CALIBRI_FONT = 'Calibri'
         CALIBRI_BOLD_FONT = 'Calibri-Bold' if calibri_bold_registered else 'Helvetica-Bold'
+    else:
+        print("Calibri font not found, will use Helvetica as fallback")
 except Exception as e:
     print(f"Could not register Calibri font: {e}, using Helvetica")
-    CALIBRI_FONT = 'Helvetica'
-    CALIBRI_BOLD_FONT = 'Helvetica-Bold'
 
 # Try to import Excel library for formatted output
 try:
@@ -3469,12 +3494,78 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # Create Word document
     doc = Document()
     
-    # Set default font to Calibri, size 11, centered
+    # Set default font to Calibri, size 12, centered
     style = doc.styles['Normal']
     font = style.font
     font.name = 'Calibri'
-    font.size = Pt(11)
+    font.size = Pt(12)
     style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add header and footer
+    section = doc.sections[0]
+    
+    # Header
+    header = section.header
+    header_para = header.paragraphs[0]
+    header_para.clear()
+    header_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    
+    # Try to add image to header
+    image_filename = 'image.png'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    image_path = None
+    search_dirs = [script_dir, os.getcwd(), '.']
+    
+    for search_dir in search_dirs:
+        if os.path.exists(search_dir):
+            try:
+                test_path = os.path.join(search_dir, image_filename)
+                if os.path.exists(test_path):
+                    image_path = os.path.abspath(test_path)
+                    break
+                for filename in os.listdir(search_dir):
+                    if filename.lower() == image_filename.lower() or (filename.lower().startswith('image') and filename.lower().endswith('.png')):
+                        full_path = os.path.join(search_dir, filename)
+                        if os.path.exists(full_path):
+                            image_path = os.path.abspath(full_path)
+                            break
+                if image_path:
+                    break
+            except Exception:
+                continue
+    
+    if image_path and os.path.exists(image_path):
+        try:
+            from docx.shared import Inches
+            run = header_para.add_run()
+            run.add_picture(image_path, width=Inches(1.5))
+        except Exception:
+            pass
+    
+    # Footer
+    footer = section.footer
+    footer_para = footer.paragraphs[0]
+    footer_para.clear()
+    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer_run = footer_para.add_run("Neighbourhood Care | Suite 103, 19 Ogilvie Road, Mount Pleasant, WA 6153 | ABN 40 634 832 607")
+    footer_run.font.size = Pt(8)
+    footer_run.font.color.rgb = RGBColor(0x7F, 0x7F, 0x7F)  # #7F7F7F
+    
+    # Add page number to footer (right side)
+    footer_para.add_run("  ")
+    page_num_run = footer_para.add_run()
+    page_num_run._element.text = ""
+    # Add page number field
+    fldChar1 = OxmlElement('w:fldChar')
+    fldChar1.set(qn('w:fldCharType'), 'begin')
+    instrText = OxmlElement('w:instrText')
+    instrText.set(qn('xml:space'), 'preserve')
+    instrText.text = 'PAGE'
+    fldChar2 = OxmlElement('w:fldChar')
+    fldChar2.set(qn('w:fldCharType'), 'end')
+    page_num_run._element.append(fldChar1)
+    page_num_run._element.append(instrText)
+    page_num_run._element.append(fldChar2)
     
     # Define the color for text and borders
     border_color = RGBColor(0x25, 0x6e, 0xb7)  # #256eb7
@@ -3509,35 +3600,76 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         
         return cell
     
-    # Header section
+    # Helper function to add paragraph with no spacing
+    def add_paragraph_no_spacing(cell, text=None, alignment=WD_ALIGN_PARAGRAPH.CENTER):
+        """Add a paragraph with no space before or after"""
+        if text:
+            p = cell.add_paragraph(text)
+        else:
+            p = cell.add_paragraph()
+        p.alignment = alignment
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+        return p
+    
+    # Helper function to ensure font size 12 for runs
+    def set_font_size_12(run):
+        """Set font size to 12 for a run"""
+        run.font.size = Pt(12)
+    
+    # Title box - "My Support Plan"
+    title_cell = create_boxed_section()
+    # Fill background with #256eb7
+    tc_pr = title_cell._element.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:fill'), '256EB7')  # #256eb7
+    tc_pr.append(shd)
+    
+    p = add_paragraph_no_spacing(title_cell)
+    run = p.add_run('My Support Plan')
+    run.font.color.rgb = RGBColor(255, 255, 255)  # White
+    run.bold = True
+    run.font.size = Pt(18)
+    
+    doc.add_paragraph()  # Empty line after title
+    
+    # Header section - no spaces between paragraphs
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_after = Pt(0)
     run1 = p.add_run('My Name: ')
     run1.font.color.rgb = border_color
+    run1.font.size = Pt(12)
     run2 = p.add_run(f'{first_name} {surname}'.strip() if (first_name or surname) else '')
     run2.font.color.rgb = border_color
+    run2.font.size = Pt(12)
     
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
     run1 = p.add_run('My Date of Birth: ')
     run1.font.color.rgb = border_color
+    run1.font.size = Pt(12)
     run2 = p.add_run(dob_str if dob_str else '')
     run2.font.color.rgb = border_color
+    run2.font.size = Pt(12)
     
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(0)
     run1 = p.add_run('My Address: ')
     run1.font.color.rgb = border_color
+    run1.font.size = Pt(12)
     run2 = p.add_run(home_address if home_address else '')
     run2.font.color.rgb = border_color
+    run2.font.size = Pt(12)
     
     doc.add_paragraph()  # One empty line between "My Address:" and "About this Plan" box
     
     # About this Plan section - in one box
     about_plan_cell = create_boxed_section()
-    p = about_plan_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(about_plan_cell)
     run = p.add_run('About this Plan')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3551,54 +3683,64 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     for i, point in enumerate(bullet_points):
         p = about_plan_cell.add_paragraph(point, style='List Bullet')
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(0)
         if i == len(bullet_points) - 1:  # Last bullet point
             p.paragraph_format.space_after = Pt(0)  # Remove space below
+        else:
+            p.paragraph_format.space_after = Pt(0)
     
     doc.add_paragraph()  # Empty line between boxes
     
     # My Support Team section - in one box
     support_team_cell = create_boxed_section()
-    p = support_team_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
-    p.add_run('My Support Team: ')  # Not bold
-    p.add_run(key_contact_data.get('team', '') if key_contact_data.get('team') else '')
+    p = add_paragraph_no_spacing(support_team_cell)
+    run1 = p.add_run('My Support Team: ')  # Not bold
+    set_font_size_12(run1)
+    run2 = p.add_run(key_contact_data.get('team', '') if key_contact_data.get('team') else '')
+    set_font_size_12(run2)
     
     p = support_team_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('My Key Contact: ')  # Not bold
-    p.add_run(key_contact_data.get('name', '') if key_contact_data.get('name') and key_contact_data.get('name') != '[Not Found]' else '')
+    run1 = p.add_run('My Key Contact: ')  # Not bold
+    set_font_size_12(run1)
+    run2 = p.add_run(key_contact_data.get('name', '') if key_contact_data.get('name') and key_contact_data.get('name') != '[Not Found]' else '')
+    set_font_size_12(run2)
     
     p = support_team_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('Contact Number: ')  # Not bold
-    p.add_run(key_contact_data.get('mobile', '') if key_contact_data.get('mobile') and key_contact_data.get('mobile') != '[Not Found]' else '')
+    run1 = p.add_run('Contact Number: ')  # Not bold
+    set_font_size_12(run1)
+    run2 = p.add_run(key_contact_data.get('mobile', '') if key_contact_data.get('mobile') and key_contact_data.get('mobile') != '[Not Found]' else '')
+    set_font_size_12(run2)
     
     p = support_team_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.add_run('Email: ')  # Not bold
-    p.add_run(key_contact_data.get('email', '') if key_contact_data.get('email') and key_contact_data.get('email') != '[Not Found]' else '')
+    run1 = p.add_run('Email: ')  # Not bold
+    set_font_size_12(run1)
+    run2 = p.add_run(key_contact_data.get('email', '') if key_contact_data.get('email') and key_contact_data.get('email') != '[Not Found]' else '')
+    set_font_size_12(run2)
     
     doc.add_paragraph()  # Empty line
     
     # What are some of the things section
     p = doc.add_paragraph('What are some of the things that you want the people supporting you to know about you?')
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
     
     doc.add_paragraph()  # Empty line between boxes
     
     # About Me box
     about_me_cell = create_boxed_section()
-    p = about_me_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(about_me_cell)
     run = p.add_run('About Me')
     run.font.color.rgb = border_color
     run.bold = True
-    p = about_me_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(about_me_cell)
     run = p.add_run('For example, your living situation, study, friends, family/relationships, your personality, things that are important to you, how you spend your leisure time')
     run.italic = True
+    set_font_size_12(run)
     for _ in range(4):
         p = about_me_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3607,9 +3749,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # My NDIS Goals box
     ndis_goals_cell = create_boxed_section()
-    p = ndis_goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(ndis_goals_cell)
     run = p.add_run('My NDIS Goals')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3676,9 +3816,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # My Dreams box
     dreams_cell = create_boxed_section()
-    p = dreams_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(dreams_cell)
     run = p.add_run('My Dreams')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3690,9 +3828,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # People in My Life box
     people_cell = create_boxed_section()
-    p = people_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(people_cell)
     run = p.add_run('People in My Life')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3704,19 +3840,20 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # My Week box
     week_cell = create_boxed_section()
-    p = week_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(week_cell)
     run = p.add_run('My Week')
     run.font.color.rgb = border_color
     run.bold = True
-    week_cell.add_paragraph()  # Empty line after "My Week"
-    p = week_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    add_paragraph_no_spacing(week_cell)  # Empty line after "My Week"
+    p = add_paragraph_no_spacing(week_cell)
     p.paragraph_format.space_after = Pt(12)  # Add space after description text
     p.add_run('Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports')
     
-    # Add table inside the box - centered
+    # Add table inside the box - centered with proper spacing
+    # Add a paragraph before table for spacing
+    p = add_paragraph_no_spacing(week_cell)
+    p.paragraph_format.space_after = Pt(6)  # Small space before table
+    
     week_table = week_cell.add_table(rows=6, cols=8)
     week_table.style = 'Table Grid'
     # Center the table by setting alignment on the table element
@@ -3727,6 +3864,12 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     jc = OxmlElement('w:jc')
     jc.set(qn('w:val'), 'center')
     tbl_pr.append(jc)
+    
+    # Set table width to be smaller so it's not squished
+    tbl_width = OxmlElement('w:tblW')
+    tbl_width.set(qn('w:w'), '8640')  # 6 inches
+    tbl_width.set(qn('w:type'), 'dxa')
+    tbl_pr.append(tbl_width)
     
     # Set table border color to #256eb7 for all cells
     for row in week_table.rows:
@@ -3768,15 +3911,11 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # My Safety box
     safety_cell = create_boxed_section()
-    p = safety_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(safety_cell)
     run = p.add_run('My Safety')
     run.font.color.rgb = border_color
     run.bold = True
-    p.paragraph_format.space_after = Pt(0)  # Remove space below
-    p = safety_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(safety_cell)
     p.add_run('Following on from the risk assessment, were there people, places or times that you feel unsafe? What changes need to be made and what support is needed so that you feel safe? Is there a formal safety plan in place? Is one needed?')
     for _ in range(4):
         p = safety_cell.add_paragraph()
@@ -3786,15 +3925,11 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # My Medications box
     med_cell = create_boxed_section()
-    p = med_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(med_cell)
     run = p.add_run('My Medications and how I manage them')
     run.font.color.rgb = border_color
     run.bold = True
-    p.paragraph_format.space_after = Pt(0)  # Remove space below
-    p = med_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(med_cell)
     p.add_run('Do you need assistance with organising and taking your medication?')
     for _ in range(4):
         p = med_cell.add_paragraph()
@@ -3804,15 +3939,11 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # My special supports box
     special_cell = create_boxed_section()
-    p = special_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(special_cell)
     run = p.add_run('My special supports')
     run.font.color.rgb = border_color
     run.bold = True
-    p.paragraph_format.space_after = Pt(0)  # Remove space below
-    p = special_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(special_cell)
     p.add_run('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:')
     for _ in range(4):
         p = special_cell.add_paragraph()
@@ -3822,13 +3953,11 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # My Goals box
     goals_cell = create_boxed_section()
-    p = goals_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(goals_cell)
     run = p.add_run('My Goals')
     run.font.color.rgb = border_color
     run.bold = True
-    goals_cell.add_paragraph()  # Empty line after "My Goals"
+    add_paragraph_no_spacing(goals_cell)  # Empty line after "My Goals"
     p = goals_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run('My SMART Goal 1')
@@ -3874,12 +4003,11 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # How I Will Celebrate box
     celebrate_cell = create_boxed_section()
-    p = celebrate_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(celebrate_cell)
     run = p.add_run('How I Will Celebrate Achieving My Goals')
     run.font.color.rgb = border_color
     run.bold = True
-    celebrate_cell.add_paragraph()  # Empty line after "How I Will Celebrate Achieving My Goals"
+    add_paragraph_no_spacing(celebrate_cell)  # Empty line after "How I Will Celebrate Achieving My Goals"
     p = celebrate_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run('Goal 1 ____________________________________________________________________________')
@@ -3901,9 +4029,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     
     # Final signature section - in a box
     signature_cell = create_boxed_section()
-    p = signature_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)  # Remove space above
+    p = add_paragraph_no_spacing(signature_cell)
     run = p.add_run('This Is My Plan')
     run.font.color.rgb = border_color
     run.bold = True
