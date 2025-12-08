@@ -4098,6 +4098,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     set_font_size_12(run1)
     run2 = p.add_run(f'{first_name} {surname}'.strip() if (first_name or surname) else '')
     run2.font.color.rgb = border_color  # Data following Signature: should be colored
+    run2.bold = True  # Bold the data
     set_font_size_12(run2)
     
     add_paragraph_no_spacing(signature_cell)  # Empty line between Signature and Date
@@ -4106,8 +4107,11 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run1 = p.add_run('Date: ')
     run1.font.color.rgb = border_color
     run1.bold = True
+    set_font_size_12(run1)
     run2 = p.add_run(datetime.now().strftime('%d/%m/%Y'))
     run2.font.color.rgb = border_color
+    run2.bold = True  # Bold the data
+    set_font_size_12(run2)
     
     # Save document
     doc.save(output_path)
