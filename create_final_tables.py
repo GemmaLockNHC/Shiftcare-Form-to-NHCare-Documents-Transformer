@@ -3670,9 +3670,11 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # About this Plan section - in one box
     about_plan_cell = create_boxed_section()
     p = add_paragraph_no_spacing(about_plan_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
     run = p.add_run('About this Plan')
     run.font.color.rgb = border_color
     run.bold = True
+    set_font_size_12(run)
     
     bullet_points = [
         'This plan lets you share information about who you are, what your life is like and your dreams',
@@ -3684,37 +3686,34 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = about_plan_cell.add_paragraph(point, style='List Bullet')
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_before = Pt(0)
-        if i == len(bullet_points) - 1:  # Last bullet point
-            p.paragraph_format.space_after = Pt(0)  # Remove space below
-        else:
-            p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.space_after = Pt(0)  # Remove space below all bullet points
+        for run in p.runs:
+            set_font_size_12(run)
     
     doc.add_paragraph()  # Empty line between boxes
     
     # My Support Team section - in one box
     support_team_cell = create_boxed_section()
     p = add_paragraph_no_spacing(support_team_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
     run1 = p.add_run('My Support Team: ')  # Not bold
     set_font_size_12(run1)
     run2 = p.add_run(key_contact_data.get('team', '') if key_contact_data.get('team') else '')
     set_font_size_12(run2)
     
-    p = support_team_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(support_team_cell)
     run1 = p.add_run('My Key Contact: ')  # Not bold
     set_font_size_12(run1)
     run2 = p.add_run(key_contact_data.get('name', '') if key_contact_data.get('name') and key_contact_data.get('name') != '[Not Found]' else '')
     set_font_size_12(run2)
     
-    p = support_team_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(support_team_cell)
     run1 = p.add_run('Contact Number: ')  # Not bold
     set_font_size_12(run1)
     run2 = p.add_run(key_contact_data.get('mobile', '') if key_contact_data.get('mobile') and key_contact_data.get('mobile') != '[Not Found]' else '')
     set_font_size_12(run2)
     
-    p = support_team_cell.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p = add_paragraph_no_spacing(support_team_cell)
     run1 = p.add_run('Email: ')  # Not bold
     set_font_size_12(run1)
     run2 = p.add_run(key_contact_data.get('email', '') if key_contact_data.get('email') and key_contact_data.get('email') != '[Not Found]' else '')
@@ -3733,6 +3732,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # About Me box
     about_me_cell = create_boxed_section()
     p = add_paragraph_no_spacing(about_me_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
     run = p.add_run('About Me')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3749,6 +3749,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # My NDIS Goals box
     ndis_goals_cell = create_boxed_section()
     p = add_paragraph_no_spacing(ndis_goals_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
     run = p.add_run('My NDIS Goals')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3812,6 +3813,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # My Dreams box
     dreams_cell = create_boxed_section()
     p = add_paragraph_no_spacing(dreams_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
     run = p.add_run('My Dreams')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3824,6 +3826,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # People in My Life box
     people_cell = create_boxed_section()
     p = add_paragraph_no_spacing(people_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
     run = p.add_run('People in My Life')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3836,6 +3839,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # My Week box
     week_cell = create_boxed_section()
     p = add_paragraph_no_spacing(week_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
     run = p.add_run('My Week')
     run.font.color.rgb = border_color
     run.bold = True
@@ -3861,9 +3865,9 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     jc.set(qn('w:val'), 'center')
     tbl_pr.append(jc)
     
-    # Set table width to be smaller so it's not squished
+    # Set table width to be smaller so it's not squished and center it
     tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), '8640')  # 6 inches
+    tbl_width.set(qn('w:w'), '7200')  # 5 inches (smaller to prevent squishing)
     tbl_width.set(qn('w:type'), 'dxa')
     tbl_pr.append(tbl_width)
     
@@ -3908,9 +3912,12 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # My Safety box
     safety_cell = create_boxed_section()
     p = add_paragraph_no_spacing(safety_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
+    p.paragraph_format.space_after = Pt(0)  # Ensure no space below
     run = p.add_run('My Safety')
     run.font.color.rgb = border_color
     run.bold = True
+    set_font_size_12(run)
     p = add_paragraph_no_spacing(safety_cell)
     run = p.add_run('Following on from the risk assessment, were there people, places or times that you feel unsafe? What changes need to be made and what support is needed so that you feel safe? Is there a formal safety plan in place? Is one needed?')
     set_font_size_12(run)
@@ -3922,9 +3929,12 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # My Medications box
     med_cell = create_boxed_section()
     p = add_paragraph_no_spacing(med_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
+    p.paragraph_format.space_after = Pt(0)  # Ensure no space below
     run = p.add_run('My Medications and how I manage them')
     run.font.color.rgb = border_color
     run.bold = True
+    set_font_size_12(run)
     p = add_paragraph_no_spacing(med_cell)
     run = p.add_run('Do you need assistance with organising and taking your medication?')
     set_font_size_12(run)
@@ -3936,9 +3946,12 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # My special supports box
     special_cell = create_boxed_section()
     p = add_paragraph_no_spacing(special_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
+    p.paragraph_format.space_after = Pt(0)  # Ensure no space below
     run = p.add_run('My special supports')
     run.font.color.rgb = border_color
     run.bold = True
+    set_font_size_12(run)
     p = add_paragraph_no_spacing(special_cell)
     run = p.add_run('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:')
     set_font_size_12(run)
@@ -3950,9 +3963,11 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # My Goals box
     goals_cell = create_boxed_section()
     p = add_paragraph_no_spacing(goals_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
     run = p.add_run('My Goals')
     run.font.color.rgb = border_color
     run.bold = True
+    set_font_size_12(run)
     add_paragraph_no_spacing(goals_cell)  # Empty line after "My Goals"
     p = add_paragraph_no_spacing(goals_cell)
     run = p.add_run('My SMART Goal 1')
@@ -3993,9 +4008,11 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # How I Will Celebrate box
     celebrate_cell = create_boxed_section()
     p = add_paragraph_no_spacing(celebrate_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
     run = p.add_run('How I Will Celebrate Achieving My Goals')
     run.font.color.rgb = border_color
     run.bold = True
+    set_font_size_12(run)
     add_paragraph_no_spacing(celebrate_cell)  # Empty line after "How I Will Celebrate Achieving My Goals"
     p = add_paragraph_no_spacing(celebrate_cell)
     run = p.add_run('Goal 1')
@@ -4019,10 +4036,12 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # Final signature section - in a box
     signature_cell = create_boxed_section()
     p = add_paragraph_no_spacing(signature_cell)
+    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
+    p.paragraph_format.space_after = Pt(12)  # One space below "This Is My Plan"
     run = p.add_run('This Is My Plan')
     run.font.color.rgb = border_color
     run.bold = True
-    p.paragraph_format.space_after = Pt(12)  # One space below "This Is My Plan"
+    set_font_size_12(run)
     
     p = add_paragraph_no_spacing(signature_cell)
     run1 = p.add_run('Signature: ')
