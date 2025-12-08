@@ -3531,7 +3531,9 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run2 = p.add_run(home_address if home_address else '')
     run2.font.color.rgb = border_color
     
-    # About this Plan section - in one box (only one empty line before)
+    doc.add_paragraph()  # One empty line between "My Address:" and "About this Plan" box
+    
+    # About this Plan section - in one box
     about_plan_cell = create_boxed_section()
     p = about_plan_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3549,7 +3551,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = about_plan_cell.add_paragraph(point, style='List Bullet')
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # My Support Team section - in one box (no empty line before)
+    # My Support Team section - in one box
     support_team_cell = create_boxed_section()
     p = support_team_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3577,7 +3579,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     p = doc.add_paragraph('What are some of the things that you want the people supporting you to know about you?')
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # About Me box (no empty line before)
+    # About Me box
     about_me_cell = create_boxed_section()
     p = about_me_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3612,7 +3614,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = ndis_goals_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # Gift of the Head, Heart & Hand box (no empty line before)
+    # Gift of the Head, Heart & Hand box
     gift_cell = create_boxed_section()
     p = gift_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3654,7 +3656,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = gift_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # My Dreams box (no empty line before)
+    # My Dreams box
     dreams_cell = create_boxed_section()
     p = dreams_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3665,7 +3667,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = dreams_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # People in My Life box (no empty line before)
+    # People in My Life box
     people_cell = create_boxed_section()
     p = people_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3676,7 +3678,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = people_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # My Week box (no empty line before)
+    # My Week box
     week_cell = create_boxed_section()
     p = week_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3728,7 +3730,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         for j in range(1, 8):
             week_table.rows[i + 1].cells[j].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # My Safety box (no empty line before)
+    # My Safety box
     safety_cell = create_boxed_section()
     p = safety_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3743,7 +3745,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = safety_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # My Medications box (no empty line before)
+    # My Medications box
     med_cell = create_boxed_section()
     p = med_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3758,7 +3760,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = med_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # My special supports box (no empty line before)
+    # My special supports box
     special_cell = create_boxed_section()
     p = special_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3773,7 +3775,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = special_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # My Goals box (no empty line before)
+    # My Goals box
     goals_cell = create_boxed_section()
     p = goals_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -3824,7 +3826,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         p = goals_cell.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # How I Will Celebrate box (no empty line before)
+    # How I Will Celebrate box
     celebrate_cell = create_boxed_section()
     p = celebrate_cell.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
