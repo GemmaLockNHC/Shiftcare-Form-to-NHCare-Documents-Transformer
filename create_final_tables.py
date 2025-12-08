@@ -4117,5 +4117,423 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     doc.save(output_path)
     print(f"Support Plan Word document created successfully: {output_path}")
 
+def create_medication_assistance_plan_from_data(csv_data, output_path, contact_name=None, active_users=None):
+    """
+    Create a Medication Assistance Plan DOCX document from CSV data
+    """
+    try:
+        from docx import Document
+        from docx.shared import Pt, RGBColor, Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+        from datetime import datetime
+        import re
+    except ImportError:
+        raise ImportError("python-docx is required for Medication Assistance Plan generation. Please install it: pip install python-docx")
+    
+    # Extract client information
+    first_name = csv_data.get('First name (Details of the Client)', '').strip()
+    surname = csv_data.get('Surname (Details of the Client)', '').strip()
+    dob_str = csv_data.get('Date of birth (Details of the Client)', '').strip()
+    ndis_number = csv_data.get('NDIS number (Details of the Client)', '').strip()
+    medicare_number = csv_data.get('Medicare number (Details of the Client)', '').strip() if csv_data.get('Medicare number (Details of the Client)') else ''
+    
+    # Create Word document
+    doc = Document()
+    
+    # Set default font to Calibri, size 12, centered
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = 'Calibri'
+    font.size = Pt(12)
+    style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add header and footer (same as Support Plan)
+    section = doc.sections[0]
+    
+    # Header
+    header = section.header
+    header_para = header.paragraphs[0]
+    header_para.clear()
+    header_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    
+    # Try to add image to header
+    image_filename = 'image.png'
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    image_path = None
+    search_dirs = [script_dir, os.getcwd(), '.']
+    
+    for search_dir in search_dirs:
+        if os.path.exists(search_dir):
+            try:
+                test_path = os.path.join(search_dir, image_filename)
+                if os.path.exists(test_path):
+                    image_path = os.path.abspath(test_path)
+                    break
+                for filename in os.listdir(search_dir):
+                    if filename.lower() == image_filename.lower() or (filename.lower().startswith('image') and filename.lower().endswith('.png')):
+                        full_path = os.path.join(search_dir, filename)
+                        if os.path.exists(full_path):
+                            image_path = os.path.abspath(full_path)
+                            break
+                if image_path:
+                    break
+            except Exception:
+                continue
+    
+    if image_path and os.path.exists(image_path):
+        try:
+            from docx.shared import Inches
+            run = header_para.add_run()
+            run.add_picture(image_path, width=Inches(1.5))
+        except Exception:
+            pass
+    
+    # Footer
+    footer = section.footer
+    footer_para = footer.paragraphs[0]
+    footer_para.clear()
+    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer_run = footer_para.add_run("Neighbourhood Care | Suite 103, 19 Ogilvie Road, Mount Pleasant, WA 6153 | ABN 40 634 832 607")
+    footer_run.font.size = Pt(8)
+    footer_run.font.color.rgb = RGBColor(0x7F, 0x7F, 0x7F)  # #7F7F7F
+    
+    # Add page number to footer (right side)
+    footer_para.add_run("  ")
+    page_num_run = footer_para.add_run()
+    page_num_run._element.text = ""
+    # Add page number field
+    fldChar1 = OxmlElement('w:fldChar')
+    fldChar1.set(qn('w:fldCharType'), 'begin')
+    instrText = OxmlElement('w:instrText')
+    instrText.set(qn('xml:space'), 'preserve')
+    instrText.text = 'PAGE'
+    fldChar2 = OxmlElement('w:fldChar')
+    fldChar2.set(qn('w:fldCharType'), 'end')
+    page_num_run._element.append(fldChar1)
+    page_num_run._element.append(instrText)
+    page_num_run._element.append(fldChar2)
+    
+    # Define the color for text and borders
+    border_color = RGBColor(0x25, 0x6e, 0xb7)  # #256eb7
+    
+    # Helper function to create a boxed section
+    def create_boxed_section():
+        """Create a table with one cell that acts as a box"""
+        table = doc.add_table(rows=1, cols=1)
+        table.style = 'Table Grid'
+        cell = table.rows[0].cells[0]
+        
+        # Set cell padding
+        tc_pr = cell._element.get_or_add_tcPr()
+        tc_mar = OxmlElement('w:tcMar')
+        for margin in ['top', 'left', 'bottom', 'right']:
+            margin_elem = OxmlElement(f'w:{margin}')
+            margin_elem.set(qn('w:w'), '144')  # 0.1 inch
+            margin_elem.set(qn('w:type'), 'dxa')
+            tc_mar.append(margin_elem)
+        tc_pr.append(tc_mar)
+        
+        # Set border color to #256eb7
+        tc_borders = OxmlElement('w:tcBorders')
+        for border_name in ['top', 'left', 'bottom', 'right']:
+            border = OxmlElement(f'w:{border_name}')
+            border.set(qn('w:val'), 'single')
+            border.set(qn('w:sz'), '4')
+            border.set(qn('w:space'), '0')
+            border.set(qn('w:color'), '256EB7')  # #256eb7
+            tc_borders.append(border)
+        tc_pr.append(tc_borders)
+        
+        return cell
+    
+    # Helper function to add paragraph with no spacing
+    def add_paragraph_no_spacing(cell, text=None, alignment=WD_ALIGN_PARAGRAPH.CENTER):
+        """Add a paragraph with no space before or after"""
+        if text:
+            p = cell.add_paragraph(text)
+        else:
+            p = cell.add_paragraph()
+        p.alignment = alignment
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.line_spacing = 1.0
+        # Also set via XML to ensure it's truly zero
+        pPr = p._element.get_or_add_pPr()
+        existing_spacing = pPr.xpath('.//w:spacing')
+        for spacing_elem in existing_spacing:
+            pPr.remove(spacing_elem)
+        spacing = OxmlElement('w:spacing')
+        spacing.set(qn('w:before'), '0')
+        spacing.set(qn('w:after'), '0')
+        spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
+        spacing.set(qn('w:lineRule'), 'auto')
+        pPr.append(spacing)
+        return p
+    
+    # Helper function to ensure font size 12 for runs
+    def set_font_size_12(run):
+        """Set font size to 12 for a run"""
+        run.font.size = Pt(12)
+    
+    # Helper function to set table border color
+    def set_table_border_color(table):
+        """Set border color to #256eb7 for all cells in a table"""
+        for row in table.rows:
+            for cell in row.cells:
+                tc_pr = cell._element.get_or_add_tcPr()
+                tc_borders = OxmlElement('w:tcBorders')
+                for border_name in ['top', 'left', 'bottom', 'right']:
+                    border = OxmlElement(f'w:{border_name}')
+                    border.set(qn('w:val'), 'single')
+                    border.set(qn('w:sz'), '4')
+                    border.set(qn('w:space'), '0')
+                    border.set(qn('w:color'), '256EB7')
+                    tc_borders.append(border)
+                tc_pr.append(tc_borders)
+    
+    # Title
+    p = doc.add_paragraph('This Medication Assistance Plan is for:')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # First box
+    first_box = create_boxed_section()
+    p = add_paragraph_no_spacing(first_box)
+    p.paragraph_format.space_before = Pt(0)
+    run = p.add_run('Full Name:')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('Date of Birth:')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('NDIS Number:')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('Medicare Number:')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('Alerts (Medic alert information etc.):')
+    set_font_size_12(run)
+    add_paragraph_no_spacing(first_box)  # Empty line
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('G.P. or prescribing doctor:')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('Name:')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('Contact Details:')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('Address:')
+    set_font_size_12(run)
+    add_paragraph_no_spacing(first_box)  # Empty line
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('Pharmacist')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('Name:')
+    set_font_size_12(run)
+    p = add_paragraph_no_spacing(first_box)
+    run = p.add_run('Contact Details:')
+    set_font_size_12(run)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Signature of Individual
+    p = doc.add_paragraph('Signature of Individual (or person responsible for consent)')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    sig_box1 = create_boxed_section()
+    p = add_paragraph_no_spacing(sig_box1)
+    p.paragraph_format.space_before = Pt(0)
+    run = p.add_run('Date:')
+    set_font_size_12(run)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Plan Developed By
+    p = doc.add_paragraph('Plan Developed By')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    plan_box = create_boxed_section()
+    p = add_paragraph_no_spacing(plan_box)
+    p.paragraph_format.space_before = Pt(0)
+    run = p.add_run('Name of person responsible for developing the plan:')
+    set_font_size_12(run)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Signature of Authorised Medication Delegate
+    p = doc.add_paragraph('Signature of Authorised Medication Delegate (Neighbourhood Care)')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    sig_box2 = create_boxed_section()
+    p = add_paragraph_no_spacing(sig_box2)
+    p.paragraph_format.space_before = Pt(0)
+    run = p.add_run('Date:')
+    set_font_size_12(run)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Reason For Plan
+    p = doc.add_paragraph('Reason For Plan')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    reason_box = create_boxed_section()
+    p = add_paragraph_no_spacing(reason_box)
+    p.paragraph_format.space_before = Pt(0)
+    run = p.add_run('Please describe why a support plan is required.')
+    set_font_size_12(run)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Assistance Required
+    p = doc.add_paragraph('Assistance Required')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    assist_box = create_boxed_section()
+    p = add_paragraph_no_spacing(assist_box)
+    p.paragraph_format.space_before = Pt(0)
+    run = p.add_run('Describe the assistance required')
+    set_font_size_12(run)
+    
+    # Important things to remember
+    p = doc.add_paragraph('Important things to remember')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    important_box = create_boxed_section()
+    p = add_paragraph_no_spacing(important_box)
+    p.paragraph_format.space_before = Pt(0)
+    run = p.add_run('Any additional plans relating to the person\'s medication should be listed here')
+    set_font_size_12(run)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Allergies & reactions
+    p = doc.add_paragraph('Allergies & reactions')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    p = doc.add_paragraph('Any allergies (relating to medication) and potential reactions should be listed here.')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    # Allergies table
+    allergies_table = doc.add_table(rows=1, cols=2)
+    allergies_table.style = 'Table Grid'
+    header_cells = allergies_table.rows[0].cells
+    header_cells[0].paragraphs[0].add_run('What medications allergic to').bold = True
+    header_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    header_cells[1].paragraphs[0].add_run('Potential Reaction').bold = True
+    header_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_table_border_color(allergies_table)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Medications Prescribed & Potential Side Effects
+    p = doc.add_paragraph('Medications Prescribed & Potential Side Effects')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    # Side effects table
+    side_effects_table = doc.add_table(rows=1, cols=2)
+    side_effects_table.style = 'Table Grid'
+    header_cells = side_effects_table.rows[0].cells
+    header_cells[0].paragraphs[0].add_run('Medication').bold = True
+    header_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    header_cells[1].paragraphs[0].add_run('Side Effects').bold = True
+    header_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_table_border_color(side_effects_table)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Medication List - Prescribed
+    p = doc.add_paragraph('Medication List - Prescribed - Update when changed by prescribing physician')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    # Prescribed medications table
+    prescribed_table = doc.add_table(rows=1, cols=6)
+    prescribed_table.style = 'Table Grid'
+    header_cells = prescribed_table.rows[0].cells
+    headers = ['Medication', 'Dose', 'When to take it', 'How to take it', 'Where it is kept', 'Additional details']
+    for i, header_text in enumerate(headers):
+        header_cells[i].paragraphs[0].add_run(header_text).bold = True
+        header_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_table_border_color(prescribed_table)
+    
+    # Add a data row with nested table in "When to take it" column
+    data_row = prescribed_table.add_row()
+    # Leave first 2 cells empty for now
+    when_cell = data_row.cells[2]  # "When to take it" column
+    when_cell.paragraphs[0].clear()
+    
+    # Create nested table for "When to take it"
+    nested_table = when_cell.add_table(rows=2, cols=2)
+    nested_table.style = 'Table Grid'
+    # Header row
+    nested_header = nested_table.rows[0].cells
+    nested_header[0].paragraphs[0].add_run('Day').bold = True
+    nested_header[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    nested_header[1].paragraphs[0].add_run('Time').bold = True
+    nested_header[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # Data row
+    nested_data = nested_table.rows[1].cells
+    nested_data[0].paragraphs[0].add_run('S M T W T F S')
+    nested_data[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    nested_data[1].paragraphs[0].add_run('AM PM')
+    nested_data[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_table_border_color(nested_table)
+    
+    doc.add_paragraph()  # Empty line
+    
+    # Medication List - As Needed (PRN)
+    p = doc.add_paragraph('Medication List - As Needed (PRN)')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    # PRN medications table
+    prn_table = doc.add_table(rows=1, cols=6)
+    prn_table.style = 'Table Grid'
+    header_cells = prn_table.rows[0].cells
+    headers = ['Medication', 'What it is used for', 'Instructions for use', 'How to take it/dose', 'Where it is kept', 'Additional details']
+    for i, header_text in enumerate(headers):
+        header_cells[i].paragraphs[0].add_run(header_text).bold = True
+        header_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_table_border_color(prn_table)
+    
+    # Final text
+    p = doc.add_paragraph('Observed Practice Checklist to be attached to this plan and records maintained by all parties involved in the medication assistance.')
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in p.runs:
+        set_font_size_12(run)
+    
+    # Save document
+    doc.save(output_path)
+    print(f"Medication Assistance Plan DOCX created successfully: {output_path}")
+
 if __name__ == "__main__":
     create_service_agreement()
