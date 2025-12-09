@@ -4606,8 +4606,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     # Set explicit column widths for the parent table
     # Total width should be ~7.5 inches (10800 twips) to fit on page
-    # Column widths: Medication (1.5"), Dose (0.8"), When to take it (2.5"), How to take it (1.2"), Where (1.0"), Additional (0.5")
-    col_widths = [2160, 1152, 3600, 1728, 1440, 720]  # In twips
+    # Column widths: Medication (1.2"), Dose (0.7"), When to take it (3.0"), How to take it (1.0"), Where (0.9"), Additional (0.7")
+    col_widths = [1728, 1008, 4320, 1440, 1296, 1008]  # In twips - increased "When to take it" to 3 inches
     for i, width in enumerate(col_widths):
         header_cell = prescribed_table.rows[0].cells[i]
         tc_pr = header_cell._element.get_or_add_tcPr()
@@ -4645,13 +4645,13 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     when_cell.paragraphs[0].clear()
     
     # Set explicit width for the cell to ensure nested table has space
-    # This should match the column width we set above (3600 twips = 2.5 inches)
+    # This should match the column width we set above (4320 twips = 3.0 inches)
     tc_pr = when_cell._element.get_or_add_tcPr()
     # Remove existing width
     for width_elem in tc_pr.xpath('.//w:tcW'):
         tc_pr.remove(width_elem)
     tc_width = OxmlElement('w:tcW')
-    tc_width.set(qn('w:w'), '3600')  # 2.5 inches (3600 twips)
+    tc_width.set(qn('w:w'), '4320')  # 3.0 inches (4320 twips)
     tc_width.set(qn('w:type'), 'dxa')
     tc_pr.append(tc_width)
     
@@ -4668,7 +4668,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         tbl_pr = OxmlElement('w:tblPr')
         nested_table._element.insert(0, tbl_pr)
     tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), '3600')  # 2.5 inches (3600 twips)
+    tbl_width.set(qn('w:w'), '4320')  # 3.0 inches (4320 twips)
     tbl_width.set(qn('w:type'), 'dxa')
     tbl_pr.append(tbl_width)
     
@@ -4727,11 +4727,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_table_border_color(nested_table)
     
     # Set explicit column widths for the nested table so it's not squished
-    # Total width is 3600 twips (2.5 inches), divided into 9 columns
-    # Day columns (7): ~400 twips each = 2800 twips
-    # Time columns (2): ~400 twips each = 800 twips
-    # Total: 3600 twips
-    col_width = 400  # 400 twips per column (~0.28 inches)
+    # Total width is 4320 twips (3.0 inches), divided into 9 columns
+    # Day columns (7): ~480 twips each = 3360 twips
+    # Time columns (2): ~480 twips each = 960 twips
+    # Total: 4320 twips
+    col_width = 480  # 480 twips per column (~0.33 inches) - increased for better spacing
     for row in nested_table.rows:
         for i, cell in enumerate(row.cells):
             tc_pr = cell._element.get_or_add_tcPr()
