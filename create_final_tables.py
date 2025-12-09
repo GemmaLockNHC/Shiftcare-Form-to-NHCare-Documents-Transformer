@@ -4144,6 +4144,43 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     ndis_number = csv_data.get('NDIS number (Details of the Client)', '').strip()
     medicare_number = csv_data.get('Medicare number (Details of the Client)', '').strip() if csv_data.get('Medicare number (Details of the Client)') else ''
     
+    # Get key contact name (similar to service agreement)
+    team_value = csv_data.get('Neighbourhood Care representative team', '')
+    team_value = team_value.replace('\uf0d7', '').replace('•', '').replace('●', '').replace('☐', '').replace('☑', '').replace('✓', '').strip()
+    contact_name_to_use = contact_name or csv_data.get('Respondent', '')
+    if active_users and contact_name_to_use:
+        user_data = lookup_user_data(active_users, contact_name_to_use)
+        key_contact_name = user_data.get('name', contact_name_to_use) if user_data else contact_name_to_use
+    else:
+        key_contact_name = contact_name_to_use
+    
+    # Extract assistance required fields
+    def find_assistance_field(field_name):
+        """Helper to find assistance-related fields in PDF data"""
+        # Try exact match first
+        value = csv_data.get(field_name, '').strip()
+        if value:
+            return value
+        # Try variations
+        field_lower = field_name.lower()
+        for key, val in csv_data.items():
+            if field_lower in key.lower() and val and str(val).strip():
+                return str(val).strip()
+        return ''
+    
+    communication_assistance = find_assistance_field('If applicable, describe the communication assistance required')
+    medication_assistance_needed = csv_data.get('Does the client need assistance with their medication?', '').strip()
+    equipment_assistive = find_assistance_field('Equipment or assistive technologies used')
+    assisted_transfers = find_assistance_field('If applicable, describe the client\'s requirements for assisted transfers')
+    catheter_management = find_assistance_field('If applicable, describe the client\'s requirements for catheter management')
+    wound_pressure_care = find_assistance_field('If applicable, describe the client\'s requirements regarding wound care and/or pressure care')
+    bowel_care = find_assistance_field('If applicable, describe the client\'s requirements regarding complex bowel care')
+    enteral_feeding = find_assistance_field('If applicable, describe the client\'s requirements regarding enteral feeding and management')
+    peg_feeding = find_assistance_field('If applicable, describe the client\'s requirements regarding PEG feeding')
+    stoma_care = find_assistance_field('If applicable, describe the client\'s requirements regarding stoma care')
+    additional_care = find_assistance_field('Additional care requirements')
+    behaviour_support = find_assistance_field('Behaviour support requirements')
+    
     # Create Word document
     doc = Document()
     
@@ -4406,14 +4443,30 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     run = p.add_run('Full Name:')
     run.bold = True
     set_font_size_12(run)
+    # Add full name data
+    full_name = f'{first_name} {surname}'.strip()
+    if full_name:
+        p = add_paragraph_no_spacing(first_box)
+        run = p.add_run(full_name)
+        set_font_size_12(run)
     # Remove spacing again after adding content
     remove_all_spacing_from_cell(first_box)
     p = add_paragraph_no_spacing(first_box)
     run = p.add_run('Date of Birth:')
     set_font_size_12(run)
+    # Add date of birth data
+    if dob_str:
+        p = add_paragraph_no_spacing(first_box)
+        run = p.add_run(dob_str)
+        set_font_size_12(run)
     p = add_paragraph_no_spacing(first_box)
     run = p.add_run('NDIS Number:')
     set_font_size_12(run)
+    # Add NDIS number data
+    if ndis_number:
+        p = add_paragraph_no_spacing(first_box)
+        run = p.add_run(ndis_number)
+        set_font_size_12(run)
     p = add_paragraph_no_spacing(first_box)
     run = p.add_run('Medicare Number:')
     set_font_size_12(run)
@@ -4482,6 +4535,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = add_paragraph_no_spacing(plan_box)
     run = p.add_run('Name of person responsible for developing the plan:')
     set_font_size_12(run)
+    # Add key contact name
+    if key_contact_name:
+        p = add_paragraph_no_spacing(plan_box)
+        run = p.add_run(key_contact_name)
+        set_font_size_12(run)
     # Add four empty lines
     for _ in range(4):
         add_paragraph_no_spacing(plan_box)
@@ -4545,6 +4603,52 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = add_paragraph_no_spacing(assist_box)
     run = p.add_run('Describe the assistance required')
     set_font_size_12(run)
+    
+    # Add bullet points with data (in the order specified by user)
+    assistance_items = []
+    
+    # 1. Communication assistance required
+    if communication_assistance:
+        assistance_items.append(f'• {communication_assistance}')
+    
+    # 2. Medication assistance (if Yes)
+    if medication_assistance_needed and medication_assistance_needed.lower() in ['yes', 'y']:
+        assistance_items.append('• Medication assistance')
+    
+    # 3. Equipment or assistive technologies used
+    if equipment_assistive:
+        assistance_items.append(f'• {equipment_assistive}')
+    
+    # 4. Assisted transfers
+    if assisted_transfers:
+        assistance_items.append(f'• {assisted_transfers}')
+    
+    # 5. Catheter management
+    if catheter_management:
+        assistance_items.append(f'• {catheter_management}')
+    
+    # 6. Wound care and/or pressure care
+    if wound_pressure_care:
+        assistance_items.append(f'• {wound_pressure_care}')
+    if bowel_care:
+        assistance_items.append(f'• {bowel_care}')
+    if enteral_feeding:
+        assistance_items.append(f'• {enteral_feeding}')
+    if peg_feeding:
+        assistance_items.append(f'• {peg_feeding}')
+    if stoma_care:
+        assistance_items.append(f'• {stoma_care}')
+    if additional_care:
+        assistance_items.append(f'• {additional_care}')
+    if behaviour_support:
+        assistance_items.append(f'• {behaviour_support}')
+    
+    # Add bullet points to the box
+    for item in assistance_items:
+        p = add_paragraph_no_spacing(assist_box)
+        run = p.add_run(item)
+        set_font_size_12(run)
+    
     # Add four empty lines
     for _ in range(4):
         add_paragraph_no_spacing(assist_box)
@@ -4712,7 +4816,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     # Column widths: AM (10), PM (10), S (6), M (6), T (6), W (6), T (6), F (6), S (6)
     # All single letters get the SAME width (6 twips), AM/PM get 10 twips each
+    # Using VERY small widths to minimize spacing
     col_widths = [10, 10, 6, 6, 6, 6, 6, 6, 6]
+    total_width = sum(col_widths)  # 62 twips
     
     # Set table properties FIRST - this is critical for nested tables
     tbl_pr = nested_table._element.tblPr
@@ -4720,42 +4826,45 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         tbl_pr = OxmlElement('w:tblPr')
         nested_table._element.insert(0, tbl_pr)
     
-    # Remove any existing grid or width settings
-    for existing_grid in tbl_pr.xpath('.//w:tblGrid'):
+    # Remove any existing grid or width settings - be very aggressive
+    for existing_grid in list(tbl_pr.xpath('.//w:tblGrid')):
         tbl_pr.remove(existing_grid)
-    for existing_width in tbl_pr.xpath('.//w:tblW'):
+    for existing_width in list(tbl_pr.xpath('.//w:tblW')):
         tbl_pr.remove(existing_width)
-    for existing_layout in tbl_pr.xpath('.//w:tblLayout'):
+    for existing_layout in list(tbl_pr.xpath('.//w:tblLayout')):
         tbl_pr.remove(existing_layout)
     
-    # Set table layout to fixed FIRST
+    # Set table layout to fixed FIRST - CRITICAL for width enforcement
     tbl_layout = OxmlElement('w:tblLayout')
     tbl_layout.set(qn('w:type'), 'fixed')
     tbl_pr.append(tbl_layout)
     
     # Set table grid column widths - THIS IS THE PRIMARY SOURCE OF TRUTH FOR COLUMN WIDTHS
+    # The grid defines the column structure
     tblGrid = OxmlElement('w:tblGrid')
     for width in col_widths:
         gridCol = OxmlElement('w:gridCol')
         gridCol.set(qn('w:w'), str(width))
+        gridCol.set(qn('w:type'), 'dxa')
         tblGrid.append(gridCol)
     tbl_pr.append(tblGrid)
     
-    # Set table width to match grid
+    # Set table width to match grid - use exact sum
     tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), '70')  # Sum of column widths (10+10+6*7=62) + minimal padding
+    tbl_width.set(qn('w:w'), str(total_width))
     tbl_width.set(qn('w:type'), 'dxa')
     tbl_pr.append(tbl_width)
     
-    # NOW set widths on ALL cells to match the grid (after grid is set)
-    for row in nested_table.rows:
+    # NOW set widths on ALL cells in ALL rows to match the grid (after grid is set)
+    # This must be done BEFORE any merging or content is added
+    for row_idx, row in enumerate(nested_table.rows):
         for col_idx, cell in enumerate(row.cells):
             if col_idx < len(col_widths):
                 tc_pr = cell._element.get_or_add_tcPr()
-                # Remove ALL existing width elements
-                for width_elem in tc_pr.xpath('.//w:tcW'):
+                # Remove ALL existing width elements - be very aggressive
+                for width_elem in list(tc_pr.xpath('.//w:tcW')):
                     tc_pr.remove(width_elem)
-                # Set width to match grid
+                # Set width to match grid - MUST use 'dxa' type
                 tc_width = OxmlElement('w:tcW')
                 tc_width.set(qn('w:w'), str(col_widths[col_idx]))
                 tc_width.set(qn('w:type'), 'dxa')
