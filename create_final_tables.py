@@ -4301,6 +4301,13 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     p.paragraph_format.space_after = Pt(0)  # Remove space after
+    # Force zero spacing via XML
+    pPr = p._element.get_or_add_pPr()
+    for spacing_elem in pPr.xpath('.//w:spacing'):
+        pPr.remove(spacing_elem)
+    spacing = OxmlElement('w:spacing')
+    spacing.set(qn('w:after'), '0')
+    pPr.append(spacing)
     run = p.add_run('This Medication Assistance Plan is for:')
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
@@ -4309,8 +4316,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # First box
     first_box = create_boxed_section()
     p = add_paragraph_no_spacing(first_box)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
+    # Force zero spacing via XML
+    pPr = p._element.get_or_add_pPr()
+    for spacing_elem in pPr.xpath('.//w:spacing'):
+        pPr.remove(spacing_elem)
+    spacing = OxmlElement('w:spacing')
+    spacing.set(qn('w:before'), '0')
+    spacing.set(qn('w:after'), '0')
+    pPr.append(spacing)
     run = p.add_run('Full Name:')
     run.bold = True
     set_font_size_12(run)
@@ -4364,8 +4377,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     sig_box1 = create_boxed_section()
     p = add_paragraph_no_spacing(sig_box1)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
+    # Force zero spacing via XML
+    pPr = p._element.get_or_add_pPr()
+    for spacing_elem in pPr.xpath('.//w:spacing'):
+        pPr.remove(spacing_elem)
+    spacing = OxmlElement('w:spacing')
+    spacing.set(qn('w:before'), '0')
+    spacing.set(qn('w:after'), '0')
+    pPr.append(spacing)
     run = p.add_run('Date:')
     set_font_size_12(run)
     
@@ -4381,8 +4400,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     plan_box = create_boxed_section()
     p = add_paragraph_no_spacing(plan_box)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
+    # Force zero spacing via XML
+    pPr = p._element.get_or_add_pPr()
+    for spacing_elem in pPr.xpath('.//w:spacing'):
+        pPr.remove(spacing_elem)
+    spacing = OxmlElement('w:spacing')
+    spacing.set(qn('w:before'), '0')
+    spacing.set(qn('w:after'), '0')
+    pPr.append(spacing)
     run = p.add_run('Name of person responsible for developing the plan:')
     set_font_size_12(run)
     
@@ -4398,8 +4423,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     sig_box2 = create_boxed_section()
     p = add_paragraph_no_spacing(sig_box2)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
+    # Force zero spacing via XML
+    pPr = p._element.get_or_add_pPr()
+    for spacing_elem in pPr.xpath('.//w:spacing'):
+        pPr.remove(spacing_elem)
+    spacing = OxmlElement('w:spacing')
+    spacing.set(qn('w:before'), '0')
+    spacing.set(qn('w:after'), '0')
+    pPr.append(spacing)
     run = p.add_run('Date:')
     set_font_size_12(run)
     
@@ -4415,8 +4446,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     reason_box = create_boxed_section()
     p = add_paragraph_no_spacing(reason_box)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
+    # Force zero spacing via XML
+    pPr = p._element.get_or_add_pPr()
+    for spacing_elem in pPr.xpath('.//w:spacing'):
+        pPr.remove(spacing_elem)
+    spacing = OxmlElement('w:spacing')
+    spacing.set(qn('w:before'), '0')
+    spacing.set(qn('w:after'), '0')
+    pPr.append(spacing)
     run = p.add_run('Please describe why a support plan is required.')
     set_font_size_12(run)
     # Add four empty lines
@@ -4435,8 +4472,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     assist_box = create_boxed_section()
     p = add_paragraph_no_spacing(assist_box)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
+    # Force zero spacing via XML
+    pPr = p._element.get_or_add_pPr()
+    for spacing_elem in pPr.xpath('.//w:spacing'):
+        pPr.remove(spacing_elem)
+    spacing = OxmlElement('w:spacing')
+    spacing.set(qn('w:before'), '0')
+    spacing.set(qn('w:after'), '0')
+    pPr.append(spacing)
     run = p.add_run('Describe the assistance required')
     set_font_size_12(run)
     # Add four empty lines
@@ -4455,8 +4498,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     important_box = create_boxed_section()
     p = add_paragraph_no_spacing(important_box)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
+    # Force zero spacing via XML
+    pPr = p._element.get_or_add_pPr()
+    for spacing_elem in pPr.xpath('.//w:spacing'):
+        pPr.remove(spacing_elem)
+    spacing = OxmlElement('w:spacing')
+    spacing.set(qn('w:before'), '0')
+    spacing.set(qn('w:after'), '0')
+    pPr.append(spacing)
     run = p.add_run('Any additional plans relating to the person\'s medication should be listed here')
     set_font_size_12(run)
     # Add four empty lines
@@ -4564,43 +4613,41 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     when_cell.paragraphs[0].clear()
     
     # Create nested table for "When to take it"
-    # Structure: 2 columns (Day, Time), with S, M, T, W, T, F, S under Day and AM, PM under Time
-    # Each header has an empty field under it
-    # Total rows: 1 header + 7 day rows (each with header + empty) + 2 time rows (each with header + empty) = 1 + 14 = 15 rows
-    # Actually simpler: 1 header row, then alternating header/empty rows
-    nested_table = when_cell.add_table(rows=15, cols=2)  # 1 header + 14 data rows
+    # Structure: Mini table
+    # Row 1: "Day" (spanning 7 cols) | "Time" (spanning 2 cols) = 9 columns total
+    # Row 2: S | M | T | W | T | F | S | AM | PM (all as horizontal headers)
+    nested_table = when_cell.add_table(rows=2, cols=9)
     nested_table.style = 'Table Grid'
     
-    # Header row: "Day" and "Time"
+    # Header row: "Day" spanning 7 columns, "Time" spanning 2 columns
     nested_header = nested_table.rows[0].cells
-    nested_header[0].paragraphs[0].add_run('Day').bold = True
-    nested_header[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    nested_header[1].paragraphs[0].add_run('Time').bold = True
-    nested_header[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     
-    # Day column: S, M, T, W, T, F, S as headers with empty fields under each
-    day_labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-    day_row_index = 1
-    for day_label in day_labels:
-        # Header row
-        nested_table.rows[day_row_index].cells[0].paragraphs[0].add_run(day_label).bold = True
-        nested_table.rows[day_row_index].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-        day_row_index += 1
-        # Empty field under
-        nested_table.rows[day_row_index].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-        day_row_index += 1
+    # Merge cells for "Day" (first 7 columns)
+    day_cell = nested_header[0]
+    tc_pr = day_cell._element.get_or_add_tcPr()
+    grid_span = OxmlElement('w:gridSpan')
+    grid_span.set(qn('w:val'), '7')
+    tc_pr.append(grid_span)
     
-    # Time column: AM, PM as headers with empty fields under each
-    time_labels = ['AM', 'PM']
-    time_row_index = 1
-    for time_label in time_labels:
-        # Header row
-        nested_table.rows[time_row_index].cells[1].paragraphs[0].add_run(time_label).bold = True
-        nested_table.rows[time_row_index].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-        time_row_index += 1
-        # Empty field under
-        nested_table.rows[time_row_index].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-        time_row_index += 1
+    day_cell.paragraphs[0].add_run('Day').bold = True
+    day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    
+    # Merge cells for "Time" (last 2 columns) - start from column 7
+    time_cell = nested_header[7]
+    tc_pr = time_cell._element.get_or_add_tcPr()
+    grid_span = OxmlElement('w:gridSpan')
+    grid_span.set(qn('w:val'), '2')
+    tc_pr.append(grid_span)
+    
+    time_cell.paragraphs[0].add_run('Time').bold = True
+    time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    
+    # Second row: S, M, T, W, T, F, S, AM, PM as horizontal headers
+    nested_data = nested_table.rows[1].cells
+    labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S', 'AM', 'PM']
+    for i, label in enumerate(labels):
+        nested_data[i].paragraphs[0].add_run(label).bold = True
+        nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     
     set_table_border_color(nested_table)
     
