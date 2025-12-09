@@ -15,117 +15,122 @@ import re
 import io
 import tempfile
 
-# Try to register Verdana font if available
-# Optimized: Check platform first to avoid checking irrelevant paths
-VERDANA_FONT = 'Helvetica'  # Default fallback
-try:
-    import platform
-    system = platform.system()
-    
-    # Only check paths relevant to current platform
-    if system == 'Darwin':  # macOS
-        verdana_paths = [
-            '/System/Library/Fonts/Supplemental/Verdana.ttf',
-        ]
-    elif system == 'Windows':
-        verdana_paths = [
-            'C:/Windows/Fonts/verdana.ttf',
-        ]
-    else:  # Linux (including Render)
-        verdana_paths = [
-            '/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf',
-        ]
-    
-    verdana_registered = False
-    for path in verdana_paths:
-        if os.path.exists(path):
-            try:
-                pdfmetrics.registerFont(TTFont('Verdana', path))
-                verdana_registered = True
-                print(f"Verdana font registered from: {path}")
-                break
-            except Exception as e:
-                continue
-    if verdana_registered:
-        VERDANA_FONT = 'Verdana'
-    else:
-        print("Verdana font not found, will use Helvetica as fallback")
-except Exception as e:
-    print(f"Could not register Verdana font: {e}, using Helvetica")
+# Font registration - lazy loaded to avoid slow startup
+_VERDANA_FONT = None
+_CALIBRI_FONT = None
+_CALIBRI_BOLD_FONT = None
+_FONTS_REGISTERED = False
 
-# Try to register Calibri font if available
-# Optimized: Check platform first to avoid checking irrelevant paths
-CALIBRI_FONT = 'Helvetica'  # Default fallback
-CALIBRI_BOLD_FONT = 'Helvetica-Bold'
-try:
-    import platform
-    system = platform.system()
+def _register_fonts():
+    """Lazy-load font registration - only called when needed"""
+    global _VERDANA_FONT, _CALIBRI_FONT, _CALIBRI_BOLD_FONT, _FONTS_REGISTERED
     
-    # Only check paths relevant to current platform
-    if system == 'Darwin':  # macOS
-        calibri_paths = [
-            '/System/Library/Fonts/Supplemental/Calibri.ttf',
-            '/Library/Fonts/Calibri.ttf',
-        ]
-        calibri_bold_paths = [
-            '/System/Library/Fonts/Supplemental/Calibri Bold.ttf',
-            '/Library/Fonts/Calibri Bold.ttf',
-        ]
-        # Expand ~ paths for macOS
-        home = os.path.expanduser('~')
-        calibri_paths.append(os.path.join(home, 'Library/Fonts/Calibri.ttf'))
-        calibri_bold_paths.append(os.path.join(home, 'Library/Fonts/Calibri Bold.ttf'))
-    elif system == 'Windows':
-        calibri_paths = [
-            'C:/Windows/Fonts/calibri.ttf',
-            'C:/Windows/Fonts/CALIBRI.TTF',
-        ]
-        calibri_bold_paths = [
-            'C:/Windows/Fonts/calibrib.ttf',
-            'C:/Windows/Fonts/CALIBRIB.TTF',
-        ]
-    else:  # Linux (including Render)
-        calibri_paths = [
-            '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
-            '/usr/share/fonts/truetype/msttcorefonts/arial.ttf',
-        ]
-        calibri_bold_paths = [
-            '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
-            '/usr/share/fonts/truetype/msttcorefonts/arialbd.ttf',
-        ]
+    if _FONTS_REGISTERED:
+        return  # Already registered
     
-    calibri_registered = False
-    calibri_bold_registered = False
+    _VERDANA_FONT = 'Helvetica'  # Default fallback
+    _CALIBRI_FONT = 'Helvetica'  # Default fallback
+    _CALIBRI_BOLD_FONT = 'Helvetica-Bold'
     
-    # Register regular Calibri
-    for path in calibri_paths:
-        if os.path.exists(path):
-            try:
-                pdfmetrics.registerFont(TTFont('Calibri', path))
-                calibri_registered = True
-                print(f"Calibri font registered from: {path}")
-                break
-            except Exception as e:
-                continue
+    try:
+        import platform
+        system = platform.system()
+        
+        # Only check paths relevant to current platform
+        if system == 'Darwin':  # macOS
+            verdana_paths = ['/System/Library/Fonts/Supplemental/Verdana.ttf']
+            calibri_paths = [
+                '/System/Library/Fonts/Supplemental/Calibri.ttf',
+                '/Library/Fonts/Calibri.ttf',
+            ]
+            calibri_bold_paths = [
+                '/System/Library/Fonts/Supplemental/Calibri Bold.ttf',
+                '/Library/Fonts/Calibri Bold.ttf',
+            ]
+            home = os.path.expanduser('~')
+            calibri_paths.append(os.path.join(home, 'Library/Fonts/Calibri.ttf'))
+            calibri_bold_paths.append(os.path.join(home, 'Library/Fonts/Calibri Bold.ttf'))
+        elif system == 'Windows':
+            verdana_paths = ['C:/Windows/Fonts/verdana.ttf']
+            calibri_paths = ['C:/Windows/Fonts/calibri.ttf', 'C:/Windows/Fonts/CALIBRI.TTF']
+            calibri_bold_paths = ['C:/Windows/Fonts/calibrib.ttf', 'C:/Windows/Fonts/CALIBRIB.TTF']
+        else:  # Linux (including Render)
+            verdana_paths = ['/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf']
+            calibri_paths = [
+                '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+                '/usr/share/fonts/truetype/msttcorefonts/arial.ttf',
+            ]
+            calibri_bold_paths = [
+                '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+                '/usr/share/fonts/truetype/msttcorefonts/arialbd.ttf',
+            ]
+        
+        # Register Verdana
+        for path in verdana_paths:
+            if os.path.exists(path):
+                try:
+                    pdfmetrics.registerFont(TTFont('Verdana', path))
+                    _VERDANA_FONT = 'Verdana'
+                    print(f"Verdana font registered from: {path}")
+                    break
+                except Exception:
+                    continue
+        
+        # Register Calibri
+        calibri_registered = False
+        calibri_bold_registered = False
+        for path in calibri_paths:
+            if os.path.exists(path):
+                try:
+                    pdfmetrics.registerFont(TTFont('Calibri', path))
+                    calibri_registered = True
+                    _CALIBRI_FONT = 'Calibri'
+                    print(f"Calibri font registered from: {path}")
+                    break
+                except Exception:
+                    continue
+        
+        for path in calibri_bold_paths:
+            if os.path.exists(path):
+                try:
+                    pdfmetrics.registerFont(TTFont('Calibri-Bold', path))
+                    calibri_bold_registered = True
+                    _CALIBRI_BOLD_FONT = 'Calibri-Bold'
+                    print(f"Calibri Bold font registered from: {path}")
+                    break
+                except Exception:
+                    continue
+        
+        if not calibri_registered:
+            print("Calibri font not found, will use Helvetica as fallback")
+        if not _VERDANA_FONT == 'Verdana':
+            print("Verdana font not found, will use Helvetica as fallback")
+    except Exception as e:
+        print(f"Could not register fonts: {e}, using Helvetica")
     
-    # Register Calibri Bold
-    for path in calibri_bold_paths:
-        if os.path.exists(path):
-            try:
-                pdfmetrics.registerFont(TTFont('Calibri-Bold', path))
-                calibri_bold_registered = True
-                print(f"Calibri Bold font registered from: {path}")
-                break
-            except Exception as e:
-                continue
-    
-    if calibri_registered:
-        CALIBRI_FONT = 'Calibri'
-        CALIBRI_BOLD_FONT = 'Calibri-Bold' if calibri_bold_registered else 'Helvetica-Bold'
-    else:
-        print("Calibri font not found, will use Helvetica as fallback")
-except Exception as e:
-    print(f"Could not register Calibri font: {e}, using Helvetica")
+    _FONTS_REGISTERED = True
+
+# Font getters - call _register_fonts() when first accessed
+def get_verdana_font():
+    if not _FONTS_REGISTERED:
+        _register_fonts()
+    return _VERDANA_FONT or 'Helvetica'
+
+def get_calibri_font():
+    if not _FONTS_REGISTERED:
+        _register_fonts()
+    return _CALIBRI_FONT or 'Helvetica'
+
+def get_calibri_bold_font():
+    if not _FONTS_REGISTERED:
+        _register_fonts()
+    return _CALIBRI_BOLD_FONT or 'Helvetica-Bold'
+
+# For backward compatibility - these will be set after first call
+# Use get_verdana_font(), get_calibri_font(), get_calibri_bold_font() instead
+VERDANA_FONT = 'Helvetica'  # Will be updated on first use
+CALIBRI_FONT = 'Helvetica'  # Will be updated on first use
+CALIBRI_BOLD_FONT = 'Helvetica-Bold'  # Will be updated on first use
 
 # Try to import Excel library for formatted output
 try:
@@ -3079,7 +3084,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
         alignment=TA_LEFT,
         spaceAfter=0,
         leftIndent=0,
-        fontName=CALIBRI_BOLD_FONT
+        fontName=get_calibri_bold_font()
     )
     
     heading_style = ParagraphStyle(
@@ -3091,7 +3096,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
         spaceAfter=8,
         spaceBefore=12,
         leftIndent=0,
-        fontName=CALIBRI_FONT
+        fontName=get_calibri_font()
     )
     
     normal_style = ParagraphStyle(
@@ -3102,7 +3107,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
         spaceAfter=6,
         leading=14,
         leftIndent=0,
-        fontName=CALIBRI_FONT
+        fontName=get_calibri_font()
     )
     
     table_text_style = ParagraphStyle(
@@ -3113,7 +3118,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
         spaceAfter=0,
         leading=12,
         leftIndent=0,
-        fontName=CALIBRI_FONT
+        fontName=get_calibri_font()
     )
     
     # Title
@@ -3132,7 +3137,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
         'WhiteLabel',
         parent=table_text_style,
         textColor=colors.white,
-        fontName=CALIBRI_BOLD_FONT
+        fontName=get_calibri_bold_font()
     )
     
     # Create style for table headers (bold)
@@ -3142,7 +3147,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
         fontSize=11,
         textColor=colors.white,
         alignment=TA_CENTER,
-        fontName=CALIBRI_BOLD_FONT
+        fontName=get_calibri_bold_font()
     )
     
     first_table_data = [
@@ -3168,8 +3173,8 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
         ('TEXTCOLOR', (1, 0), (1, -1), colors.black),  # Black text for values
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), CALIBRI_BOLD_FONT),
-        ('FONTNAME', (1, 0), (1, -1), CALIBRI_FONT),
+        ('FONTNAME', (0, 0), (0, -1), get_calibri_bold_font()),
+        ('FONTNAME', (1, 0), (1, -1), get_calibri_font()),
         ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
@@ -3376,7 +3381,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
     bold_text_style = ParagraphStyle(
         'BoldText',
         parent=table_text_style,
-        fontName=CALIBRI_BOLD_FONT
+        fontName=get_calibri_bold_font()
     )
     
     # Add Violence, Abuse section - span all columns
@@ -4598,6 +4603,23 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Prescribed medications table
     prescribed_table = doc.add_table(rows=1, cols=6)
     prescribed_table.style = 'Table Grid'
+    
+    # Set explicit column widths for the parent table
+    # Total width should be ~7.5 inches (10800 twips) to fit on page
+    # Column widths: Medication (1.5"), Dose (0.8"), When to take it (2.5"), How to take it (1.2"), Where (1.0"), Additional (0.5")
+    col_widths = [2160, 1152, 3600, 1728, 1440, 720]  # In twips
+    for i, width in enumerate(col_widths):
+        header_cell = prescribed_table.rows[0].cells[i]
+        tc_pr = header_cell._element.get_or_add_tcPr()
+        # Remove existing width
+        for width_elem in tc_pr.xpath('.//w:tcW'):
+            tc_pr.remove(width_elem)
+        # Set explicit width
+        tc_width = OxmlElement('w:tcW')
+        tc_width.set(qn('w:w'), str(width))
+        tc_width.set(qn('w:type'), 'dxa')
+        tc_pr.append(tc_width)
+    
     header_cells = prescribed_table.rows[0].cells
     headers = ['Medication', 'Dose', 'When to take it', 'How to take it', 'Where it is kept', 'Additional details']
     for i, header_text in enumerate(headers):
@@ -4623,7 +4645,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     when_cell.paragraphs[0].clear()
     
     # Set explicit width for the cell to ensure nested table has space
+    # This should match the column width we set above (3600 twips = 2.5 inches)
     tc_pr = when_cell._element.get_or_add_tcPr()
+    # Remove existing width
+    for width_elem in tc_pr.xpath('.//w:tcW'):
+        tc_pr.remove(width_elem)
     tc_width = OxmlElement('w:tcW')
     tc_width.set(qn('w:w'), '3600')  # 2.5 inches (3600 twips)
     tc_width.set(qn('w:type'), 'dxa')
@@ -4664,6 +4690,21 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     grid_span.set(qn('w:val'), '7')
     tc_pr.append(grid_span)
     
+    # Clear cells 1-6 that are being merged (they should be empty)
+    for i in range(1, 7):
+        merged_cell = nested_header[i]
+        merged_cell.paragraphs[0].clear()
+        # Mark as merged using vMerge
+        merged_tc_pr = merged_cell._element.get_or_add_tcPr()
+        # Remove any existing merge markers
+        for merge_elem in merged_tc_pr.xpath('.//w:vMerge'):
+            merged_tc_pr.remove(merge_elem)
+        for merge_elem in merged_tc_pr.xpath('.//w:hMerge'):
+            merged_tc_pr.remove(merge_elem)
+        # Add hMerge to mark as horizontally merged
+        h_merge = OxmlElement('w:hMerge')
+        merged_tc_pr.append(h_merge)
+    
     # Remove spacing and margins from Day cell
     remove_all_spacing_from_cell(day_cell)
     day_cell.paragraphs[0].clear()
@@ -4681,6 +4722,20 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     grid_span = OxmlElement('w:gridSpan')
     grid_span.set(qn('w:val'), '2')
     tc_pr.append(grid_span)
+    
+    # Clear cell 8 that is being merged (it should be empty)
+    merged_cell_8 = nested_header[8]
+    merged_cell_8.paragraphs[0].clear()
+    # Mark as merged using hMerge
+    merged_tc_pr = merged_cell_8._element.get_or_add_tcPr()
+    # Remove any existing merge markers
+    for merge_elem in merged_tc_pr.xpath('.//w:vMerge'):
+        merged_tc_pr.remove(merge_elem)
+    for merge_elem in merged_tc_pr.xpath('.//w:hMerge'):
+        merged_tc_pr.remove(merge_elem)
+    # Add hMerge to mark as horizontally merged
+    h_merge = OxmlElement('w:hMerge')
+    merged_tc_pr.append(h_merge)
     
     # Remove spacing and margins from Time cell
     remove_all_spacing_from_cell(time_cell)
@@ -4705,8 +4760,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_table_border_color(nested_table)
     
     # Set explicit column widths for the nested table so it's not squished
-    # Each column should be approximately equal width (400 twips each = ~0.28 inches)
-    col_width = 400  # 400 twips per column
+    # Total width is 3600 twips (2.5 inches), divided into 9 columns
+    # Day columns (7): ~400 twips each = 2800 twips
+    # Time columns (2): ~400 twips each = 800 twips
+    # Total: 3600 twips
+    col_width = 400  # 400 twips per column (~0.28 inches)
     for row in nested_table.rows:
         for i, cell in enumerate(row.cells):
             tc_pr = cell._element.get_or_add_tcPr()
