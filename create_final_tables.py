@@ -4306,12 +4306,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     run.font.color.rgb = text_color  # #007bc4
     set_font_size_12(run)
     
-    doc.add_paragraph()  # Empty line
-    
     # First box
     first_box = create_boxed_section()
     p = add_paragraph_no_spacing(first_box)
     p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
     run = p.add_run('Full Name:')
     run.bold = True
     set_font_size_12(run)
@@ -4343,7 +4342,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     add_paragraph_no_spacing(first_box)  # Empty line
     p = add_paragraph_no_spacing(first_box)
-    run = p.add_run('Pharmacist')
+    run = p.add_run('Pharmacist:')
     run.bold = True
     set_font_size_12(run)
     p = add_paragraph_no_spacing(first_box)
@@ -4366,6 +4365,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     sig_box1 = create_boxed_section()
     p = add_paragraph_no_spacing(sig_box1)
     p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
     run = p.add_run('Date:')
     set_font_size_12(run)
     
@@ -4382,6 +4382,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     plan_box = create_boxed_section()
     p = add_paragraph_no_spacing(plan_box)
     p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
     run = p.add_run('Name of person responsible for developing the plan:')
     set_font_size_12(run)
     
@@ -4398,6 +4399,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     sig_box2 = create_boxed_section()
     p = add_paragraph_no_spacing(sig_box2)
     p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
     run = p.add_run('Date:')
     set_font_size_12(run)
     
@@ -4414,6 +4416,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     reason_box = create_boxed_section()
     p = add_paragraph_no_spacing(reason_box)
     p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
     run = p.add_run('Please describe why a support plan is required.')
     set_font_size_12(run)
     # Add four empty lines
@@ -4433,6 +4436,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     assist_box = create_boxed_section()
     p = add_paragraph_no_spacing(assist_box)
     p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
     run = p.add_run('Describe the assistance required')
     set_font_size_12(run)
     # Add four empty lines
@@ -4452,6 +4456,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     important_box = create_boxed_section()
     p = add_paragraph_no_spacing(important_box)
     p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(0)
     run = p.add_run('Any additional plans relating to the person\'s medication should be listed here')
     set_font_size_12(run)
     # Add four empty lines
@@ -4503,7 +4508,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     
     # Side effects table
-    side_effects_table = doc.add_table(rows=1, cols=2)
+    side_effects_table = doc.add_table(rows=6, cols=2)  # 1 header + 5 empty rows
     side_effects_table.style = 'Table Grid'
     header_cells = side_effects_table.rows[0].cells
     header_cells[0].paragraphs[0].add_run('Medication').bold = True
@@ -4559,20 +4564,44 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     when_cell.paragraphs[0].clear()
     
     # Create nested table for "When to take it"
-    nested_table = when_cell.add_table(rows=2, cols=2)
+    # Structure: 2 columns (Day, Time), with S, M, T, W, T, F, S under Day and AM, PM under Time
+    # Each header has an empty field under it
+    # Total rows: 1 header + 7 day rows (each with header + empty) + 2 time rows (each with header + empty) = 1 + 14 = 15 rows
+    # Actually simpler: 1 header row, then alternating header/empty rows
+    nested_table = when_cell.add_table(rows=15, cols=2)  # 1 header + 14 data rows
     nested_table.style = 'Table Grid'
-    # Header row
+    
+    # Header row: "Day" and "Time"
     nested_header = nested_table.rows[0].cells
     nested_header[0].paragraphs[0].add_run('Day').bold = True
     nested_header[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     nested_header[1].paragraphs[0].add_run('Time').bold = True
     nested_header[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    # Data row
-    nested_data = nested_table.rows[1].cells
-    nested_data[0].paragraphs[0].add_run('S M T W T F S')
-    nested_data[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    nested_data[1].paragraphs[0].add_run('AM PM')
-    nested_data[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    
+    # Day column: S, M, T, W, T, F, S as headers with empty fields under each
+    day_labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+    day_row_index = 1
+    for day_label in day_labels:
+        # Header row
+        nested_table.rows[day_row_index].cells[0].paragraphs[0].add_run(day_label).bold = True
+        nested_table.rows[day_row_index].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        day_row_index += 1
+        # Empty field under
+        nested_table.rows[day_row_index].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        day_row_index += 1
+    
+    # Time column: AM, PM as headers with empty fields under each
+    time_labels = ['AM', 'PM']
+    time_row_index = 1
+    for time_label in time_labels:
+        # Header row
+        nested_table.rows[time_row_index].cells[1].paragraphs[0].add_run(time_label).bold = True
+        nested_table.rows[time_row_index].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        time_row_index += 1
+        # Empty field under
+        nested_table.rows[time_row_index].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        time_row_index += 1
+    
     set_table_border_color(nested_table)
     
     doc.add_paragraph()  # Empty line
@@ -4582,10 +4611,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Medication List - As Needed (PRN)')
     run.bold = True
+    run.font.color.rgb = text_color  # #007bc4
     set_font_size_12(run)
     
     # PRN medications table
-    prn_table = doc.add_table(rows=1, cols=6)
+    prn_table = doc.add_table(rows=6, cols=6)  # 1 header + 5 empty rows
     prn_table.style = 'Table Grid'
     header_cells = prn_table.rows[0].cells
     headers = ['Medication', 'What it is used for', 'Indications for use', 'How to take it/dose', 'Where it is kept', 'Additional details']
