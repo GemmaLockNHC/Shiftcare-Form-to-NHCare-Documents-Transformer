@@ -4281,6 +4281,43 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         pPr.append(spacing)
         return p
     
+    # Helper function to remove ALL spacing from nested table cells (more aggressive)
+    def remove_all_spacing_from_nested_cell(cell):
+        """Remove ALL spacing from nested table cells - maximum compactness"""
+        # Remove cell margins/padding - set to absolute zero
+        tc_pr = cell._element.get_or_add_tcPr()
+        # Remove existing margins
+        for margin_elem in tc_pr.xpath('.//w:tcMar'):
+            tc_pr.remove(margin_elem)
+        # Set all margins to absolute zero
+        tc_mar = OxmlElement('w:tcMar')
+        for margin_name in ['top', 'left', 'bottom', 'right']:
+            margin_elem = OxmlElement(f'w:{margin_name}')
+            margin_elem.set(qn('w:w'), '0')
+            margin_elem.set(qn('w:type'), 'dxa')
+            tc_mar.append(margin_elem)
+        tc_pr.append(tc_mar)
+        
+        # Remove spacing from all paragraphs - absolute zero
+        for paragraph in cell.paragraphs:
+            paragraph.paragraph_format.space_before = Pt(0)
+            paragraph.paragraph_format.space_after = Pt(0)
+            paragraph.paragraph_format.line_spacing = 1.0
+            
+            # Modify XML directly
+            pPr = paragraph._element.get_or_add_pPr()
+            # Remove all spacing elements
+            for spacing_elem in pPr.xpath('.//w:spacing'):
+                pPr.remove(spacing_elem)
+            
+            # Add zero spacing with minimal line spacing
+            spacing = OxmlElement('w:spacing')
+            spacing.set(qn('w:before'), '0')
+            spacing.set(qn('w:after'), '0')
+            spacing.set(qn('w:line'), '100')  # Very tight line spacing (100 twips = ~5pt)
+            spacing.set(qn('w:lineRule'), 'exact')
+            pPr.append(spacing)
+    
     # Helper function to remove all spacing from all paragraphs in a cell
     # Note: Google Docs may interpret spacing differently than Word
     def remove_all_spacing_from_cell(cell):
@@ -4424,6 +4461,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = add_paragraph_no_spacing(sig_box1)
     run = p.add_run('Date:')
     set_font_size_12(run)
+    # Add four empty lines
+    for _ in range(4):
+        add_paragraph_no_spacing(sig_box1)
     # Remove spacing again after adding content
     remove_all_spacing_from_cell(sig_box1)
     
@@ -4442,6 +4482,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = add_paragraph_no_spacing(plan_box)
     run = p.add_run('Name of person responsible for developing the plan:')
     set_font_size_12(run)
+    # Add four empty lines
+    for _ in range(4):
+        add_paragraph_no_spacing(plan_box)
     # Remove spacing again after adding content
     remove_all_spacing_from_cell(plan_box)
     
@@ -4460,6 +4503,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = add_paragraph_no_spacing(sig_box2)
     run = p.add_run('Date:')
     set_font_size_12(run)
+    # Add four empty lines
+    for _ in range(4):
+        add_paragraph_no_spacing(sig_box2)
     # Remove spacing again after adding content
     remove_all_spacing_from_cell(sig_box2)
     
@@ -4694,13 +4740,13 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             day_cell.merge(row0.cells[1])
     
     # Add "Day" text - even smaller font, not bold
-    remove_all_spacing_from_cell(day_cell)
+    remove_all_spacing_from_nested_cell(day_cell)
     day_cell.paragraphs[0].clear()
     day_run = day_cell.paragraphs[0].add_run('Day')
     day_run.font.size = Pt(7)  # Even smaller font (7pt)
     day_run.bold = False  # Not bold
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    remove_all_spacing_from_cell(day_cell)
+    remove_all_spacing_from_nested_cell(day_cell)
     
     # Now merge "Time" cells (should be indices 1 and 2 now)
     row0 = nested_table.rows[0]  # Get fresh reference
@@ -4710,27 +4756,27 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             time_cell.merge(row0.cells[2])
         
         # Add "Time" text - even smaller font, not bold
-        remove_all_spacing_from_cell(time_cell)
+        remove_all_spacing_from_nested_cell(time_cell)
         time_cell.paragraphs[0].clear()
         time_run = time_cell.paragraphs[0].add_run('Time')
         time_run.font.size = Pt(7)  # Even smaller font (7pt)
         time_run.bold = False  # Not bold
         time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-        remove_all_spacing_from_cell(time_cell)
+        remove_all_spacing_from_nested_cell(time_cell)
     
     # Second row (Heading 2): S, M, T, W, T, F, S, AM, PM as horizontal headers
     nested_data = nested_table.rows[1].cells
     labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S', 'AM', 'PM']
     for i, label in enumerate(labels):
-        # Remove spacing and margins from each cell
-        remove_all_spacing_from_cell(nested_data[i])
+        # Remove spacing and margins from each cell using nested cell function
+        remove_all_spacing_from_nested_cell(nested_data[i])
         nested_data[i].paragraphs[0].clear()
         label_run = nested_data[i].paragraphs[0].add_run(label)
         label_run.font.size = Pt(7)  # Even smaller font (7pt)
         label_run.bold = False  # Not bold
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         # Remove spacing again after adding content
-        remove_all_spacing_from_cell(nested_data[i])
+        remove_all_spacing_from_nested_cell(nested_data[i])
     
     set_table_border_color(nested_table)
     
