@@ -4276,6 +4276,20 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         pPr.append(spacing)
         return p
     
+    # Helper function to remove all spacing from all paragraphs in a cell
+    def remove_all_spacing_from_cell(cell):
+        """Remove spacing from all paragraphs in a cell"""
+        for paragraph in cell.paragraphs:
+            pPr = paragraph._element.get_or_add_pPr()
+            for spacing_elem in pPr.xpath('.//w:spacing'):
+                pPr.remove(spacing_elem)
+            spacing = OxmlElement('w:spacing')
+            spacing.set(qn('w:before'), '0')
+            spacing.set(qn('w:after'), '0')
+            spacing.set(qn('w:line'), '240')
+            spacing.set(qn('w:lineRule'), 'auto')
+            pPr.append(spacing)
+    
     # Helper function to ensure font size 12 for runs
     def set_font_size_12(run):
         """Set font size to 12 for a run"""
@@ -4315,15 +4329,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     # First box
     first_box = create_boxed_section()
+    remove_all_spacing_from_cell(first_box)
     p = add_paragraph_no_spacing(first_box)
-    # Force zero spacing via XML
-    pPr = p._element.get_or_add_pPr()
-    for spacing_elem in pPr.xpath('.//w:spacing'):
-        pPr.remove(spacing_elem)
-    spacing = OxmlElement('w:spacing')
-    spacing.set(qn('w:before'), '0')
-    spacing.set(qn('w:after'), '0')
-    pPr.append(spacing)
     run = p.add_run('Full Name:')
     run.bold = True
     set_font_size_12(run)
@@ -4376,15 +4383,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     
     sig_box1 = create_boxed_section()
+    remove_all_spacing_from_cell(sig_box1)
     p = add_paragraph_no_spacing(sig_box1)
-    # Force zero spacing via XML
-    pPr = p._element.get_or_add_pPr()
-    for spacing_elem in pPr.xpath('.//w:spacing'):
-        pPr.remove(spacing_elem)
-    spacing = OxmlElement('w:spacing')
-    spacing.set(qn('w:before'), '0')
-    spacing.set(qn('w:after'), '0')
-    pPr.append(spacing)
     run = p.add_run('Date:')
     set_font_size_12(run)
     
@@ -4399,15 +4399,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     
     plan_box = create_boxed_section()
+    remove_all_spacing_from_cell(plan_box)
     p = add_paragraph_no_spacing(plan_box)
-    # Force zero spacing via XML
-    pPr = p._element.get_or_add_pPr()
-    for spacing_elem in pPr.xpath('.//w:spacing'):
-        pPr.remove(spacing_elem)
-    spacing = OxmlElement('w:spacing')
-    spacing.set(qn('w:before'), '0')
-    spacing.set(qn('w:after'), '0')
-    pPr.append(spacing)
     run = p.add_run('Name of person responsible for developing the plan:')
     set_font_size_12(run)
     
@@ -4422,15 +4415,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     
     sig_box2 = create_boxed_section()
+    remove_all_spacing_from_cell(sig_box2)
     p = add_paragraph_no_spacing(sig_box2)
-    # Force zero spacing via XML
-    pPr = p._element.get_or_add_pPr()
-    for spacing_elem in pPr.xpath('.//w:spacing'):
-        pPr.remove(spacing_elem)
-    spacing = OxmlElement('w:spacing')
-    spacing.set(qn('w:before'), '0')
-    spacing.set(qn('w:after'), '0')
-    pPr.append(spacing)
     run = p.add_run('Date:')
     set_font_size_12(run)
     
@@ -4445,15 +4431,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     
     reason_box = create_boxed_section()
+    remove_all_spacing_from_cell(reason_box)
     p = add_paragraph_no_spacing(reason_box)
-    # Force zero spacing via XML
-    pPr = p._element.get_or_add_pPr()
-    for spacing_elem in pPr.xpath('.//w:spacing'):
-        pPr.remove(spacing_elem)
-    spacing = OxmlElement('w:spacing')
-    spacing.set(qn('w:before'), '0')
-    spacing.set(qn('w:after'), '0')
-    pPr.append(spacing)
     run = p.add_run('Please describe why a support plan is required.')
     set_font_size_12(run)
     # Add four empty lines
@@ -4471,15 +4450,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     
     assist_box = create_boxed_section()
+    remove_all_spacing_from_cell(assist_box)
     p = add_paragraph_no_spacing(assist_box)
-    # Force zero spacing via XML
-    pPr = p._element.get_or_add_pPr()
-    for spacing_elem in pPr.xpath('.//w:spacing'):
-        pPr.remove(spacing_elem)
-    spacing = OxmlElement('w:spacing')
-    spacing.set(qn('w:before'), '0')
-    spacing.set(qn('w:after'), '0')
-    pPr.append(spacing)
     run = p.add_run('Describe the assistance required')
     set_font_size_12(run)
     # Add four empty lines
@@ -4497,15 +4469,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     
     important_box = create_boxed_section()
+    remove_all_spacing_from_cell(important_box)
     p = add_paragraph_no_spacing(important_box)
-    # Force zero spacing via XML
-    pPr = p._element.get_or_add_pPr()
-    for spacing_elem in pPr.xpath('.//w:spacing'):
-        pPr.remove(spacing_elem)
-    spacing = OxmlElement('w:spacing')
-    spacing.set(qn('w:before'), '0')
-    spacing.set(qn('w:after'), '0')
-    pPr.append(spacing)
     run = p.add_run('Any additional plans relating to the person\'s medication should be listed here')
     set_font_size_12(run)
     # Add four empty lines
@@ -4625,20 +4590,38 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Merge cells for "Day" (first 7 columns)
     day_cell = nested_header[0]
     tc_pr = day_cell._element.get_or_add_tcPr()
+    # Remove any existing gridSpan
+    for existing_span in tc_pr.xpath('.//w:gridSpan'):
+        tc_pr.remove(existing_span)
     grid_span = OxmlElement('w:gridSpan')
     grid_span.set(qn('w:val'), '7')
     tc_pr.append(grid_span)
     
+    # Remove the cells that are being merged (cells 1-6)
+    tr = nested_table.rows[0]._element
+    for i in range(6, 0, -1):  # Remove in reverse order
+        tr.remove(nested_header[i]._element)
+    
+    day_cell.paragraphs[0].clear()
     day_cell.paragraphs[0].add_run('Day').bold = True
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     
-    # Merge cells for "Time" (last 2 columns) - start from column 7
-    time_cell = nested_header[7]
+    # Merge cells for "Time" (last 2 columns) - now it's at index 1 (after removing 6 cells)
+    time_cell = nested_table.rows[0].cells[1]
     tc_pr = time_cell._element.get_or_add_tcPr()
+    # Remove any existing gridSpan
+    for existing_span in tc_pr.xpath('.//w:gridSpan'):
+        tc_pr.remove(existing_span)
     grid_span = OxmlElement('w:gridSpan')
     grid_span.set(qn('w:val'), '2')
     tc_pr.append(grid_span)
     
+    # Remove the last cell that's being merged
+    tr = nested_table.rows[0]._element
+    if len(nested_table.rows[0].cells) > 2:
+        tr.remove(nested_table.rows[0].cells[2]._element)
+    
+    time_cell.paragraphs[0].clear()
     time_cell.paragraphs[0].add_run('Time').bold = True
     time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     
@@ -4646,6 +4629,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     nested_data = nested_table.rows[1].cells
     labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S', 'AM', 'PM']
     for i, label in enumerate(labels):
+        nested_data[i].paragraphs[0].clear()
         nested_data[i].paragraphs[0].add_run(label).bold = True
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     
