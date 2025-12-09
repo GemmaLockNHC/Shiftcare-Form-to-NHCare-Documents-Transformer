@@ -4597,17 +4597,12 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     grid_span.set(qn('w:val'), '7')
     tc_pr.append(grid_span)
     
-    # Remove the cells that are being merged (cells 1-6)
-    tr = nested_table.rows[0]._element
-    for i in range(6, 0, -1):  # Remove in reverse order
-        tr.remove(nested_header[i]._element)
-    
     day_cell.paragraphs[0].clear()
     day_cell.paragraphs[0].add_run('Day').bold = True
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     
-    # Merge cells for "Time" (last 2 columns) - now it's at index 1 (after removing 6 cells)
-    time_cell = nested_table.rows[0].cells[1]
+    # Merge cells for "Time" (columns 7-8, which are indices 7 and 8)
+    time_cell = nested_header[7]
     tc_pr = time_cell._element.get_or_add_tcPr()
     # Remove any existing gridSpan
     for existing_span in tc_pr.xpath('.//w:gridSpan'):
@@ -4615,11 +4610,6 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     grid_span = OxmlElement('w:gridSpan')
     grid_span.set(qn('w:val'), '2')
     tc_pr.append(grid_span)
-    
-    # Remove the last cell that's being merged
-    tr = nested_table.rows[0]._element
-    if len(nested_table.rows[0].cells) > 2:
-        tr.remove(nested_table.rows[0].cells[2]._element)
     
     time_cell.paragraphs[0].clear()
     time_cell.paragraphs[0].add_run('Time').bold = True
