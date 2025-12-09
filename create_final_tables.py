@@ -4651,8 +4651,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     # Set explicit column widths for the parent table
     # Total width should be ~7.5 inches (10800 twips) to fit on page
-    # Column widths: Medication (1.2"), Dose (0.7"), When to take it (3.0"), How to take it (1.0"), Where (0.9"), Additional (0.7")
-    col_widths = [1728, 1008, 4320, 1440, 1296, 1008]  # In twips - increased "When to take it" to 3 inches
+    # Column widths: Medication (1.3"), Dose (0.8"), When to take it (2.0"), How to take it (1.2"), Where (1.0"), Additional (0.7")
+    col_widths = [1872, 1152, 2880, 1728, 1440, 1008]  # In twips - reduced "When to take it" to 2 inches
     for i, width in enumerate(col_widths):
         header_cell = prescribed_table.rows[0].cells[i]
         tc_pr = header_cell._element.get_or_add_tcPr()
@@ -4693,13 +4693,13 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     remove_all_spacing_from_cell(when_cell)
     
     # Set explicit width for the cell to ensure nested table has space
-    # This should match the column width we set above (4320 twips = 3.0 inches)
+    # This should match the column width we set above (2880 twips = 2.0 inches)
     tc_pr = when_cell._element.get_or_add_tcPr()
     # Remove existing width
     for width_elem in tc_pr.xpath('.//w:tcW'):
         tc_pr.remove(width_elem)
     tc_width = OxmlElement('w:tcW')
-    tc_width.set(qn('w:w'), '4320')  # 3.0 inches (4320 twips)
+    tc_width.set(qn('w:w'), '2880')  # 2.0 inches (2880 twips)
     tc_width.set(qn('w:type'), 'dxa')
     tc_pr.append(tc_width)
     
@@ -4716,7 +4716,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         tbl_pr = OxmlElement('w:tblPr')
         nested_table._element.insert(0, tbl_pr)
     tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), '4320')  # 3.0 inches (4320 twips)
+    tbl_width.set(qn('w:w'), '2880')  # 2.0 inches (2880 twips)
     tbl_width.set(qn('w:type'), 'dxa')
     tbl_pr.append(tbl_width)
     
@@ -4739,11 +4739,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if len(row0.cells) > 1:
             day_cell.merge(row0.cells[1])
     
-    # Add "Day" text - even smaller font, not bold
+    # Add "Day" text - smaller font, not bold
     remove_all_spacing_from_nested_cell(day_cell)
     day_cell.paragraphs[0].clear()
     day_run = day_cell.paragraphs[0].add_run('Day')
-    day_run.font.size = Pt(7)  # Even smaller font (7pt)
+    day_run.font.size = Pt(9)  # Smaller font (9pt)
     day_run.bold = False  # Not bold
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     remove_all_spacing_from_nested_cell(day_cell)
@@ -4755,11 +4755,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if len(row0.cells) > 2:
             time_cell.merge(row0.cells[2])
         
-        # Add "Time" text - even smaller font, not bold
+        # Add "Time" text - smaller font, not bold
         remove_all_spacing_from_nested_cell(time_cell)
         time_cell.paragraphs[0].clear()
         time_run = time_cell.paragraphs[0].add_run('Time')
-        time_run.font.size = Pt(7)  # Even smaller font (7pt)
+        time_run.font.size = Pt(9)  # Smaller font (9pt)
         time_run.bold = False  # Not bold
         time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         remove_all_spacing_from_nested_cell(time_cell)
@@ -4772,7 +4772,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         remove_all_spacing_from_nested_cell(nested_data[i])
         nested_data[i].paragraphs[0].clear()
         label_run = nested_data[i].paragraphs[0].add_run(label)
-        label_run.font.size = Pt(7)  # Even smaller font (7pt)
+        label_run.font.size = Pt(9)  # Smaller font (9pt)
         label_run.bold = False  # Not bold
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         # Remove spacing again after adding content
@@ -4780,19 +4780,34 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     set_table_border_color(nested_table)
     
-    # Set explicit column widths for the nested table so it's not squished
-    # Total width is 4320 twips (3.0 inches), divided into 9 columns
-    # Day columns (7): ~480 twips each = 3360 twips
-    # Time columns (2): ~480 twips each = 960 twips
-    # Total: 4320 twips
-    col_width = 480  # 480 twips per column (~0.33 inches) - increased for better spacing
+    # Set explicit column widths for the nested table - just wide enough for text, no extra space
+    # Row 0: Day spans 7 cols, Time spans 2 cols
+    # Row 1: Individual columns for S, M, T, W, T, F, S, AM, PM
+    # Set widths to fit text only - single letters ~80 twips, AM/PM ~120 twips
     for row in nested_table.rows:
         for i, cell in enumerate(row.cells):
             tc_pr = cell._element.get_or_add_tcPr()
             # Remove existing width
             for width_elem in tc_pr.xpath('.//w:tcW'):
                 tc_pr.remove(width_elem)
-            # Set explicit width
+            
+            # Set width based on which column and which row
+            if row == nested_table.rows[0]:
+                # First row - Day and Time headers (merged cells)
+                # Set widths for underlying cells that will be merged
+                if i < 7:  # Day columns (will be merged)
+                    col_width = 80  # Narrow for single letters
+                else:  # Time columns (will be merged)
+                    col_width = 120  # Slightly wider for "Time"
+            else:
+                # Second row - individual columns: S, M, T, W, T, F, S, AM, PM
+                if i < 7:  # Single letter columns (S, M, T, W, T, F, S)
+                    col_width = 80  # Just wide enough for single letter (~0.056 inches)
+                elif i == 7:  # AM
+                    col_width = 120  # Wide enough for "AM" (~0.083 inches)
+                else:  # PM (i == 8)
+                    col_width = 120  # Wide enough for "PM" (~0.083 inches)
+            
             tc_width = OxmlElement('w:tcW')
             tc_width.set(qn('w:w'), str(col_width))
             tc_width.set(qn('w:type'), 'dxa')
