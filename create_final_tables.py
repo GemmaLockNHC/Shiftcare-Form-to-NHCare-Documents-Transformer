@@ -4725,48 +4725,44 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     tbl_layout.set(qn('w:type'), 'fixed')
     tbl_pr.append(tbl_layout)
     
-    # Header row 1: "Day" spanning 7 columns, "Time" spanning 2 columns
+    # Header row 1: "Time" spanning 2 columns (first), "Day" spanning 7 columns (second) - no gap between them
     row0 = nested_table.rows[0]
     
-    # Merge cells for "Day" (cells 0-6)
-    # Merge from right to left to avoid index shifting issues
-    day_cell = row0.cells[0]
-    # After each merge, the cell list shrinks, so merge from the end
-    # Start with cell 6, then 5, then 4, etc.
-    for _ in range(6):
-        # Always merge the cell at index 1 into index 0
-        # (after first merge, what was index 2 becomes index 1, etc.)
-        if len(row0.cells) > 1:
-            day_cell.merge(row0.cells[1])
+    # Merge cells for "Time" first (cells 0-1)
+    time_cell = row0.cells[0]
+    if len(row0.cells) > 1:
+        time_cell.merge(row0.cells[1])
     
-    # Add "Day" text - increased font, not bold
-    remove_all_spacing_from_nested_cell(day_cell)
-    day_cell.paragraphs[0].clear()
-    day_run = day_cell.paragraphs[0].add_run('Day')
-    day_run.font.size = Pt(11)  # Increased font (11pt)
-    day_run.bold = False  # Not bold
-    day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    remove_all_spacing_from_nested_cell(day_cell)
+    # Add "Time" text - increased font, not bold
+    remove_all_spacing_from_nested_cell(time_cell)
+    time_cell.paragraphs[0].clear()
+    time_run = time_cell.paragraphs[0].add_run('Time')
+    time_run.font.size = Pt(11)  # Increased font (11pt)
+    time_run.bold = False  # Not bold
+    time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    remove_all_spacing_from_nested_cell(time_cell)
     
-    # Now merge "Time" cells (should be indices 1 and 2 now)
+    # Now merge "Day" cells (should be at index 1 now, spanning cells 1-7)
     row0 = nested_table.rows[0]  # Get fresh reference
     if len(row0.cells) >= 2:
-        time_cell = row0.cells[1]
-        if len(row0.cells) > 2:
-            time_cell.merge(row0.cells[2])
+        day_cell = row0.cells[1]
+        # Merge the remaining 6 cells (indices 2-7) into cell 1
+        for _ in range(6):
+            if len(row0.cells) > 2:
+                day_cell.merge(row0.cells[2])
         
-        # Add "Time" text - increased font, not bold
-        remove_all_spacing_from_nested_cell(time_cell)
-        time_cell.paragraphs[0].clear()
-        time_run = time_cell.paragraphs[0].add_run('Time')
-        time_run.font.size = Pt(11)  # Increased font (11pt)
-        time_run.bold = False  # Not bold
-        time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-        remove_all_spacing_from_nested_cell(time_cell)
+        # Add "Day" text - increased font, not bold
+        remove_all_spacing_from_nested_cell(day_cell)
+        day_cell.paragraphs[0].clear()
+        day_run = day_cell.paragraphs[0].add_run('Day')
+        day_run.font.size = Pt(11)  # Increased font (11pt)
+        day_run.bold = False  # Not bold
+        day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        remove_all_spacing_from_nested_cell(day_cell)
     
-    # Second row (Heading 2): S, M, T, W, T, F, S, AM, PM as horizontal headers
+    # Second row (Heading 2): AM, PM (under Time), then S, M, T, W, T, F, S (under Day)
     nested_data = nested_table.rows[1].cells
-    labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S', 'AM', 'PM']
+    labels = ['AM', 'PM', 'S', 'M', 'T', 'W', 'T', 'F', 'S']  # Swapped order: Time fields first, then Day fields
     for i, label in enumerate(labels):
         # Remove spacing and margins from each cell using nested cell function
         remove_all_spacing_from_nested_cell(nested_data[i])
@@ -4791,22 +4787,21 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             for width_elem in tc_pr.xpath('.//w:tcW'):
                 tc_pr.remove(width_elem)
             
-            # Set width based on which column and which row - halved widths, minimal spacing
+            # Set width based on which column and which row - halved again, minimal spacing
+            # Structure: Time (2 cols) then Day (7 cols) - no gap
             if row == nested_table.rows[0]:
-                # First row - Day and Time headers (merged cells)
+                # First row - Time and Day headers (merged cells)
                 # Set widths for underlying cells that will be merged
-                if i < 7:  # Day columns (will be merged)
-                    col_width = 25  # Halved: 25 twips for single letters
-                else:  # Time columns (will be merged)
-                    col_width = 35  # Halved: 35 twips for "Time"
+                if i < 2:  # Time columns (will be merged) - first 2 columns
+                    col_width = 18  # Halved again: 18 twips for Time columns
+                else:  # Day columns (will be merged) - columns 2-8
+                    col_width = 13  # Halved again: 13 twips for Day columns
             else:
-                # Second row - individual columns: S, M, T, W, T, F, S, AM, PM
-                if i < 7:  # Single letter columns (S, M, T, W, T, F, S)
-                    col_width = 25  # Halved: 25 twips for single letter (~0.017 inches)
-                elif i == 7:  # AM
-                    col_width = 35  # Halved: 35 twips for "AM" (~0.024 inches)
-                else:  # PM (i == 8)
-                    col_width = 35  # Halved: 35 twips for "PM" (~0.024 inches)
+                # Second row - individual columns: AM, PM (Time), then S, M, T, W, T, F, S (Day)
+                if i < 2:  # AM and PM columns (Time fields)
+                    col_width = 18  # Halved again: 18 twips for AM/PM (~0.012 inches)
+                else:  # Single letter columns (S, M, T, W, T, F, S) - Day fields
+                    col_width = 13  # Halved again: 13 twips for single letter (~0.009 inches)
             
             tc_width = OxmlElement('w:tcW')
             tc_width.set(qn('w:w'), str(col_width))
