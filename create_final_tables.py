@@ -4678,30 +4678,39 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     tbl_pr.append(tbl_layout)
     
     # Header row 1: "Day" spanning 7 columns, "Time" spanning 2 columns
-    nested_header = nested_table.rows[0].cells
+    row0 = nested_table.rows[0]
     
-    # Use python-docx's built-in merge method for "Day" (merge cells 0-6)
-    day_cell = nested_header[0]
-    for i in range(1, 7):
-        day_cell.merge(nested_header[i])
+    # Merge cells for "Day" (cells 0-6)
+    # Merge from right to left to avoid index shifting issues
+    day_cell = row0.cells[0]
+    # After each merge, the cell list shrinks, so merge from the end
+    # Start with cell 6, then 5, then 4, etc.
+    for _ in range(6):
+        # Always merge the cell at index 1 into index 0
+        # (after first merge, what was index 2 becomes index 1, etc.)
+        if len(row0.cells) > 1:
+            day_cell.merge(row0.cells[1])
     
-    # Remove spacing and margins from Day cell
+    # Add "Day" text
     remove_all_spacing_from_cell(day_cell)
     day_cell.paragraphs[0].clear()
     day_cell.paragraphs[0].add_run('Day').bold = True
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     remove_all_spacing_from_cell(day_cell)
     
-    # Use python-docx's built-in merge method for "Time" (merge cells 7-8)
-    time_cell = nested_header[7]
-    time_cell.merge(nested_header[8])
-    
-    # Remove spacing and margins from Time cell
-    remove_all_spacing_from_cell(time_cell)
-    time_cell.paragraphs[0].clear()
-    time_cell.paragraphs[0].add_run('Time').bold = True
-    time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    remove_all_spacing_from_cell(time_cell)
+    # Now merge "Time" cells (should be indices 1 and 2 now)
+    row0 = nested_table.rows[0]  # Get fresh reference
+    if len(row0.cells) >= 2:
+        time_cell = row0.cells[1]
+        if len(row0.cells) > 2:
+            time_cell.merge(row0.cells[2])
+        
+        # Add "Time" text
+        remove_all_spacing_from_cell(time_cell)
+        time_cell.paragraphs[0].clear()
+        time_cell.paragraphs[0].add_run('Time').bold = True
+        time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        remove_all_spacing_from_cell(time_cell)
     
     # Second row (Heading 2): S, M, T, W, T, F, S, AM, PM as horizontal headers
     nested_data = nested_table.rows[1].cells
