@@ -4739,11 +4739,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if len(row0.cells) > 1:
             day_cell.merge(row0.cells[1])
     
-    # Add "Day" text - smaller font, not bold
+    # Add "Day" text - increased font, not bold
     remove_all_spacing_from_nested_cell(day_cell)
     day_cell.paragraphs[0].clear()
     day_run = day_cell.paragraphs[0].add_run('Day')
-    day_run.font.size = Pt(9)  # Smaller font (9pt)
+    day_run.font.size = Pt(11)  # Increased font (11pt)
     day_run.bold = False  # Not bold
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     remove_all_spacing_from_nested_cell(day_cell)
@@ -4755,11 +4755,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if len(row0.cells) > 2:
             time_cell.merge(row0.cells[2])
         
-        # Add "Time" text - smaller font, not bold
+        # Add "Time" text - increased font, not bold
         remove_all_spacing_from_nested_cell(time_cell)
         time_cell.paragraphs[0].clear()
         time_run = time_cell.paragraphs[0].add_run('Time')
-        time_run.font.size = Pt(9)  # Smaller font (9pt)
+        time_run.font.size = Pt(11)  # Increased font (11pt)
         time_run.bold = False  # Not bold
         time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         remove_all_spacing_from_nested_cell(time_cell)
@@ -4772,7 +4772,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         remove_all_spacing_from_nested_cell(nested_data[i])
         nested_data[i].paragraphs[0].clear()
         label_run = nested_data[i].paragraphs[0].add_run(label)
-        label_run.font.size = Pt(9)  # Smaller font (9pt)
+        label_run.font.size = Pt(11)  # Increased font (11pt)
         label_run.bold = False  # Not bold
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         # Remove spacing again after adding content
@@ -4791,22 +4791,22 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             for width_elem in tc_pr.xpath('.//w:tcW'):
                 tc_pr.remove(width_elem)
             
-            # Set width based on which column and which row
+            # Set width based on which column and which row - minimal widths, no extra space
             if row == nested_table.rows[0]:
                 # First row - Day and Time headers (merged cells)
                 # Set widths for underlying cells that will be merged
                 if i < 7:  # Day columns (will be merged)
-                    col_width = 80  # Narrow for single letters
+                    col_width = 60  # Very narrow for single letters
                 else:  # Time columns (will be merged)
-                    col_width = 120  # Slightly wider for "Time"
+                    col_width = 80  # Narrow for "Time"
             else:
                 # Second row - individual columns: S, M, T, W, T, F, S, AM, PM
                 if i < 7:  # Single letter columns (S, M, T, W, T, F, S)
-                    col_width = 80  # Just wide enough for single letter (~0.056 inches)
+                    col_width = 60  # Minimal width for single letter (~0.042 inches)
                 elif i == 7:  # AM
-                    col_width = 120  # Wide enough for "AM" (~0.083 inches)
+                    col_width = 90  # Minimal width for "AM" (~0.063 inches)
                 else:  # PM (i == 8)
-                    col_width = 120  # Wide enough for "PM" (~0.083 inches)
+                    col_width = 90  # Minimal width for "PM" (~0.063 inches)
             
             tc_width = OxmlElement('w:tcW')
             tc_width.set(qn('w:w'), str(col_width))
