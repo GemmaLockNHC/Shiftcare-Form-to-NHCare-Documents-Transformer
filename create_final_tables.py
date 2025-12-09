@@ -4801,25 +4801,44 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         # Remove spacing again after adding content
         remove_all_spacing_from_nested_cell(nested_data[i])
+        
+        # CRITICAL: Re-apply width AFTER adding content to ensure it sticks
+        # Use the same col_widths array defined earlier: [8, 8, 3, 3, 3, 3, 3, 3, 3]
+        expected_widths = [8, 8, 3, 3, 3, 3, 3, 3, 3]
+        if i < len(expected_widths):
+            tc_pr = nested_data[i]._element.get_or_add_tcPr()
+            # Remove ALL existing width elements
+            for width_elem in tc_pr.xpath('.//w:tcW'):
+                tc_pr.remove(width_elem)
+            # Set explicit width
+            tc_width = OxmlElement('w:tcW')
+            tc_width.set(qn('w:w'), str(expected_widths[i]))
+            tc_width.set(qn('w:type'), 'dxa')
+            tc_pr.append(tc_width)
     
     set_table_border_color(nested_table)
     
-    # Set widths on row 1 cells AFTER all merging is done - row 1 doesn't get merged so indices don't change
+    # FINAL: Force widths on row 1 cells one last time to ensure ALL cells have correct widths
     # Column widths: AM (8), PM (8), S (3), M (3), T (3), W (3), T (3), F (3), S (3)
-    col_widths_list = [8, 8, 3, 3, 3, 3, 3, 3, 3]
+    final_widths = [8, 8, 3, 3, 3, 3, 3, 3, 3]
     row1 = nested_table.rows[1]
     for i, cell in enumerate(row1.cells):
-        if i < len(col_widths_list):
+        if i < len(final_widths):
             tc_pr = cell._element.get_or_add_tcPr()
-            # Remove ALL existing width elements
+            # Remove ALL existing width elements - be aggressive
             for width_elem in tc_pr.xpath('.//w:tcW'):
                 tc_pr.remove(width_elem)
             
             # Set explicit width - MUST use 'dxa' type
             tc_width = OxmlElement('w:tcW')
-            tc_width.set(qn('w:w'), str(col_widths_list[i]))
+            tc_width.set(qn('w:w'), str(final_widths[i]))
             tc_width.set(qn('w:type'), 'dxa')
             tc_pr.append(tc_width)
+            
+            # Also ensure no gridSpan is interfering
+            for span_elem in tc_pr.xpath('.//w:gridSpan'):
+                # Don't remove gridSpan, but make sure width is still set
+                pass
     
     # Set widths on row 0 merged cells AFTER merging
     row0 = nested_table.rows[0]
