@@ -4290,16 +4290,16 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         # Remove existing margins
         for margin_elem in tc_pr.xpath('.//w:tcMar'):
             tc_pr.remove(margin_elem)
-        # Set all margins to minimal value (1 twip = 0.0175pt) for Google Docs compatibility
+        # Set all margins to zero for maximum compactness
         tc_mar = OxmlElement('w:tcMar')
         for margin_name in ['top', 'left', 'bottom', 'right']:
             margin_elem = OxmlElement(f'w:{margin_name}')
-            margin_elem.set(qn('w:w'), '1')  # Minimal value instead of 0
+            margin_elem.set(qn('w:w'), '0')  # Zero margins for maximum compactness
             margin_elem.set(qn('w:type'), 'dxa')
             tc_mar.append(margin_elem)
         tc_pr.append(tc_mar)
         
-        # Remove spacing from all paragraphs - use minimal values for Google Docs
+        # Remove spacing from all paragraphs - use zero values for maximum compactness
         for paragraph in cell.paragraphs:
             # Set paragraph format first
             paragraph.paragraph_format.space_before = Pt(0)
@@ -4312,12 +4312,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             for spacing_elem in pPr.xpath('.//w:spacing'):
                 pPr.remove(spacing_elem)
             
-            # Add minimal spacing (1 twip) instead of zero for Google Docs compatibility
-            # Google Docs may ignore zero values, so use 1 twip (0.0175pt) which is effectively zero
+            # Add zero spacing with tighter line spacing for maximum compactness
             spacing = OxmlElement('w:spacing')
-            spacing.set(qn('w:before'), '1')  # 1 twip instead of 0
-            spacing.set(qn('w:after'), '1')  # 1 twip instead of 0
-            spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
+            spacing.set(qn('w:before'), '0')  # Zero spacing
+            spacing.set(qn('w:after'), '0')  # Zero spacing
+            spacing.set(qn('w:line'), '120')  # Tighter line spacing (120 twips = 6pt, half of normal)
             spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing
             pPr.append(spacing)
             
@@ -4694,11 +4693,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if len(row0.cells) > 1:
             day_cell.merge(row0.cells[1])
     
-    # Add "Day" text - smaller font, not bold
+    # Add "Day" text - even smaller font, not bold
     remove_all_spacing_from_cell(day_cell)
     day_cell.paragraphs[0].clear()
     day_run = day_cell.paragraphs[0].add_run('Day')
-    day_run.font.size = Pt(9)  # Smaller font
+    day_run.font.size = Pt(7)  # Even smaller font (7pt)
     day_run.bold = False  # Not bold
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     remove_all_spacing_from_cell(day_cell)
@@ -4710,11 +4709,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if len(row0.cells) > 2:
             time_cell.merge(row0.cells[2])
         
-        # Add "Time" text - smaller font, not bold
+        # Add "Time" text - even smaller font, not bold
         remove_all_spacing_from_cell(time_cell)
         time_cell.paragraphs[0].clear()
         time_run = time_cell.paragraphs[0].add_run('Time')
-        time_run.font.size = Pt(9)  # Smaller font
+        time_run.font.size = Pt(7)  # Even smaller font (7pt)
         time_run.bold = False  # Not bold
         time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         remove_all_spacing_from_cell(time_cell)
@@ -4727,7 +4726,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         remove_all_spacing_from_cell(nested_data[i])
         nested_data[i].paragraphs[0].clear()
         label_run = nested_data[i].paragraphs[0].add_run(label)
-        label_run.font.size = Pt(9)  # Smaller font
+        label_run.font.size = Pt(7)  # Even smaller font (7pt)
         label_run.bold = False  # Not bold
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         # Remove spacing again after adding content
