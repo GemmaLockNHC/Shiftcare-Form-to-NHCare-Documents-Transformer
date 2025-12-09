@@ -4446,8 +4446,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Add full name data
     full_name = f'{first_name} {surname}'.strip()
     if full_name:
-        p = add_paragraph_no_spacing(first_box)
-        run = p.add_run(full_name)
+        run = p.add_run(f' {full_name}')
         set_font_size_12(run)
     # Remove spacing again after adding content
     remove_all_spacing_from_cell(first_box)
@@ -4456,8 +4455,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     # Add date of birth data
     if dob_str:
-        p = add_paragraph_no_spacing(first_box)
-        run = p.add_run(dob_str)
+        run = p.add_run(f' {dob_str}')
         set_font_size_12(run)
     p = add_paragraph_no_spacing(first_box)
     run = p.add_run('NDIS Number:')
