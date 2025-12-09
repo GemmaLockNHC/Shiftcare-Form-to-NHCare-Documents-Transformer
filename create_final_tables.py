@@ -4277,23 +4277,24 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         return p
     
     # Helper function to remove all spacing from all paragraphs in a cell
+    # Note: Google Docs may interpret spacing differently than Word
     def remove_all_spacing_from_cell(cell):
         """Remove spacing from all paragraphs in a cell and remove cell margins"""
-        # Remove cell margins/padding
+        # Remove cell margins/padding - set to minimal value for Google Docs compatibility
         tc_pr = cell._element.get_or_add_tcPr()
         # Remove existing margins
         for margin_elem in tc_pr.xpath('.//w:tcMar'):
             tc_pr.remove(margin_elem)
-        # Set all margins to zero
+        # Set all margins to minimal value (1 twip = 0.0175pt) for Google Docs compatibility
         tc_mar = OxmlElement('w:tcMar')
         for margin_name in ['top', 'left', 'bottom', 'right']:
             margin_elem = OxmlElement(f'w:{margin_name}')
-            margin_elem.set(qn('w:w'), '0')
+            margin_elem.set(qn('w:w'), '1')  # Minimal value instead of 0
             margin_elem.set(qn('w:type'), 'dxa')
             tc_mar.append(margin_elem)
         tc_pr.append(tc_mar)
         
-        # Remove spacing from all paragraphs
+        # Remove spacing from all paragraphs - use minimal values for Google Docs
         for paragraph in cell.paragraphs:
             # Set paragraph format first
             paragraph.paragraph_format.space_before = Pt(0)
@@ -4306,13 +4307,19 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             for spacing_elem in pPr.xpath('.//w:spacing'):
                 pPr.remove(spacing_elem)
             
-            # Add zero spacing with exact line rule
+            # Add minimal spacing (1 twip) instead of zero for Google Docs compatibility
+            # Google Docs may ignore zero values, so use 1 twip (0.0175pt) which is effectively zero
             spacing = OxmlElement('w:spacing')
-            spacing.set(qn('w:before'), '0')
-            spacing.set(qn('w:after'), '0')
+            spacing.set(qn('w:before'), '1')  # 1 twip instead of 0
+            spacing.set(qn('w:after'), '1')  # 1 twip instead of 0
             spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
             spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing
             pPr.append(spacing)
+            
+            # Also try setting keepNext and keepLines to prevent extra spacing
+            keepNext = OxmlElement('w:keepNext')
+            keepNext.set(qn('w:val'), '0')
+            pPr.append(keepNext)
     
     # Helper function to ensure font size 12 for runs
     def set_font_size_12(run):
