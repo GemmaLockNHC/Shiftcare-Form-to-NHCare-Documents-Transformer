@@ -4705,37 +4705,52 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     # Create nested table for "When to take it"
     # Structure: Mini table
-    # Row 1 (Heading 1): "Day" (spanning 7 cols) | "Time" (spanning 2 cols) = 9 columns total
-    # Row 2 (Heading 2): S | M | T | W | T | F | S | AM | PM (all as horizontal headers)
+    # Row 1 (Heading 1): "Time" (spanning 2 cols) | "Day" (spanning 7 cols) = 9 columns total
+    # Row 2 (Heading 2): AM | PM | S | M | T | W | T | F | S (all as horizontal headers)
     nested_table = when_cell.add_table(rows=2, cols=9)
     nested_table.style = 'Table Grid'
     
-    # Set explicit width for the nested table - match the sum of column widths
+    # Column widths: AM (8), PM (8), S (3), M (3), T (3), W (3), T (3), F (3), S (3)
+    col_widths = [8, 8, 3, 3, 3, 3, 3, 3, 3]
+    
+    # CRITICAL: Set widths on ALL cells IMMEDIATELY after table creation, BEFORE anything else
+    for row in nested_table.rows:
+        for col_idx, cell in enumerate(row.cells):
+            if col_idx < len(col_widths):
+                tc_pr = cell._element.get_or_add_tcPr()
+                # Remove ALL existing width elements
+                for width_elem in tc_pr.xpath('.//w:tcW'):
+                    tc_pr.remove(width_elem)
+                # Set explicit width
+                tc_width = OxmlElement('w:tcW')
+                tc_width.set(qn('w:w'), str(col_widths[col_idx]))
+                tc_width.set(qn('w:type'), 'dxa')
+                tc_pr.append(tc_width)
+    
+    # Set table properties
     tbl_pr = nested_table._element.tblPr
     if tbl_pr is None:
         tbl_pr = OxmlElement('w:tblPr')
         nested_table._element.insert(0, tbl_pr)
-    tbl_width = OxmlElement('w:tblW')
-    # Total width = 8+8+3+3+3+3+3+3+3 = 37 twips, but add some padding for borders
-    tbl_width.set(qn('w:w'), '50')  # Just enough for columns + minimal padding
-    tbl_width.set(qn('w:type'), 'dxa')
-    tbl_pr.append(tbl_width)
     
-    # Set table layout to fixed (not auto) so columns have explicit widths
+    # Set table layout to fixed
     tbl_layout = OxmlElement('w:tblLayout')
     tbl_layout.set(qn('w:type'), 'fixed')
     tbl_pr.append(tbl_layout)
     
-    # Set explicit column widths in the table grid - just 1 letter wide, absolute minimum
+    # Set table grid column widths
     tblGrid = OxmlElement('w:tblGrid')
-    # Column widths: AM (8), PM (8), S (3), M (3), T (3), W (3), T (3), F (3), S (3)
-    # Single letters: 3 twips each (absolute minimum), AM/PM: 8 twips each (just wide enough for 2 letters)
-    col_widths = [8, 8, 3, 3, 3, 3, 3, 3, 3]
     for width in col_widths:
         gridCol = OxmlElement('w:gridCol')
         gridCol.set(qn('w:w'), str(width))
         tblGrid.append(gridCol)
     tbl_pr.append(tblGrid)
+    
+    # Set table width
+    tbl_width = OxmlElement('w:tblW')
+    tbl_width.set(qn('w:w'), '50')  # Sum of column widths + minimal padding
+    tbl_width.set(qn('w:type'), 'dxa')
+    tbl_pr.append(tbl_width)
     
     # Header row 1: "Time" spanning 2 columns (first), "Day" spanning 7 columns (second) - no gap between them
     row0 = nested_table.rows[0]
