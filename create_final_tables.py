@@ -4680,69 +4680,27 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Header row 1: "Day" spanning 7 columns, "Time" spanning 2 columns
     nested_header = nested_table.rows[0].cells
     
-    # Merge cells for "Day" (first 7 columns)
+    # Use python-docx's built-in merge method for "Day" (merge cells 0-6)
     day_cell = nested_header[0]
-    tc_pr = day_cell._element.get_or_add_tcPr()
-    # Remove any existing gridSpan
-    for existing_span in tc_pr.xpath('.//w:gridSpan'):
-        tc_pr.remove(existing_span)
-    grid_span = OxmlElement('w:gridSpan')
-    grid_span.set(qn('w:val'), '7')
-    tc_pr.append(grid_span)
-    
-    # Clear cells 1-6 that are being merged (they should be empty)
     for i in range(1, 7):
-        merged_cell = nested_header[i]
-        merged_cell.paragraphs[0].clear()
-        # Mark as merged using vMerge
-        merged_tc_pr = merged_cell._element.get_or_add_tcPr()
-        # Remove any existing merge markers
-        for merge_elem in merged_tc_pr.xpath('.//w:vMerge'):
-            merged_tc_pr.remove(merge_elem)
-        for merge_elem in merged_tc_pr.xpath('.//w:hMerge'):
-            merged_tc_pr.remove(merge_elem)
-        # Add hMerge to mark as horizontally merged
-        h_merge = OxmlElement('w:hMerge')
-        merged_tc_pr.append(h_merge)
+        day_cell.merge(nested_header[i])
     
     # Remove spacing and margins from Day cell
     remove_all_spacing_from_cell(day_cell)
     day_cell.paragraphs[0].clear()
     day_cell.paragraphs[0].add_run('Day').bold = True
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    # Remove spacing again after adding content
     remove_all_spacing_from_cell(day_cell)
     
-    # Merge cells for "Time" (columns 7-8, which are indices 7 and 8)
+    # Use python-docx's built-in merge method for "Time" (merge cells 7-8)
     time_cell = nested_header[7]
-    tc_pr = time_cell._element.get_or_add_tcPr()
-    # Remove any existing gridSpan
-    for existing_span in tc_pr.xpath('.//w:gridSpan'):
-        tc_pr.remove(existing_span)
-    grid_span = OxmlElement('w:gridSpan')
-    grid_span.set(qn('w:val'), '2')
-    tc_pr.append(grid_span)
-    
-    # Clear cell 8 that is being merged (it should be empty)
-    merged_cell_8 = nested_header[8]
-    merged_cell_8.paragraphs[0].clear()
-    # Mark as merged using hMerge
-    merged_tc_pr = merged_cell_8._element.get_or_add_tcPr()
-    # Remove any existing merge markers
-    for merge_elem in merged_tc_pr.xpath('.//w:vMerge'):
-        merged_tc_pr.remove(merge_elem)
-    for merge_elem in merged_tc_pr.xpath('.//w:hMerge'):
-        merged_tc_pr.remove(merge_elem)
-    # Add hMerge to mark as horizontally merged
-    h_merge = OxmlElement('w:hMerge')
-    merged_tc_pr.append(h_merge)
+    time_cell.merge(nested_header[8])
     
     # Remove spacing and margins from Time cell
     remove_all_spacing_from_cell(time_cell)
     time_cell.paragraphs[0].clear()
     time_cell.paragraphs[0].add_run('Time').bold = True
     time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    # Remove spacing again after adding content
     remove_all_spacing_from_cell(time_cell)
     
     # Second row (Heading 2): S, M, T, W, T, F, S, AM, PM as horizontal headers
