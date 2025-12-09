@@ -4622,12 +4622,34 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     when_cell = data_row.cells[2]  # "When to take it" column
     when_cell.paragraphs[0].clear()
     
+    # Set explicit width for the cell to ensure nested table has space
+    tc_pr = when_cell._element.get_or_add_tcPr()
+    tc_width = OxmlElement('w:tcW')
+    tc_width.set(qn('w:w'), '3600')  # 2.5 inches (3600 twips)
+    tc_width.set(qn('w:type'), 'dxa')
+    tc_pr.append(tc_width)
+    
     # Create nested table for "When to take it"
     # Structure: Mini table
     # Row 1 (Heading 1): "Day" (spanning 7 cols) | "Time" (spanning 2 cols) = 9 columns total
     # Row 2 (Heading 2): S | M | T | W | T | F | S | AM | PM (all as horizontal headers)
     nested_table = when_cell.add_table(rows=2, cols=9)
     nested_table.style = 'Table Grid'
+    
+    # Set explicit width for the nested table so it's not squished
+    tbl_pr = nested_table._element.tblPr
+    if tbl_pr is None:
+        tbl_pr = OxmlElement('w:tblPr')
+        nested_table._element.insert(0, tbl_pr)
+    tbl_width = OxmlElement('w:tblW')
+    tbl_width.set(qn('w:w'), '3600')  # 2.5 inches (3600 twips)
+    tbl_width.set(qn('w:type'), 'dxa')
+    tbl_pr.append(tbl_width)
+    
+    # Set table layout to fixed (not auto) so columns have explicit widths
+    tbl_layout = OxmlElement('w:tblLayout')
+    tbl_layout.set(qn('w:type'), 'fixed')
+    tbl_pr.append(tbl_layout)
     
     # Header row 1: "Day" spanning 7 columns, "Time" spanning 2 columns
     nested_header = nested_table.rows[0].cells
@@ -4681,6 +4703,21 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         remove_all_spacing_from_cell(nested_data[i])
     
     set_table_border_color(nested_table)
+    
+    # Set explicit column widths for the nested table so it's not squished
+    # Each column should be approximately equal width (400 twips each = ~0.28 inches)
+    col_width = 400  # 400 twips per column
+    for row in nested_table.rows:
+        for i, cell in enumerate(row.cells):
+            tc_pr = cell._element.get_or_add_tcPr()
+            # Remove existing width
+            for width_elem in tc_pr.xpath('.//w:tcW'):
+                tc_pr.remove(width_elem)
+            # Set explicit width
+            tc_width = OxmlElement('w:tcW')
+            tc_width.set(qn('w:w'), str(col_width))
+            tc_width.set(qn('w:type'), 'dxa')
+            tc_pr.append(tc_width)
     
     doc.add_paragraph()  # Empty line
     
