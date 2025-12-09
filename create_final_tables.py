@@ -4777,37 +4777,48 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     set_table_border_color(nested_table)
     
-    # Set explicit column widths for the nested table - just wide enough for text, no extra space
-    # Row 0: Day spans 7 cols, Time spans 2 cols
-    # Row 1: Individual columns for S, M, T, W, T, F, S, AM, PM
-    # Set widths to fit text only - single letters ~80 twips, AM/PM ~120 twips
-    for row in nested_table.rows:
-        for i, cell in enumerate(row.cells):
-            tc_pr = cell._element.get_or_add_tcPr()
-            # Remove existing width
-            for width_elem in tc_pr.xpath('.//w:tcW'):
-                tc_pr.remove(width_elem)
-            
-            # Set width based on which column and which row - absolute minimum, no extra space
-            # Structure: Time (2 cols) then Day (7 cols) - no gap, no extra space in cells
-            if row == nested_table.rows[0]:
-                # First row - Time and Day headers (merged cells)
-                # Set widths for underlying cells that will be merged
-                if i < 2:  # Time columns (will be merged) - first 2 columns
-                    col_width = 15  # Minimal for Time columns
-                else:  # Day columns (will be merged) - columns 2-8, directly adjacent
-                    col_width = 10  # Minimal for Day columns - no extra space
-            else:
-                # Second row - individual columns: AM, PM (Time), then S, M, T, W, T, F, S (Day)
-                if i < 2:  # AM and PM columns (Time fields)
-                    col_width = 15  # Minimal for AM/PM - just fit text
-                else:  # Single letter columns (S, M, T, W, T, F, S) - Day fields
-                    col_width = 10  # Absolute minimum for single letters - no extra space
-            
-            tc_width = OxmlElement('w:tcW')
-            tc_width.set(qn('w:w'), str(col_width))
-            tc_width.set(qn('w:type'), 'dxa')
-            tc_pr.append(tc_width)
+    # Set explicit column widths for the nested table - set on the actual visible cells
+    # After merging, row 0 has 2 cells (Time merged, Day merged), row 1 has 9 cells (AM, PM, S, M, T, W, T, F, S)
+    # Set widths on row 1 cells which are the actual visible columns
+    row1 = nested_table.rows[1]
+    for i, cell in enumerate(row1.cells):
+        tc_pr = cell._element.get_or_add_tcPr()
+        # Remove existing width
+        for width_elem in tc_pr.xpath('.//w:tcW'):
+            tc_pr.remove(width_elem)
+        
+        # Set width based on column - absolute minimum, no extra space
+        # Structure: AM, PM (Time), then S, M, T, W, T, F, S (Day)
+        if i < 2:  # AM and PM columns (Time fields)
+            col_width = 15  # Minimal for AM/PM - just fit text
+        else:  # Single letter columns (S, M, T, W, T, F, S) - Day fields
+            col_width = 8  # Even smaller for single letters - absolute minimum
+        
+        tc_width = OxmlElement('w:tcW')
+        tc_width.set(qn('w:w'), str(col_width))
+        tc_width.set(qn('w:type'), 'dxa')
+        tc_pr.append(tc_width)
+    
+    # Also set widths on row 0 merged cells to match
+    row0 = nested_table.rows[0]
+    if len(row0.cells) >= 2:
+        # Time cell (first merged cell)
+        time_tc_pr = row0.cells[0]._element.get_or_add_tcPr()
+        for width_elem in time_tc_pr.xpath('.//w:tcW'):
+            time_tc_pr.remove(width_elem)
+        time_width = OxmlElement('w:tcW')
+        time_width.set(qn('w:w'), '30')  # 2 columns * 15 twips
+        time_width.set(qn('w:type'), 'dxa')
+        time_tc_pr.append(time_width)
+        
+        # Day cell (second merged cell)
+        day_tc_pr = row0.cells[1]._element.get_or_add_tcPr()
+        for width_elem in day_tc_pr.xpath('.//w:tcW'):
+            day_tc_pr.remove(width_elem)
+        day_width = OxmlElement('w:tcW')
+        day_width.set(qn('w:w'), '56')  # 7 columns * 8 twips
+        day_width.set(qn('w:type'), 'dxa')
+        day_tc_pr.append(day_width)
     
     doc.add_paragraph()  # Empty line
     
