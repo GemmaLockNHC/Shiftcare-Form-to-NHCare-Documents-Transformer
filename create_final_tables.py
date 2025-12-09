@@ -4644,6 +4644,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     when_cell = data_row.cells[2]  # "When to take it" column
     when_cell.paragraphs[0].clear()
     
+    # Remove all spacing and margins from the cell
+    remove_all_spacing_from_cell(when_cell)
+    
     # Set explicit width for the cell to ensure nested table has space
     # This should match the column width we set above (4320 twips = 3.0 inches)
     tc_pr = when_cell._element.get_or_add_tcPr()
@@ -4691,10 +4694,12 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if len(row0.cells) > 1:
             day_cell.merge(row0.cells[1])
     
-    # Add "Day" text
+    # Add "Day" text - smaller font, not bold
     remove_all_spacing_from_cell(day_cell)
     day_cell.paragraphs[0].clear()
-    day_cell.paragraphs[0].add_run('Day').bold = True
+    day_run = day_cell.paragraphs[0].add_run('Day')
+    day_run.font.size = Pt(9)  # Smaller font
+    day_run.bold = False  # Not bold
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     remove_all_spacing_from_cell(day_cell)
     
@@ -4705,10 +4710,12 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if len(row0.cells) > 2:
             time_cell.merge(row0.cells[2])
         
-        # Add "Time" text
+        # Add "Time" text - smaller font, not bold
         remove_all_spacing_from_cell(time_cell)
         time_cell.paragraphs[0].clear()
-        time_cell.paragraphs[0].add_run('Time').bold = True
+        time_run = time_cell.paragraphs[0].add_run('Time')
+        time_run.font.size = Pt(9)  # Smaller font
+        time_run.bold = False  # Not bold
         time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         remove_all_spacing_from_cell(time_cell)
     
@@ -4719,7 +4726,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         # Remove spacing and margins from each cell
         remove_all_spacing_from_cell(nested_data[i])
         nested_data[i].paragraphs[0].clear()
-        nested_data[i].paragraphs[0].add_run(label).bold = True
+        label_run = nested_data[i].paragraphs[0].add_run(label)
+        label_run.font.size = Pt(9)  # Smaller font
+        label_run.bold = False  # Not bold
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
         # Remove spacing again after adding content
         remove_all_spacing_from_cell(nested_data[i])
