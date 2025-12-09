@@ -4652,7 +4652,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Set explicit column widths for the parent table
     # Total width should be ~7.5 inches (10800 twips) to fit on page
     # Column widths: Medication (1.3"), Dose (0.8"), When to take it (2.0"), How to take it (1.2"), Where (1.0"), Additional (0.7")
-    col_widths = [1872, 1152, 2880, 1728, 1440, 1008]  # In twips - reduced "When to take it" to 2 inches
+    col_widths = [1872, 1152, 60, 1728, 1440, 1008]  # In twips - "When to take it" is now minimal (60 twips)
     for i, width in enumerate(col_widths):
         header_cell = prescribed_table.rows[0].cells[i]
         tc_pr = header_cell._element.get_or_add_tcPr()
@@ -4692,14 +4692,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Remove all spacing and margins from the cell
     remove_all_spacing_from_cell(when_cell)
     
-    # Set explicit width for the cell to ensure nested table has space
-    # This should match the column width we set above (2880 twips = 2.0 inches)
+    # Set explicit width for the cell - just enough for the nested table
+    # Nested table is only 50 twips wide, so set cell to match
     tc_pr = when_cell._element.get_or_add_tcPr()
     # Remove existing width
     for width_elem in tc_pr.xpath('.//w:tcW'):
         tc_pr.remove(width_elem)
     tc_width = OxmlElement('w:tcW')
-    tc_width.set(qn('w:w'), '2880')  # 2.0 inches (2880 twips)
+    tc_width.set(qn('w:w'), '60')  # Just enough for nested table + minimal padding
     tc_width.set(qn('w:type'), 'dxa')
     tc_pr.append(tc_width)
     
@@ -4710,13 +4710,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     nested_table = when_cell.add_table(rows=2, cols=9)
     nested_table.style = 'Table Grid'
     
-    # Set explicit width for the nested table so it's not squished
+    # Set explicit width for the nested table - match the sum of column widths
     tbl_pr = nested_table._element.tblPr
     if tbl_pr is None:
         tbl_pr = OxmlElement('w:tblPr')
         nested_table._element.insert(0, tbl_pr)
     tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), '2880')  # 2.0 inches (2880 twips)
+    # Total width = 8+8+3+3+3+3+3+3+3 = 37 twips, but add some padding for borders
+    tbl_width.set(qn('w:w'), '50')  # Just enough for columns + minimal padding
     tbl_width.set(qn('w:type'), 'dxa')
     tbl_pr.append(tbl_width)
     
@@ -4788,27 +4789,26 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     set_table_border_color(nested_table)
     
-    # Set explicit column widths for the nested table - set on ALL cells to force the widths
+    # Force column widths on ALL cells - set width type to 'dxa' and use gridSpan properly
     # Column widths: AM (8), PM (8), S (3), M (3), T (3), W (3), T (3), F (3), S (3)
-    # Just 1 letter wide for single letters, minimal for AM/PM
     col_widths_list = [8, 8, 3, 3, 3, 3, 3, 3, 3]
     
-    # Set widths on row 1 cells (the actual visible columns)
-    row1 = nested_table.rows[1]
-    for i, cell in enumerate(row1.cells):
-        if i < len(col_widths_list):
-            tc_pr = cell._element.get_or_add_tcPr()
-            # Remove existing width
-            for width_elem in tc_pr.xpath('.//w:tcW'):
-                tc_pr.remove(width_elem)
-            
-            # Set explicit width
-            tc_width = OxmlElement('w:tcW')
-            tc_width.set(qn('w:w'), str(col_widths_list[i]))
-            tc_width.set(qn('w:type'), 'dxa')
-            tc_pr.append(tc_width)
+    # Set widths on ALL cells in BOTH rows BEFORE merging
+    for row_idx, row in enumerate(nested_table.rows):
+        for col_idx, cell in enumerate(row.cells):
+            if col_idx < len(col_widths_list):
+                tc_pr = cell._element.get_or_add_tcPr()
+                # Remove existing width
+                for width_elem in tc_pr.xpath('.//w:tcW'):
+                    tc_pr.remove(width_elem)
+                
+                # Set explicit width - use 'dxa' type and set to exact column width
+                tc_width = OxmlElement('w:tcW')
+                tc_width.set(qn('w:w'), str(col_widths_list[col_idx]))
+                tc_width.set(qn('w:type'), 'dxa')
+                tc_pr.append(tc_width)
     
-    # Set widths on row 0 merged cells - Time spans first 2 cols (16 twips), Day spans next 7 cols (21 twips)
+    # Now set widths on row 0 merged cells AFTER setting individual cell widths
     row0 = nested_table.rows[0]
     if len(row0.cells) >= 2:
         # Time cell (first merged cell - spans columns 0-1)
