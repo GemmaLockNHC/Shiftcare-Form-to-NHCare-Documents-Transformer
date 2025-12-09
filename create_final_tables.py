@@ -4725,6 +4725,17 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     tbl_layout.set(qn('w:type'), 'fixed')
     tbl_pr.append(tbl_layout)
     
+    # Set explicit column widths in the table grid - just 1 letter wide, absolute minimum
+    tblGrid = OxmlElement('w:tblGrid')
+    # Column widths: AM (8), PM (8), S (3), M (3), T (3), W (3), T (3), F (3), S (3)
+    # Single letters: 3 twips each (absolute minimum), AM/PM: 8 twips each (just wide enough for 2 letters)
+    col_widths = [8, 8, 3, 3, 3, 3, 3, 3, 3]
+    for width in col_widths:
+        gridCol = OxmlElement('w:gridCol')
+        gridCol.set(qn('w:w'), str(width))
+        tblGrid.append(gridCol)
+    tbl_pr.append(tblGrid)
+    
     # Header row 1: "Time" spanning 2 columns (first), "Day" spanning 7 columns (second) - no gap between them
     row0 = nested_table.rows[0]
     
@@ -4777,46 +4788,44 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     set_table_border_color(nested_table)
     
-    # Set explicit column widths for the nested table - set on the actual visible cells
-    # After merging, row 0 has 2 cells (Time merged, Day merged), row 1 has 9 cells (AM, PM, S, M, T, W, T, F, S)
-    # Set widths on row 1 cells which are the actual visible columns
+    # Set explicit column widths for the nested table - set on ALL cells to force the widths
+    # Column widths: AM (8), PM (8), S (3), M (3), T (3), W (3), T (3), F (3), S (3)
+    # Just 1 letter wide for single letters, minimal for AM/PM
+    col_widths_list = [8, 8, 3, 3, 3, 3, 3, 3, 3]
+    
+    # Set widths on row 1 cells (the actual visible columns)
     row1 = nested_table.rows[1]
     for i, cell in enumerate(row1.cells):
-        tc_pr = cell._element.get_or_add_tcPr()
-        # Remove existing width
-        for width_elem in tc_pr.xpath('.//w:tcW'):
-            tc_pr.remove(width_elem)
-        
-        # Set width based on column - absolute minimum, no extra space
-        # Structure: AM, PM (Time), then S, M, T, W, T, F, S (Day)
-        if i < 2:  # AM and PM columns (Time fields)
-            col_width = 15  # Minimal for AM/PM - just fit text
-        else:  # Single letter columns (S, M, T, W, T, F, S) - Day fields
-            col_width = 8  # Even smaller for single letters - absolute minimum
-        
-        tc_width = OxmlElement('w:tcW')
-        tc_width.set(qn('w:w'), str(col_width))
-        tc_width.set(qn('w:type'), 'dxa')
-        tc_pr.append(tc_width)
+        if i < len(col_widths_list):
+            tc_pr = cell._element.get_or_add_tcPr()
+            # Remove existing width
+            for width_elem in tc_pr.xpath('.//w:tcW'):
+                tc_pr.remove(width_elem)
+            
+            # Set explicit width
+            tc_width = OxmlElement('w:tcW')
+            tc_width.set(qn('w:w'), str(col_widths_list[i]))
+            tc_width.set(qn('w:type'), 'dxa')
+            tc_pr.append(tc_width)
     
-    # Also set widths on row 0 merged cells to match
+    # Set widths on row 0 merged cells - Time spans first 2 cols (16 twips), Day spans next 7 cols (21 twips)
     row0 = nested_table.rows[0]
     if len(row0.cells) >= 2:
-        # Time cell (first merged cell)
+        # Time cell (first merged cell - spans columns 0-1)
         time_tc_pr = row0.cells[0]._element.get_or_add_tcPr()
         for width_elem in time_tc_pr.xpath('.//w:tcW'):
             time_tc_pr.remove(width_elem)
         time_width = OxmlElement('w:tcW')
-        time_width.set(qn('w:w'), '30')  # 2 columns * 15 twips
+        time_width.set(qn('w:w'), '16')  # 8 + 8 = 16 twips
         time_width.set(qn('w:type'), 'dxa')
         time_tc_pr.append(time_width)
         
-        # Day cell (second merged cell)
+        # Day cell (second merged cell - spans columns 2-8)
         day_tc_pr = row0.cells[1]._element.get_or_add_tcPr()
         for width_elem in day_tc_pr.xpath('.//w:tcW'):
             day_tc_pr.remove(width_elem)
         day_width = OxmlElement('w:tcW')
-        day_width.set(qn('w:w'), '56')  # 7 columns * 8 twips
+        day_width.set(qn('w:w'), '21')  # 3 * 7 = 21 twips
         day_width.set(qn('w:type'), 'dxa')
         day_tc_pr.append(day_width)
     
