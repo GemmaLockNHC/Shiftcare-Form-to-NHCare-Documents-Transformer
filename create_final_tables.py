@@ -3622,7 +3622,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         spacing.set(qn('w:before'), '0')
         spacing.set(qn('w:after'), '0')
         spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
-        spacing.set(qn('w:lineRule'), 'auto')
+        spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing instead of auto
         pPr.append(spacing)
         return p
     
@@ -3646,7 +3646,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         spacing.set(qn('w:before'), '0')
         spacing.set(qn('w:after'), '0')
         spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
-        spacing.set(qn('w:lineRule'), 'auto')
+        spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing instead of auto
         pPr.append(spacing)
         return p
     
@@ -3730,7 +3730,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         spacing.set(qn('w:before'), '0')
         spacing.set(qn('w:after'), '0')
         spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
-        spacing.set(qn('w:lineRule'), 'auto')
+        spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing instead of auto
         pPr.append(spacing)
         for run in p.runs:
             set_font_size_12(run)
@@ -4272,7 +4272,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         spacing.set(qn('w:before'), '0')
         spacing.set(qn('w:after'), '0')
         spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
-        spacing.set(qn('w:lineRule'), 'auto')
+        spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing instead of auto
         pPr.append(spacing)
         return p
     
@@ -4286,9 +4286,13 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             spacing = OxmlElement('w:spacing')
             spacing.set(qn('w:before'), '0')
             spacing.set(qn('w:after'), '0')
-            spacing.set(qn('w:line'), '240')
-            spacing.set(qn('w:lineRule'), 'auto')
+            spacing.set(qn('w:line'), '240')  # Single line spacing
+            spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing
             pPr.append(spacing)
+            # Also set paragraph format
+            paragraph.paragraph_format.space_before = Pt(0)
+            paragraph.paragraph_format.space_after = Pt(0)
+            paragraph.paragraph_format.line_spacing = 1.0
     
     # Helper function to ensure font size 12 for runs
     def set_font_size_12(run):
@@ -4579,12 +4583,12 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     # Create nested table for "When to take it"
     # Structure: Mini table
-    # Row 1: "Day" (spanning 7 cols) | "Time" (spanning 2 cols) = 9 columns total
-    # Row 2: S | M | T | W | T | F | S | AM | PM (all as horizontal headers)
+    # Row 1 (Heading 1): "Day" (spanning 7 cols) | "Time" (spanning 2 cols) = 9 columns total
+    # Row 2 (Heading 2): S | M | T | W | T | F | S | AM | PM (all as horizontal headers)
     nested_table = when_cell.add_table(rows=2, cols=9)
     nested_table.style = 'Table Grid'
     
-    # Header row: "Day" spanning 7 columns, "Time" spanning 2 columns
+    # Header row 1: "Day" spanning 7 columns, "Time" spanning 2 columns
     nested_header = nested_table.rows[0].cells
     
     # Merge cells for "Day" (first 7 columns)
@@ -4600,6 +4604,17 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     day_cell.paragraphs[0].clear()
     day_cell.paragraphs[0].add_run('Day').bold = True
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    # Remove spacing from Day cell
+    for para in day_cell.paragraphs:
+        pPr = para._element.get_or_add_pPr()
+        for spacing_elem in pPr.xpath('.//w:spacing'):
+            pPr.remove(spacing_elem)
+        spacing = OxmlElement('w:spacing')
+        spacing.set(qn('w:before'), '0')
+        spacing.set(qn('w:after'), '0')
+        spacing.set(qn('w:line'), '240')
+        spacing.set(qn('w:lineRule'), 'exact')
+        pPr.append(spacing)
     
     # Merge cells for "Time" (columns 7-8, which are indices 7 and 8)
     time_cell = nested_header[7]
@@ -4614,14 +4629,36 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     time_cell.paragraphs[0].clear()
     time_cell.paragraphs[0].add_run('Time').bold = True
     time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    # Remove spacing from Time cell
+    for para in time_cell.paragraphs:
+        pPr = para._element.get_or_add_pPr()
+        for spacing_elem in pPr.xpath('.//w:spacing'):
+            pPr.remove(spacing_elem)
+        spacing = OxmlElement('w:spacing')
+        spacing.set(qn('w:before'), '0')
+        spacing.set(qn('w:after'), '0')
+        spacing.set(qn('w:line'), '240')
+        spacing.set(qn('w:lineRule'), 'exact')
+        pPr.append(spacing)
     
-    # Second row: S, M, T, W, T, F, S, AM, PM as horizontal headers
+    # Second row (Heading 2): S, M, T, W, T, F, S, AM, PM as horizontal headers
     nested_data = nested_table.rows[1].cells
     labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S', 'AM', 'PM']
     for i, label in enumerate(labels):
         nested_data[i].paragraphs[0].clear()
         nested_data[i].paragraphs[0].add_run(label).bold = True
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        # Remove spacing from each cell
+        for para in nested_data[i].paragraphs:
+            pPr = para._element.get_or_add_pPr()
+            for spacing_elem in pPr.xpath('.//w:spacing'):
+                pPr.remove(spacing_elem)
+            spacing = OxmlElement('w:spacing')
+            spacing.set(qn('w:before'), '0')
+            spacing.set(qn('w:after'), '0')
+            spacing.set(qn('w:line'), '240')
+            spacing.set(qn('w:lineRule'), 'exact')
+            pPr.append(spacing)
     
     set_table_border_color(nested_table)
     
