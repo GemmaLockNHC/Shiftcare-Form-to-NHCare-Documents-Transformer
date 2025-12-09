@@ -4300,6 +4300,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Title
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    p.paragraph_format.space_after = Pt(0)  # Remove space after
     run = p.add_run('This Medication Assistance Plan is for:')
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
@@ -4328,7 +4329,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_font_size_12(run)
     add_paragraph_no_spacing(first_box)  # Empty line
     p = add_paragraph_no_spacing(first_box)
-    run = p.add_run('G.P. or prescribing doctor:')
+    run = p.add_run('G.P. or Prescribing Doctor:')
     run.bold = True
     set_font_size_12(run)
     p = add_paragraph_no_spacing(first_box)
@@ -4415,6 +4416,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p.paragraph_format.space_before = Pt(0)
     run = p.add_run('Please describe why a support plan is required.')
     set_font_size_12(run)
+    # Add four empty lines
+    for _ in range(4):
+        add_paragraph_no_spacing(reason_box)
     
     doc.add_paragraph()  # Empty line
     
@@ -4431,6 +4435,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p.paragraph_format.space_before = Pt(0)
     run = p.add_run('Describe the assistance required')
     set_font_size_12(run)
+    # Add four empty lines
+    for _ in range(4):
+        add_paragraph_no_spacing(assist_box)
+    
+    doc.add_paragraph()  # Empty space before "Important things to remember"
     
     # Important things to remember
     p = doc.add_paragraph()
@@ -4445,6 +4454,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p.paragraph_format.space_before = Pt(0)
     run = p.add_run('Any additional plans relating to the person\'s medication should be listed here')
     set_font_size_12(run)
+    # Add four empty lines
+    for _ in range(4):
+        add_paragraph_no_spacing(important_box)
     
     doc.add_paragraph()  # Empty line
     
@@ -4462,13 +4474,22 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         set_font_size_12(run)
     
     # Allergies table
-    allergies_table = doc.add_table(rows=1, cols=2)
+    allergies_table = doc.add_table(rows=6, cols=2)  # 1 header + 5 empty rows
     allergies_table.style = 'Table Grid'
     header_cells = allergies_table.rows[0].cells
     header_cells[0].paragraphs[0].add_run('What medications allergic to').bold = True
     header_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     header_cells[1].paragraphs[0].add_run('Potential Reaction').bold = True
     header_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    
+    # Fill header cells with #e0f4ff
+    for cell in header_cells:
+        tc_pr = cell._element.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), 'E0F4FF')  # #e0f4ff
+        shd.set(qn('w:val'), 'clear')
+        tc_pr.append(shd)
+    
     set_table_border_color(allergies_table)
     
     doc.add_paragraph()  # Empty line
@@ -4489,6 +4510,15 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     header_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     header_cells[1].paragraphs[0].add_run('Side Effects').bold = True
     header_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    
+    # Fill header cells with #e0f4ff
+    for cell in header_cells:
+        tc_pr = cell._element.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), 'E0F4FF')  # #e0f4ff
+        shd.set(qn('w:val'), 'clear')
+        tc_pr.append(shd)
+    
     set_table_border_color(side_effects_table)
     
     doc.add_paragraph()  # Empty line
@@ -4512,6 +4542,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if header_text in ['Medication', 'Dose', 'When to take it', 'How to take it', 'Where it is kept', 'Additional details']:
             run.bold = True
         header_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        
+        # Fill header cells with #e0f4ff
+        tc_pr = header_cells[i]._element.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), 'E0F4FF')  # #e0f4ff
+        shd.set(qn('w:val'), 'clear')
+        tc_pr.append(shd)
+    
     set_table_border_color(prescribed_table)
     
     # Add a data row with nested table in "When to take it" column
@@ -4557,6 +4595,14 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         if header_text in ['Medication', 'What it is used for', 'Indications for use', 'How to take it/dose', 'Where it is kept', 'Additional details']:
             run.bold = True
         header_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        
+        # Fill header cells with #e0f4ff
+        tc_pr = header_cells[i]._element.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), 'E0F4FF')  # #e0f4ff
+        shd.set(qn('w:val'), 'clear')
+        tc_pr.append(shd)
+    
     set_table_border_color(prn_table)
     
     # Final text
