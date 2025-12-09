@@ -4791,22 +4791,22 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             for width_elem in tc_pr.xpath('.//w:tcW'):
                 tc_pr.remove(width_elem)
             
-            # Set width based on which column and which row - minimal widths, no extra space
+            # Set width based on which column and which row - absolute minimum widths, no extra space
             if row == nested_table.rows[0]:
                 # First row - Day and Time headers (merged cells)
                 # Set widths for underlying cells that will be merged
                 if i < 7:  # Day columns (will be merged)
-                    col_width = 60  # Very narrow for single letters
+                    col_width = 50  # Absolute minimum for single letters
                 else:  # Time columns (will be merged)
-                    col_width = 80  # Narrow for "Time"
+                    col_width = 70  # Minimum for "Time"
             else:
                 # Second row - individual columns: S, M, T, W, T, F, S, AM, PM
                 if i < 7:  # Single letter columns (S, M, T, W, T, F, S)
-                    col_width = 60  # Minimal width for single letter (~0.042 inches)
+                    col_width = 50  # Absolute minimum width for single letter (~0.035 inches)
                 elif i == 7:  # AM
-                    col_width = 90  # Minimal width for "AM" (~0.063 inches)
+                    col_width = 70  # Minimum width for "AM" (~0.049 inches)
                 else:  # PM (i == 8)
-                    col_width = 90  # Minimal width for "PM" (~0.063 inches)
+                    col_width = 70  # Minimum width for "PM" (~0.049 inches)
             
             tc_width = OxmlElement('w:tcW')
             tc_width.set(qn('w:w'), str(col_width))
