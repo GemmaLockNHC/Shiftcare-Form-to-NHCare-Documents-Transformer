@@ -4278,11 +4278,28 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     # Helper function to remove all spacing from all paragraphs in a cell
     def remove_all_spacing_from_cell(cell):
-        """Remove spacing from all paragraphs in a cell"""
+        """Remove spacing from all paragraphs in a cell and remove cell margins"""
+        # Remove cell margins/padding
+        tc_pr = cell._element.get_or_add_tcPr()
+        # Remove existing margins
+        for margin_elem in tc_pr.xpath('.//w:tcMar'):
+            tc_pr.remove(margin_elem)
+        # Set all margins to zero
+        tc_mar = OxmlElement('w:tcMar')
+        for margin_name in ['top', 'left', 'bottom', 'right']:
+            margin_elem = OxmlElement(f'w:{margin_name}')
+            margin_elem.set(qn('w:w'), '0')
+            margin_elem.set(qn('w:type'), 'dxa')
+            tc_mar.append(margin_elem)
+        tc_pr.append(tc_mar)
+        
+        # Remove spacing from all paragraphs
         for paragraph in cell.paragraphs:
             pPr = paragraph._element.get_or_add_pPr()
+            # Remove all spacing elements
             for spacing_elem in pPr.xpath('.//w:spacing'):
                 pPr.remove(spacing_elem)
+            # Add zero spacing
             spacing = OxmlElement('w:spacing')
             spacing.set(qn('w:before'), '0')
             spacing.set(qn('w:after'), '0')
@@ -4601,20 +4618,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     grid_span.set(qn('w:val'), '7')
     tc_pr.append(grid_span)
     
+    # Remove spacing and margins from Day cell
+    remove_all_spacing_from_cell(day_cell)
     day_cell.paragraphs[0].clear()
     day_cell.paragraphs[0].add_run('Day').bold = True
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    # Remove spacing from Day cell
-    for para in day_cell.paragraphs:
-        pPr = para._element.get_or_add_pPr()
-        for spacing_elem in pPr.xpath('.//w:spacing'):
-            pPr.remove(spacing_elem)
-        spacing = OxmlElement('w:spacing')
-        spacing.set(qn('w:before'), '0')
-        spacing.set(qn('w:after'), '0')
-        spacing.set(qn('w:line'), '240')
-        spacing.set(qn('w:lineRule'), 'exact')
-        pPr.append(spacing)
     
     # Merge cells for "Time" (columns 7-8, which are indices 7 and 8)
     time_cell = nested_header[7]
@@ -4626,39 +4634,21 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     grid_span.set(qn('w:val'), '2')
     tc_pr.append(grid_span)
     
+    # Remove spacing and margins from Time cell
+    remove_all_spacing_from_cell(time_cell)
     time_cell.paragraphs[0].clear()
     time_cell.paragraphs[0].add_run('Time').bold = True
     time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-    # Remove spacing from Time cell
-    for para in time_cell.paragraphs:
-        pPr = para._element.get_or_add_pPr()
-        for spacing_elem in pPr.xpath('.//w:spacing'):
-            pPr.remove(spacing_elem)
-        spacing = OxmlElement('w:spacing')
-        spacing.set(qn('w:before'), '0')
-        spacing.set(qn('w:after'), '0')
-        spacing.set(qn('w:line'), '240')
-        spacing.set(qn('w:lineRule'), 'exact')
-        pPr.append(spacing)
     
     # Second row (Heading 2): S, M, T, W, T, F, S, AM, PM as horizontal headers
     nested_data = nested_table.rows[1].cells
     labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S', 'AM', 'PM']
     for i, label in enumerate(labels):
+        # Remove spacing and margins from each cell
+        remove_all_spacing_from_cell(nested_data[i])
         nested_data[i].paragraphs[0].clear()
         nested_data[i].paragraphs[0].add_run(label).bold = True
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-        # Remove spacing from each cell
-        for para in nested_data[i].paragraphs:
-            pPr = para._element.get_or_add_pPr()
-            for spacing_elem in pPr.xpath('.//w:spacing'):
-                pPr.remove(spacing_elem)
-            spacing = OxmlElement('w:spacing')
-            spacing.set(qn('w:before'), '0')
-            spacing.set(qn('w:after'), '0')
-            spacing.set(qn('w:line'), '240')
-            spacing.set(qn('w:lineRule'), 'exact')
-            pPr.append(spacing)
     
     set_table_border_color(nested_table)
     
