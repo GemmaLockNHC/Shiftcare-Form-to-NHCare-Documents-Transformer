@@ -4699,7 +4699,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     for width_elem in tc_pr.xpath('.//w:tcW'):
         tc_pr.remove(width_elem)
     tc_width = OxmlElement('w:tcW')
-    tc_width.set(qn('w:w'), '60')  # Just enough for nested table + minimal padding
+    tc_width.set(qn('w:w'), '70')  # Just enough for nested table + minimal padding
     tc_width.set(qn('w:type'), 'dxa')
     tc_pr.append(tc_width)
     
@@ -4710,8 +4710,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     nested_table = when_cell.add_table(rows=2, cols=9)
     nested_table.style = 'Table Grid'
     
-    # Column widths: AM (8), PM (8), S (3), M (3), T (3), W (3), T (3), F (3), S (3)
-    col_widths = [8, 8, 3, 3, 3, 3, 3, 3, 3]
+    # Column widths: AM (10), PM (10), S (6), M (6), T (6), W (6), T (6), F (6), S (6)
+    # All single letters get the SAME width (6 twips), AM/PM get 10 twips each
+    col_widths = [10, 10, 6, 6, 6, 6, 6, 6, 6]
     
     # CRITICAL: Set widths on ALL cells IMMEDIATELY after table creation, BEFORE anything else
     for row in nested_table.rows:
@@ -4748,7 +4749,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     # Set table width
     tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), '50')  # Sum of column widths + minimal padding
+    tbl_width.set(qn('w:w'), '70')  # Sum of column widths (10+10+6*7=62) + minimal padding
     tbl_width.set(qn('w:type'), 'dxa')
     tbl_pr.append(tbl_width)
     
@@ -4803,8 +4804,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         remove_all_spacing_from_nested_cell(nested_data[i])
         
         # CRITICAL: Re-apply width AFTER adding content to ensure it sticks
-        # Use the same col_widths array defined earlier: [8, 8, 3, 3, 3, 3, 3, 3, 3]
-        expected_widths = [8, 8, 3, 3, 3, 3, 3, 3, 3]
+        # Use the same col_widths array defined earlier: [10, 10, 6, 6, 6, 6, 6, 6, 6]
+        expected_widths = [10, 10, 6, 6, 6, 6, 6, 6, 6]
         if i < len(expected_widths):
             tc_pr = nested_data[i]._element.get_or_add_tcPr()
             # Remove ALL existing width elements
@@ -4819,8 +4820,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_table_border_color(nested_table)
     
     # FINAL: Force widths on row 1 cells one last time to ensure ALL cells have correct widths
-    # Column widths: AM (8), PM (8), S (3), M (3), T (3), W (3), T (3), F (3), S (3)
-    final_widths = [8, 8, 3, 3, 3, 3, 3, 3, 3]
+    # Column widths: AM (10), PM (10), S (6), M (6), T (6), W (6), T (6), F (6), S (6)
+    # ALL single letters MUST be the same width (6 twips)
+    final_widths = [10, 10, 6, 6, 6, 6, 6, 6, 6]
     row1 = nested_table.rows[1]
     for i, cell in enumerate(row1.cells):
         if i < len(final_widths):
@@ -4848,7 +4850,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         for width_elem in time_tc_pr.xpath('.//w:tcW'):
             time_tc_pr.remove(width_elem)
         time_width = OxmlElement('w:tcW')
-        time_width.set(qn('w:w'), '16')  # 8 + 8 = 16 twips
+        time_width.set(qn('w:w'), '20')  # 10 + 10 = 20 twips
         time_width.set(qn('w:type'), 'dxa')
         time_tc_pr.append(time_width)
         
@@ -4857,7 +4859,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         for width_elem in day_tc_pr.xpath('.//w:tcW'):
             day_tc_pr.remove(width_elem)
         day_width = OxmlElement('w:tcW')
-        day_width.set(qn('w:w'), '21')  # 3 * 7 = 21 twips
+        day_width.set(qn('w:w'), '42')  # 6 * 7 = 42 twips
         day_width.set(qn('w:type'), 'dxa')
         day_tc_pr.append(day_width)
     
