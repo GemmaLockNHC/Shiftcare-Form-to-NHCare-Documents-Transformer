@@ -4742,11 +4742,12 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
     remove_all_spacing_from_nested_cell(time_cell)
     
-    # Now merge "Day" cells (should be at index 1 now, spanning cells 1-7)
+    # Now merge "Day" cells - should be directly adjacent to Time with no gap
+    # After merging Time, row0.cells[1] should be the first Day cell
     row0 = nested_table.rows[0]  # Get fresh reference
     if len(row0.cells) >= 2:
-        day_cell = row0.cells[1]
-        # Merge the remaining 6 cells (indices 2-7) into cell 1
+        day_cell = row0.cells[1]  # This should be directly after Time, no gap
+        # Merge the remaining 6 cells into cell 1 to create Day spanning 7 columns
         for _ in range(6):
             if len(row0.cells) > 2:
                 day_cell.merge(row0.cells[2])
@@ -4787,21 +4788,21 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             for width_elem in tc_pr.xpath('.//w:tcW'):
                 tc_pr.remove(width_elem)
             
-            # Set width based on which column and which row - halved again, minimal spacing
-            # Structure: Time (2 cols) then Day (7 cols) - no gap
+            # Set width based on which column and which row - absolute minimum, no extra space
+            # Structure: Time (2 cols) then Day (7 cols) - no gap, no extra space in cells
             if row == nested_table.rows[0]:
                 # First row - Time and Day headers (merged cells)
                 # Set widths for underlying cells that will be merged
                 if i < 2:  # Time columns (will be merged) - first 2 columns
-                    col_width = 18  # Halved again: 18 twips for Time columns
-                else:  # Day columns (will be merged) - columns 2-8
-                    col_width = 13  # Halved again: 13 twips for Day columns
+                    col_width = 15  # Minimal for Time columns
+                else:  # Day columns (will be merged) - columns 2-8, directly adjacent
+                    col_width = 10  # Minimal for Day columns - no extra space
             else:
                 # Second row - individual columns: AM, PM (Time), then S, M, T, W, T, F, S (Day)
                 if i < 2:  # AM and PM columns (Time fields)
-                    col_width = 18  # Halved again: 18 twips for AM/PM (~0.012 inches)
+                    col_width = 15  # Minimal for AM/PM - just fit text
                 else:  # Single letter columns (S, M, T, W, T, F, S) - Day fields
-                    col_width = 13  # Halved again: 13 twips for single letter (~0.009 inches)
+                    col_width = 10  # Absolute minimum for single letters - no extra space
             
             tc_width = OxmlElement('w:tcW')
             tc_width.set(qn('w:w'), str(col_width))
