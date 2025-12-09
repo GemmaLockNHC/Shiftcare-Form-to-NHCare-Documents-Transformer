@@ -4295,21 +4295,24 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         
         # Remove spacing from all paragraphs
         for paragraph in cell.paragraphs:
+            # Set paragraph format first
+            paragraph.paragraph_format.space_before = Pt(0)
+            paragraph.paragraph_format.space_after = Pt(0)
+            paragraph.paragraph_format.line_spacing = 1.0
+            
+            # Then modify XML directly
             pPr = paragraph._element.get_or_add_pPr()
             # Remove all spacing elements
             for spacing_elem in pPr.xpath('.//w:spacing'):
                 pPr.remove(spacing_elem)
-            # Add zero spacing
+            
+            # Add zero spacing with exact line rule
             spacing = OxmlElement('w:spacing')
             spacing.set(qn('w:before'), '0')
             spacing.set(qn('w:after'), '0')
-            spacing.set(qn('w:line'), '240')  # Single line spacing
+            spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
             spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing
             pPr.append(spacing)
-            # Also set paragraph format
-            paragraph.paragraph_format.space_before = Pt(0)
-            paragraph.paragraph_format.space_after = Pt(0)
-            paragraph.paragraph_format.line_spacing = 1.0
     
     # Helper function to ensure font size 12 for runs
     def set_font_size_12(run):
