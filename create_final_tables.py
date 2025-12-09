@@ -4714,32 +4714,26 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # All single letters get the SAME width (6 twips), AM/PM get 10 twips each
     col_widths = [10, 10, 6, 6, 6, 6, 6, 6, 6]
     
-    # CRITICAL: Set widths on ALL cells IMMEDIATELY after table creation, BEFORE anything else
-    for row in nested_table.rows:
-        for col_idx, cell in enumerate(row.cells):
-            if col_idx < len(col_widths):
-                tc_pr = cell._element.get_or_add_tcPr()
-                # Remove ALL existing width elements
-                for width_elem in tc_pr.xpath('.//w:tcW'):
-                    tc_pr.remove(width_elem)
-                # Set explicit width
-                tc_width = OxmlElement('w:tcW')
-                tc_width.set(qn('w:w'), str(col_widths[col_idx]))
-                tc_width.set(qn('w:type'), 'dxa')
-                tc_pr.append(tc_width)
-    
-    # Set table properties
+    # Set table properties FIRST - this is critical for nested tables
     tbl_pr = nested_table._element.tblPr
     if tbl_pr is None:
         tbl_pr = OxmlElement('w:tblPr')
         nested_table._element.insert(0, tbl_pr)
     
-    # Set table layout to fixed
+    # Remove any existing grid or width settings
+    for existing_grid in tbl_pr.xpath('.//w:tblGrid'):
+        tbl_pr.remove(existing_grid)
+    for existing_width in tbl_pr.xpath('.//w:tblW'):
+        tbl_pr.remove(existing_width)
+    for existing_layout in tbl_pr.xpath('.//w:tblLayout'):
+        tbl_pr.remove(existing_layout)
+    
+    # Set table layout to fixed FIRST
     tbl_layout = OxmlElement('w:tblLayout')
     tbl_layout.set(qn('w:type'), 'fixed')
     tbl_pr.append(tbl_layout)
     
-    # Set table grid column widths
+    # Set table grid column widths - THIS IS THE PRIMARY SOURCE OF TRUTH FOR COLUMN WIDTHS
     tblGrid = OxmlElement('w:tblGrid')
     for width in col_widths:
         gridCol = OxmlElement('w:gridCol')
@@ -4747,11 +4741,25 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         tblGrid.append(gridCol)
     tbl_pr.append(tblGrid)
     
-    # Set table width
+    # Set table width to match grid
     tbl_width = OxmlElement('w:tblW')
     tbl_width.set(qn('w:w'), '70')  # Sum of column widths (10+10+6*7=62) + minimal padding
     tbl_width.set(qn('w:type'), 'dxa')
     tbl_pr.append(tbl_width)
+    
+    # NOW set widths on ALL cells to match the grid (after grid is set)
+    for row in nested_table.rows:
+        for col_idx, cell in enumerate(row.cells):
+            if col_idx < len(col_widths):
+                tc_pr = cell._element.get_or_add_tcPr()
+                # Remove ALL existing width elements
+                for width_elem in tc_pr.xpath('.//w:tcW'):
+                    tc_pr.remove(width_elem)
+                # Set width to match grid
+                tc_width = OxmlElement('w:tcW')
+                tc_width.set(qn('w:w'), str(col_widths[col_idx]))
+                tc_width.set(qn('w:type'), 'dxa')
+                tc_pr.append(tc_width)
     
     # Header row 1: "Time" spanning 2 columns (first), "Day" spanning 7 columns (second) - no gap between them
     row0 = nested_table.rows[0]
@@ -4819,28 +4827,32 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     set_table_border_color(nested_table)
     
-    # FINAL: Force widths on row 1 cells one last time to ensure ALL cells have correct widths
+    # FINAL: Force widths on row 1 cells one last time - use direct XML manipulation
     # Column widths: AM (10), PM (10), S (6), M (6), T (6), W (6), T (6), F (6), S (6)
     # ALL single letters MUST be the same width (6 twips)
     final_widths = [10, 10, 6, 6, 6, 6, 6, 6, 6]
     row1 = nested_table.rows[1]
     for i, cell in enumerate(row1.cells):
         if i < len(final_widths):
-            tc_pr = cell._element.get_or_add_tcPr()
-            # Remove ALL existing width elements - be aggressive
-            for width_elem in tc_pr.xpath('.//w:tcW'):
+            # Get the cell's XML element directly
+            tc = cell._element
+            tc_pr = tc.get_or_add_tcPr()
+            
+            # Remove ALL existing width elements - be very aggressive
+            for width_elem in list(tc_pr.xpath('.//w:tcW')):
                 tc_pr.remove(width_elem)
             
-            # Set explicit width - MUST use 'dxa' type
+            # Create and append width element
             tc_width = OxmlElement('w:tcW')
             tc_width.set(qn('w:w'), str(final_widths[i]))
             tc_width.set(qn('w:type'), 'dxa')
             tc_pr.append(tc_width)
             
-            # Also ensure no gridSpan is interfering
-            for span_elem in tc_pr.xpath('.//w:gridSpan'):
-                # Don't remove gridSpan, but make sure width is still set
-                pass
+            # Verify it was added
+            verify_width = tc_pr.xpath('.//w:tcW')
+            if not verify_width:
+                # If it wasn't added, try inserting it directly
+                tc_pr.insert(0, tc_width)
     
     # Set widths on row 0 merged cells AFTER merging
     row0 = nested_table.rows[0]
