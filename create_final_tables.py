@@ -4355,6 +4355,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     run = p.add_run('Full Name:')
     run.bold = True
     set_font_size_12(run)
+    # Remove spacing again after adding content
+    remove_all_spacing_from_cell(first_box)
     p = add_paragraph_no_spacing(first_box)
     run = p.add_run('Date of Birth:')
     set_font_size_12(run)
@@ -4408,6 +4410,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = add_paragraph_no_spacing(sig_box1)
     run = p.add_run('Date:')
     set_font_size_12(run)
+    # Remove spacing again after adding content
+    remove_all_spacing_from_cell(sig_box1)
     
     doc.add_paragraph()  # Empty line
     
@@ -4424,6 +4428,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = add_paragraph_no_spacing(plan_box)
     run = p.add_run('Name of person responsible for developing the plan:')
     set_font_size_12(run)
+    # Remove spacing again after adding content
+    remove_all_spacing_from_cell(plan_box)
     
     doc.add_paragraph()  # Empty line
     
@@ -4440,6 +4446,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = add_paragraph_no_spacing(sig_box2)
     run = p.add_run('Date:')
     set_font_size_12(run)
+    # Remove spacing again after adding content
+    remove_all_spacing_from_cell(sig_box2)
     
     doc.add_paragraph()  # Empty line
     
@@ -4459,6 +4467,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Add four empty lines
     for _ in range(4):
         add_paragraph_no_spacing(reason_box)
+    # Remove spacing again after adding content
+    remove_all_spacing_from_cell(reason_box)
     
     doc.add_paragraph()  # Empty line
     
@@ -4478,6 +4488,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Add four empty lines
     for _ in range(4):
         add_paragraph_no_spacing(assist_box)
+    # Remove spacing again after adding content
+    remove_all_spacing_from_cell(assist_box)
     
     doc.add_paragraph()  # Empty space before "Important things to remember"
     
@@ -4497,6 +4509,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     # Add four empty lines
     for _ in range(4):
         add_paragraph_no_spacing(important_box)
+    # Remove spacing again after adding content
+    remove_all_spacing_from_cell(important_box)
     
     doc.add_paragraph()  # Empty line
     
@@ -4623,6 +4637,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     day_cell.paragraphs[0].clear()
     day_cell.paragraphs[0].add_run('Day').bold = True
     day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    # Remove spacing again after adding content
+    remove_all_spacing_from_cell(day_cell)
     
     # Merge cells for "Time" (columns 7-8, which are indices 7 and 8)
     time_cell = nested_header[7]
@@ -4639,6 +4655,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     time_cell.paragraphs[0].clear()
     time_cell.paragraphs[0].add_run('Time').bold = True
     time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    # Remove spacing again after adding content
+    remove_all_spacing_from_cell(time_cell)
     
     # Second row (Heading 2): S, M, T, W, T, F, S, AM, PM as horizontal headers
     nested_data = nested_table.rows[1].cells
@@ -4649,6 +4667,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         nested_data[i].paragraphs[0].clear()
         nested_data[i].paragraphs[0].add_run(label).bold = True
         nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        # Remove spacing again after adding content
+        remove_all_spacing_from_cell(nested_data[i])
     
     set_table_border_color(nested_table)
     
