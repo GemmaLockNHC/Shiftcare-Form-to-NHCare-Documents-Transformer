@@ -4794,13 +4794,13 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     remove_all_spacing_from_cell(when_cell)
     
     # Set explicit width for the cell - just enough for the nested table
-    # Nested table is 104 twips wide, so set cell to match
+    # Nested table is 116 twips wide, so set cell to match
     tc_pr = when_cell._element.get_or_add_tcPr()
     # Remove existing width
     for width_elem in tc_pr.xpath('.//w:tcW'):
         tc_pr.remove(width_elem)
     tc_width = OxmlElement('w:tcW')
-    tc_width.set(qn('w:w'), '116')  # Just enough for nested table (104 twips) + minimal padding
+    tc_width.set(qn('w:w'), '128')  # Just enough for nested table (116 twips) + minimal padding
     tc_width.set(qn('w:type'), 'dxa')
     tc_pr.append(tc_width)
     
@@ -4811,11 +4811,11 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     nested_table = when_cell.add_table(rows=2, cols=9)
     nested_table.style = 'Table Grid'
     
-    # Column widths: AM (10), PM (10), S (12), M (12), T (12), W (12), T (12), F (12), S (12)
+    # Column widths: AM (10), PM (10), S (14), M (14), T (14), W (14), T (14), F (14), S (14)
     # Time columns (AM/PM) smaller to reduce box size, letter columns bigger to prevent squishing
     # Widths sized to fit 12pt text with appropriate padding
-    col_widths = [10, 10, 12, 12, 12, 12, 12, 12, 12]
-    total_width = sum(col_widths)  # 104 twips
+    col_widths = [10, 10, 14, 14, 14, 14, 14, 14, 14]
+    total_width = sum(col_widths)  # 116 twips
     
     # Set table properties FIRST - this is critical for nested tables
     tbl_pr = nested_table._element.tblPr
@@ -4875,15 +4875,6 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     if len(row0.cells) > 1:
         time_cell.merge(row0.cells[1])
     
-    # Add "Time" text - standard font size, centered to minimize space
-    remove_all_spacing_from_nested_cell(time_cell)
-    time_cell.paragraphs[0].clear()
-    time_run = time_cell.paragraphs[0].add_run('Time')
-    time_run.font.size = Pt(12)  # Standard font (12pt)
-    time_run.bold = False
-    time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
-    remove_all_spacing_from_nested_cell(time_cell)
-    
     # Now merge "Day" cells - should be directly adjacent to Time with no gap
     # After merging Time (cells 0-1), get fresh reference to the row
     row0 = nested_table.rows[0]  # Get fresh reference after merging
@@ -4899,8 +4890,23 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             except:
                 # If merge fails, the cell may already be merged or removed
                 pass
-        
-        # Add "Day" text - standard font size, centered to minimize space
+    
+    # NOW add text to both cells AFTER all merging is complete
+    # Add "Time" text - standard font size, centered to minimize space
+    row0 = nested_table.rows[0]  # Get fresh reference after all merging
+    if len(row0.cells) >= 1:
+        time_cell = row0.cells[0]
+        remove_all_spacing_from_nested_cell(time_cell)
+        time_cell.paragraphs[0].clear()
+        time_run = time_cell.paragraphs[0].add_run('Time')
+        time_run.font.size = Pt(12)  # Standard font (12pt)
+        time_run.bold = False
+        time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
+        remove_all_spacing_from_nested_cell(time_cell)
+    
+    # Add "Day" text - standard font size, centered to minimize space
+    if len(row0.cells) >= 2:
+        day_cell = row0.cells[1]
         remove_all_spacing_from_nested_cell(day_cell)
         day_cell.paragraphs[0].clear()
         day_run = day_cell.paragraphs[0].add_run('Day')
@@ -4924,8 +4930,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         remove_all_spacing_from_nested_cell(nested_data[i])
         
         # CRITICAL: Re-apply width AFTER adding content to ensure it sticks
-        # Use the same col_widths array defined earlier: [10, 10, 12, 12, 12, 12, 12, 12, 12]
-        expected_widths = [10, 10, 12, 12, 12, 12, 12, 12, 12]
+        # Use the same col_widths array defined earlier: [10, 10, 14, 14, 14, 14, 14, 14, 14]
+        expected_widths = [10, 10, 14, 14, 14, 14, 14, 14, 14]
         if i < len(expected_widths):
             tc_pr = nested_data[i]._element.get_or_add_tcPr()
             # Remove ALL existing width elements
@@ -4940,9 +4946,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     set_table_border_color(nested_table)
     
     # FINAL: Force widths on row 1 cells one last time - use direct XML manipulation
-    # Column widths: AM (10), PM (10), S (12), M (12), T (12), W (12), T (12), F (12), S (12)
+    # Column widths: AM (10), PM (10), S (14), M (14), T (14), W (14), T (14), F (14), S (14)
     # Time columns smaller, letter columns bigger
-    final_widths = [10, 10, 12, 12, 12, 12, 12, 12, 12]
+    final_widths = [10, 10, 14, 14, 14, 14, 14, 14, 14]
     row1 = nested_table.rows[1]
     for i, cell in enumerate(row1.cells):
         if i < len(final_widths):
@@ -4983,7 +4989,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         for width_elem in day_tc_pr.xpath('.//w:tcW'):
             day_tc_pr.remove(width_elem)
         day_width = OxmlElement('w:tcW')
-        day_width.set(qn('w:w'), '84')  # 12 * 7 = 84 twips (letters have more space, compact box for "Day")
+        day_width.set(qn('w:w'), '98')  # 14 * 7 = 98 twips (letters have more space, compact box for "Day")
         day_width.set(qn('w:type'), 'dxa')
         day_tc_pr.append(day_width)
     
