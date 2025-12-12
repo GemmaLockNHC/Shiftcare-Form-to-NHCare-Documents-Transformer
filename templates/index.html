@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Transformer</title>
+    <title>Neighbourhood Care Shift Care Form to Document Translator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -75,7 +75,7 @@
     </style>
 </head>
 <body>
-    <h1>PDF Transformer</h1>
+    <h1>Neighbourhood Care Shift Care Form to Document Translator</h1>
     
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -87,7 +87,7 @@
     
     <form action="/upload" method="post" enctype="multipart/form-data" id="upload-form">
         <div class="upload-area" id="upload-area">
-            Click to upload PDF file
+            Click to upload form response
             <input type="file" id="file-input" name="file" accept=".pdf" required>
         </div>
         
@@ -97,40 +97,40 @@
         </div>
         
         <div style="margin: 20px 0;">
-            <h3>Generate Output:</h3>
+            <h3>Generate…</h3>
             <label style="display: block; margin: 10px 0;">
                 <input type="checkbox" name="generate_csv" value="1" checked style="margin-right: 8px;">
-                Client Export CSV
+                Client Export
             </label>
             <label style="display: block; margin: 10px 0;">
                 <input type="checkbox" name="generate_service_agreement" value="1" checked id="service-agreement-checkbox" style="margin-right: 8px;">
-                Service Agreement PDF
+                Service Agreement
             </label>
             <label style="display: block; margin: 10px 0;">
                 <input type="checkbox" name="generate_emergency_plan" value="1" checked style="margin-right: 8px;">
-                Emergency & Disaster Plan PDF
+                Emergency & Disaster Plan
             </label>
             <label style="display: block; margin: 10px 0;">
                 <input type="checkbox" name="generate_service_estimate" value="1" checked style="margin-right: 8px;">
-                Service Estimate CSV
+                Service Estimate
             </label>
             <label style="display: block; margin: 10px 0;">
                 <input type="checkbox" name="generate_risk_assessment" value="1" checked style="margin-right: 8px;">
-                Risk Assessment PDF
+                Risk Assessment
             </label>
         <label style="display: block; margin: 10px 0;">
             <input type="checkbox" name="generate_support_plan" value="1" checked style="margin-right: 8px;">
-            Support Plan DOCX
+            Support Plan
         </label>
         <label style="display: block; margin: 10px 0;">
             <input type="checkbox" name="generate_medication_plan" value="1" checked style="margin-right: 8px;">
-            Medication Assistance Plan DOCX
+            Medication Assistance Plan
         </label>
         </div>
         
         <div id="name-input-container" style="margin: 20px 0; display: none;">
             <label for="contact-name" style="display: block; margin-bottom: 5px; font-weight: bold;">
-                Contact Name (for Service Agreement):
+                Neighbourhood Care contact name:
             </label>
             <input type="text" id="contact-name" name="contact_name" placeholder="Enter your name" style="width: 100%; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px;">
         </div>
