@@ -2593,17 +2593,21 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
          Paragraph(emergency_relationship_clean, table_text_style) if emergency_relationship_clean else '']
     ]
     
+    # Add 5 empty rows
+    for _ in range(5):
+        emergency_contacts_data.append(['', '', ''])
+    
     emergency_contacts_table = Table(emergency_contacts_data, colWidths=[2*inch, 2*inch, 2*inch])
     emergency_contacts_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), BLUE_COLOR),  # Heading row
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('BACKGROUND', (0, 1), (-1, 1), BLUE_COLOR),  # Header row
         ('TEXTCOLOR', (0, 1), (-1, 1), colors.white),
-        ('BACKGROUND', (0, 2), (-1, 2), colors.white),  # Data row
-        ('TEXTCOLOR', (0, 2), (-1, 2), colors.black),
+        ('BACKGROUND', (0, 2), (-1, -1), colors.white),  # All data rows (including empty ones)
+        ('TEXTCOLOR', (0, 2), (-1, -1), colors.black),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('ALIGN', (0, 1), (-1, 1), 'CENTER'),
-        ('ALIGN', (0, 2), (-1, 2), 'LEFT'),
+        ('ALIGN', (0, 2), (-1, -1), 'LEFT'),  # All data rows left-aligned
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 11),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
@@ -4113,10 +4117,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     run1.font.color.rgb = border_color
     run1.bold = True
     set_font_size_12(run1)
-    run2 = p.add_run(datetime.now().strftime('%d/%m/%Y'))
-    run2.font.color.rgb = border_color
-    run2.bold = True  # Bold the data
-    set_font_size_12(run2)
+    # Date field left blank - no data added
     
     # Save document
     doc.save(output_path)
