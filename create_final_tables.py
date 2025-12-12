@@ -1953,7 +1953,7 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     )
     story.append(Paragraph("Signatures", signatures_heading_style))
     signatory_name = f"{csv_data.get('First name (Person Signing the Agreement)', 'First name (Person Signing the Agreement)')} {csv_data.get('Surname (Person Signing the Agreement)', 'Surname (Person Signing the Agreement)')}"
-    signatory_text = f"<b>Signatory:</b><br/><b>Name:</b> {signatory_name}<br/><b>Date:</b> [Date]<br/><b>Signed:</b>"
+    signatory_text = f"<b>Signatory:</b><br/><b>Name:</b> {signatory_name}<br/><b>Date:</b> <br/><b>Signed:</b>"
     story.append(Paragraph(signatory_text, normal_no_space_style))
     
     # Add signatory signature image if available
@@ -1967,20 +1967,20 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
                 story.append(Image(sig_img, width=2*inch, height=0.5*inch))
             else:
                 print(f"Signatory signature path invalid or doesn't exist: {sig_img}")
-                story.append(Paragraph("[Signature]", normal_no_space_style))
+                story.append(Paragraph("", normal_no_space_style))
         except Exception as e:
             print(f"Error adding signatory signature: {e}")
             import traceback
             traceback.print_exc()
-            story.append(Paragraph("[Signature]", normal_no_space_style))
+            story.append(Paragraph("", normal_no_space_style))
     else:
         print(f"Signatory signature not found. Available signatures: {list(signatures.keys()) if signatures else 'none'}")
-        story.append(Paragraph("[Signature]", normal_no_space_style))
+        story.append(Paragraph("", normal_no_space_style))
     
     story.append(Spacer(1, 12))
     
     # Neighbourhood Care Representative
-    nc_rep_text = f"<b>Neighbourhood Care Representative:</b><br/><b>Name:</b> [To be filled with NC representative name]<br/><b>Date:</b> [Date]<br/><b>Signed:</b>"
+    nc_rep_text = f"<b>Neighbourhood Care Representative:</b><br/><b>Name:</b> [To be filled with NC representative name]<br/><b>Date:</b> <br/><b>Signed:</b>"
     story.append(Paragraph(nc_rep_text, normal_no_space_style))
     
     # Add NC representative signature image if available
@@ -1994,15 +1994,15 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
                 story.append(Image(sig_img, width=2*inch, height=0.5*inch))
             else:
                 print(f"NC representative signature path invalid or doesn't exist: {sig_img}")
-                story.append(Paragraph("[Signature]", normal_no_space_style))
+                story.append(Paragraph("", normal_no_space_style))
         except Exception as e:
             print(f"Error adding NC representative signature: {e}")
             import traceback
             traceback.print_exc()
-            story.append(Paragraph("[Signature]", normal_no_space_style))
+            story.append(Paragraph("", normal_no_space_style))
     else:
         print(f"NC representative signature not found. Available signatures: {list(signatures.keys()) if signatures else 'none'}")
-        story.append(Paragraph("[Signature]", normal_no_space_style))
+        story.append(Paragraph("", normal_no_space_style))
     
     story.append(Spacer(1, 12))
     
