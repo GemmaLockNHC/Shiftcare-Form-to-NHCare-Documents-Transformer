@@ -4059,6 +4059,8 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     for _ in range(4):
         add_paragraph_no_spacing(goals_cell)
     
+    doc.add_paragraph()  # Empty line between My Goals and How I Will Celebrate
+    
     # How I Will Celebrate box
     celebrate_cell = create_boxed_section()
     p = add_paragraph_no_spacing(celebrate_cell)
@@ -4125,18 +4127,12 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
 
 def create_medication_assistance_plan_from_data(csv_data, output_path, contact_name=None, active_users=None):
     """
-    Create a Medication Assistance Plan DOCX document from CSV data
+    Create a Medication Assistance Plan PDF document from CSV data
     """
-    try:
-        from docx import Document
-        from docx.shared import Pt, RGBColor, Inches
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.oxml.ns import qn
-        from docx.oxml import OxmlElement
-        from datetime import datetime
-        import re
-    except ImportError:
-        raise ImportError("python-docx is required for Medication Assistance Plan generation. Please install it: pip install python-docx")
+    # Define colors
+    text_color = colors.HexColor('#007bc4')  # #007bc4 for headings
+    box_fill_color = colors.HexColor('#e0f4ff')  # #e0f4ff for box backgrounds
+    border_color = colors.HexColor('#256eb7')  # #256eb7 for table borders
     
     # Extract client information
     first_name = csv_data.get('First name (Details of the Client)', '').strip()
@@ -4182,22 +4178,369 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     additional_care = find_assistance_field('Additional care requirements')
     behaviour_support = find_assistance_field('Behaviour support requirements')
     
-    # Create Word document
-    doc = Document()
+    # Create PDF document
+    doc = SimpleDocTemplate(output_path, pagesize=A4)
+    story = []
+    styles = getSampleStyleSheet()
     
-    # Set default font to Calibri, size 12, left-aligned
-    style = doc.styles['Normal']
-    font = style.font
-    font.name = 'Calibri'
-    font.size = Pt(12)
-    style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    # Create custom styles
+    heading_style = ParagraphStyle(
+        'MedHeading',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=text_color,
+        alignment=TA_LEFT,
+        spaceAfter=6,
+        spaceBefore=6,
+        fontName='Helvetica-Bold'
+    )
     
-    # Add header and footer (same as Support Plan)
-    section = doc.sections[0]
+    normal_style = ParagraphStyle(
+        'MedNormal',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_LEFT,
+        spaceAfter=3,
+        leading=14,
+        fontName='Helvetica'
+    )
     
-    # Header
-    header = section.header
-    header_para = header.paragraphs[0]
+    normal_bold_style = ParagraphStyle(
+        'MedNormalBold',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_LEFT,
+        spaceAfter=3,
+        leading=14,
+        fontName='Helvetica-Bold'
+    )
+    
+    box_text_style = ParagraphStyle(
+        'MedBoxText',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=14,
+        leftIndent=6,
+        rightIndent=6,
+        topPadding=6,
+        bottomPadding=6,
+        fontName='Helvetica'
+    )
+    
+    table_text_style = ParagraphStyle(
+        'MedTableText',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=14,
+        fontName='Helvetica'
+    )
+    
+    table_header_style = ParagraphStyle(
+        'MedTableHeader',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=14,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Start building PDF content
+    # Title
+    story.append(Paragraph('This Medication Assistance Plan is for:', heading_style))
+    story.append(Spacer(1, 6))
+    
+    # First box - Client information
+    full_name = f'{first_name} {surname}'.strip()
+    first_box_text = f'<b>Full Name:</b> {full_name if full_name else ""}<br/>'
+    first_box_text += f'<b>Date of Birth:</b> {dob_str if dob_str else ""}<br/>'
+    first_box_text += f'<b>NDIS Number:</b> {ndis_number if ndis_number else ""}<br/>'
+    first_box_text += f'Medicare Number:<br/>'
+    first_box_text += f'Alerts (Medic alert information etc.):<br/><br/>'
+    first_box_text += f'<b>G.P. or Prescribing Doctor:</b><br/>'
+    first_box_text += f'Name:<br/>'
+    first_box_text += f'Contact Details:<br/>'
+    first_box_text += f'Address:<br/><br/>'
+    first_box_text += f'<b>Pharmacist:</b><br/>'
+    first_box_text += f'Name:<br/>'
+    first_box_text += f'Contact Details:'
+    
+    first_box_data = [[Paragraph(first_box_text, box_text_style)]]
+    first_box_table = Table(first_box_data, colWidths=[6*inch])
+    first_box_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), box_fill_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(first_box_table)
+    story.append(Spacer(1, 12))
+    
+    # Signature of Individual
+    story.append(Paragraph('Signature of Individual (or person responsible for consent)', heading_style))
+    story.append(Spacer(1, 6))
+    
+    sig_box1_text = 'Date:<br/><br/><br/><br/>'
+    sig_box1_data = [[Paragraph(sig_box1_text, box_text_style)]]
+    sig_box1_table = Table(sig_box1_data, colWidths=[6*inch])
+    sig_box1_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), box_fill_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(sig_box1_table)
+    story.append(Spacer(1, 12))
+    
+    # Plan Developed By
+    story.append(Paragraph('Plan Developed By', heading_style))
+    story.append(Spacer(1, 6))
+    
+    plan_box_text = f'Name of person responsible for developing the plan: {key_contact_name if key_contact_name else ""}<br/><br/><br/><br/>'
+    plan_box_data = [[Paragraph(plan_box_text, box_text_style)]]
+    plan_box_table = Table(plan_box_data, colWidths=[6*inch])
+    plan_box_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), box_fill_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(plan_box_table)
+    story.append(Spacer(1, 12))
+    
+    # Signature of Authorised Medication Delegate
+    story.append(Paragraph('Signature of Authorised Medication Delegate (Neighbourhood Care)', heading_style))
+    story.append(Spacer(1, 6))
+    
+    sig_box2_text = 'Date:<br/><br/><br/><br/>'
+    sig_box2_data = [[Paragraph(sig_box2_text, box_text_style)]]
+    sig_box2_table = Table(sig_box2_data, colWidths=[6*inch])
+    sig_box2_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), box_fill_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(sig_box2_table)
+    story.append(Spacer(1, 12))
+    
+    # Reason For Plan
+    story.append(Paragraph('Reason For Plan', heading_style))
+    story.append(Spacer(1, 6))
+    
+    reason_box_text = 'Please describe why a support plan is required.<br/><br/><br/><br/>'
+    reason_box_data = [[Paragraph(reason_box_text, box_text_style)]]
+    reason_box_table = Table(reason_box_data, colWidths=[6*inch])
+    reason_box_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), box_fill_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(reason_box_table)
+    story.append(Spacer(1, 12))
+    
+    # Assistance Required
+    story.append(Paragraph('Assistance Required', heading_style))
+    story.append(Spacer(1, 6))
+    
+    assistance_items = []
+    if communication_assistance:
+        assistance_items.append(f'• {communication_assistance}')
+    if medication_assistance_needed and medication_assistance_needed.lower() in ['yes', 'y']:
+        assistance_items.append('• Medication assistance')
+    if equipment_assistive:
+        assistance_items.append(f'• {equipment_assistive}')
+    if assisted_transfers:
+        assistance_items.append(f'• {assisted_transfers}')
+    if catheter_management:
+        assistance_items.append(f'• {catheter_management}')
+    if wound_pressure_care:
+        assistance_items.append(f'• {wound_pressure_care}')
+    if bowel_care:
+        assistance_items.append(f'• {bowel_care}')
+    if enteral_feeding:
+        assistance_items.append(f'• {enteral_feeding}')
+    if peg_feeding:
+        assistance_items.append(f'• {peg_feeding}')
+    if stoma_care:
+        assistance_items.append(f'• {stoma_care}')
+    if additional_care:
+        assistance_items.append(f'• {additional_care}')
+    if behaviour_support:
+        assistance_items.append(f'• {behaviour_support}')
+    
+    assist_box_text = 'Describe the assistance required<br/>'
+    for item in assistance_items:
+        assist_box_text += f'{item}<br/>'
+    assist_box_text += '<br/><br/><br/>'
+    
+    assist_box_data = [[Paragraph(assist_box_text, box_text_style)]]
+    assist_box_table = Table(assist_box_data, colWidths=[6*inch])
+    assist_box_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), box_fill_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(assist_box_table)
+    story.append(Spacer(1, 12))
+    
+    # Important things to remember
+    story.append(Paragraph('Important things to remember', heading_style))
+    story.append(Spacer(1, 6))
+    
+    important_box_text = 'Any additional plans relating to the person\'s medication should be listed here<br/><br/><br/><br/>'
+    important_box_data = [[Paragraph(important_box_text, box_text_style)]]
+    important_box_table = Table(important_box_data, colWidths=[6*inch])
+    important_box_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), box_fill_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(important_box_table)
+    story.append(Spacer(1, 12))
+    
+    # Allergies & reactions
+    story.append(Paragraph('Allergies & reactions', heading_style))
+    story.append(Paragraph('Any allergies (relating to medication) and potential reactions should be listed here.', normal_style))
+    story.append(Spacer(1, 6))
+    
+    # Allergies table
+    allergies_data = [
+        [Paragraph('<b>What medications allergic to</b>', table_header_style), Paragraph('<b>Potential Reaction</b>', table_header_style)]
+    ]
+    for _ in range(5):
+        allergies_data.append(['', ''])
+    
+    allergies_table = Table(allergies_data, colWidths=[3*inch, 3*inch])
+    allergies_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), box_fill_color),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, border_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(allergies_table)
+    story.append(Spacer(1, 12))
+    
+    # Medications Prescribed & Potential Side Effects
+    story.append(Paragraph('Medications prescribed & Potential Side Effects', heading_style))
+    story.append(Spacer(1, 6))
+    
+    # Side effects table
+    side_effects_data = [
+        [Paragraph('<b>Medication</b>', table_header_style), Paragraph('<b>Side Effects</b>', table_header_style)]
+    ]
+    for _ in range(5):
+        side_effects_data.append(['', ''])
+    
+    side_effects_table = Table(side_effects_data, colWidths=[3*inch, 3*inch])
+    side_effects_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), box_fill_color),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, border_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(side_effects_table)
+    story.append(Spacer(1, 12))
+    
+    # Medication List - Prescribed
+    story.append(Paragraph('Medication List - Prescribed - Update when changed by prescribing physician', heading_style))
+    story.append(Spacer(1, 6))
+    
+    # Prescribed medications table
+    prescribed_data = [
+        [
+            Paragraph('<b>Medication</b>', table_header_style),
+            Paragraph('<b>Dose</b>', table_header_style),
+            Paragraph('<b>When to take it</b>', table_header_style),
+            Paragraph('<b>How to take it</b>', table_header_style),
+            Paragraph('<b>Where it is kept</b>', table_header_style),
+            Paragraph('<b>Additional details</b>', table_header_style)
+        ]
+    ]
+    for _ in range(5):
+        prescribed_data.append(['', '', '', '', '', ''])
+    
+    prescribed_table = Table(prescribed_data, colWidths=[1.3*inch, 0.8*inch, 2.0*inch, 1.2*inch, 1.0*inch, 0.7*inch])
+    prescribed_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), box_fill_color),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, border_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(prescribed_table)
+    story.append(Spacer(1, 12))
+    
+    # Medication List - As Needed (PRN)
+    story.append(Paragraph('Medication List - As Needed (PRN)', heading_style))
+    story.append(Spacer(1, 6))
+    
+    # PRN medications table
+    prn_data = [
+        [
+            Paragraph('<b>Medication</b>', table_header_style),
+            Paragraph('<b>What it is used for</b>', table_header_style),
+            Paragraph('<b>Indications for use</b>', table_header_style),
+            Paragraph('<b>How to take it/dose</b>', table_header_style),
+            Paragraph('<b>Where it is kept</b>', table_header_style),
+            Paragraph('<b>Additional details</b>', table_header_style)
+        ]
+    ]
+    for _ in range(5):
+        prn_data.append(['', '', '', '', '', ''])
+    
+    prn_table = Table(prn_data, colWidths=[1.0*inch, 1.0*inch, 1.0*inch, 1.0*inch, 1.0*inch, 1.0*inch])
+    prn_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), box_fill_color),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, border_color),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(prn_table)
+    story.append(Spacer(1, 12))
+    
+    # Final text
+    story.append(Paragraph('<b>Observed Practice Checklist to be attached to this plan and records maintained by all parties involved in the medication assistance.</b>', heading_style))
+    
+    # Build PDF with headers and footers
+    doc.build(story, onFirstPage=_add_first_page_header, onLaterPages=_add_header_footer)
+    print(f"Medication Assistance Plan PDF created successfully: {output_path}")
     header_para.clear()
     header_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     
@@ -4461,10 +4804,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = add_paragraph_no_spacing(first_box)
     run = p.add_run('NDIS Number:')
     set_font_size_12(run)
-    # Add NDIS number data
+    # Add NDIS number data on the same line
     if ndis_number:
-        p = add_paragraph_no_spacing(first_box)
-        run = p.add_run(ndis_number)
+        run = p.add_run(f' {ndis_number}')
         set_font_size_12(run)
     p = add_paragraph_no_spacing(first_box)
     run = p.add_run('Medicare Number:')
