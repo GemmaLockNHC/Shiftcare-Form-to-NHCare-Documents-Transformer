@@ -612,10 +612,10 @@ def upload_file():
                 
                 # Build filename: "Support Plan - [First Name] [Last Name] [Year] - [ID].docx"
                 name_part = f"{first_name} {surname}".strip() if (first_name or surname) else "test test"
-                sp_filename = f"Support Plan - {name_part} {year} - {client_id}.docx"
+                sp_filename = f"Support Plan - {name_part} {year} - {client_id}.pdf"
                 sp_path = os.path.join(app.config['UPLOAD_FOLDER'], sp_filename)
                 create_support_plan_from_data(pdf_data, sp_path, contact_name, active_users)
-                output_files.append(('docx', sp_path, sp_filename))
+                output_files.append(('pdf', sp_path, sp_filename))
             
             # Generate Medication Assistance Plan DOCX if requested
             if generate_medication_plan:
