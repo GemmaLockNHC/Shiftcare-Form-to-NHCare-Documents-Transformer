@@ -4895,31 +4895,34 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     row0 = nested_table.rows[0]  # Get fresh reference after all merging
     
     # Add "Time" text - ensure it's definitely there for Google Docs
+    # Use a more direct approach that Google Docs will recognize
     if len(row0.cells) >= 1:
         time_cell = row0.cells[0]
-        # Clear and ensure we have a paragraph
-        if len(time_cell.paragraphs) == 0:
-            time_cell.add_paragraph()
-        remove_all_spacing_from_nested_cell(time_cell)
-        time_cell.paragraphs[0].clear()
-        time_run = time_cell.paragraphs[0].add_run('Time')
+        # Remove all existing paragraphs first
+        for para in list(time_cell.paragraphs):
+            time_cell._element.remove(para._element)
+        # Create a fresh paragraph
+        time_para = time_cell.add_paragraph()
+        time_run = time_para.add_run('Time')
         time_run.font.size = Pt(12)  # Standard font (12pt)
         time_run.bold = False
-        time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
+        time_para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
+        # Now remove spacing
         remove_all_spacing_from_nested_cell(time_cell)
     
     # Add "Day" text
     if len(row0.cells) >= 2:
         day_cell = row0.cells[1]
-        # Clear and ensure we have a paragraph
-        if len(day_cell.paragraphs) == 0:
-            day_cell.add_paragraph()
-        remove_all_spacing_from_nested_cell(day_cell)
-        day_cell.paragraphs[0].clear()
-        day_run = day_cell.paragraphs[0].add_run('Day')
+        # Remove all existing paragraphs first
+        for para in list(day_cell.paragraphs):
+            day_cell._element.remove(para._element)
+        # Create a fresh paragraph
+        day_para = day_cell.add_paragraph()
+        day_run = day_para.add_run('Day')
         day_run.font.size = Pt(12)  # Standard font (12pt)
         day_run.bold = False
-        day_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
+        day_para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
+        # Now remove spacing
         remove_all_spacing_from_nested_cell(day_cell)
     
     # Second row (Heading 2): AM, PM (under Time), then S, M, T, W, T, F, S (under Day)
@@ -4999,6 +5002,46 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         day_width.set(qn('w:w'), '112')  # 16 * 7 = 112 twips (letters have more space, compact box for "Day")
         day_width.set(qn('w:type'), 'dxa')
         day_tc_pr.append(day_width)
+    
+    # FINAL VERIFICATION: Ensure text is present after all width manipulations (critical for Google Docs)
+    row0 = nested_table.rows[0]
+    if len(row0.cells) >= 1:
+        time_cell = row0.cells[0]
+        # Check if Time text exists, if not add it
+        has_time_text = False
+        for para in time_cell.paragraphs:
+            for run in para.runs:
+                if 'Time' in run.text:
+                    has_time_text = True
+                    break
+        if not has_time_text:
+            # Remove all paragraphs and add fresh one with Time
+            for para in list(time_cell.paragraphs):
+                time_cell._element.remove(para._element)
+            time_para = time_cell.add_paragraph()
+            time_run = time_para.add_run('Time')
+            time_run.font.size = Pt(12)
+            time_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            remove_all_spacing_from_nested_cell(time_cell)
+    
+    if len(row0.cells) >= 2:
+        day_cell = row0.cells[1]
+        # Check if Day text exists, if not add it
+        has_day_text = False
+        for para in day_cell.paragraphs:
+            for run in para.runs:
+                if 'Day' in run.text:
+                    has_day_text = True
+                    break
+        if not has_day_text:
+            # Remove all paragraphs and add fresh one with Day
+            for para in list(day_cell.paragraphs):
+                day_cell._element.remove(para._element)
+            day_para = day_cell.add_paragraph()
+            day_run = day_para.add_run('Day')
+            day_run.font.size = Pt(12)
+            day_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            remove_all_spacing_from_nested_cell(day_cell)
     
     doc.add_paragraph()  # Empty line
     
