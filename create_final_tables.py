@@ -4875,15 +4875,6 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     if len(row0.cells) > 1:
         time_cell.merge(row0.cells[1])
     
-    # Add "Time" text IMMEDIATELY after merging to ensure it's preserved
-    remove_all_spacing_from_nested_cell(time_cell)
-    time_cell.paragraphs[0].clear()
-    time_run = time_cell.paragraphs[0].add_run('Time')
-    time_run.font.size = Pt(12)  # Standard font (12pt)
-    time_run.bold = False
-    time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
-    remove_all_spacing_from_nested_cell(time_cell)
-    
     # Now merge "Day" cells - should be directly adjacent to Time with no gap
     # After merging Time (cells 0-1), get fresh reference to the row
     row0 = nested_table.rows[0]  # Get fresh reference after merging
@@ -4899,8 +4890,30 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
             except:
                 # If merge fails, the cell may already be merged or removed
                 pass
-        
-        # Add "Day" text immediately after merging
+    
+    # NOW add text to both cells AFTER all merging is complete - critical for Google Docs
+    row0 = nested_table.rows[0]  # Get fresh reference after all merging
+    
+    # Add "Time" text - ensure it's definitely there for Google Docs
+    if len(row0.cells) >= 1:
+        time_cell = row0.cells[0]
+        # Clear and ensure we have a paragraph
+        if len(time_cell.paragraphs) == 0:
+            time_cell.add_paragraph()
+        remove_all_spacing_from_nested_cell(time_cell)
+        time_cell.paragraphs[0].clear()
+        time_run = time_cell.paragraphs[0].add_run('Time')
+        time_run.font.size = Pt(12)  # Standard font (12pt)
+        time_run.bold = False
+        time_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
+        remove_all_spacing_from_nested_cell(time_cell)
+    
+    # Add "Day" text
+    if len(row0.cells) >= 2:
+        day_cell = row0.cells[1]
+        # Clear and ensure we have a paragraph
+        if len(day_cell.paragraphs) == 0:
+            day_cell.add_paragraph()
         remove_all_spacing_from_nested_cell(day_cell)
         day_cell.paragraphs[0].clear()
         day_run = day_cell.paragraphs[0].add_run('Day')
