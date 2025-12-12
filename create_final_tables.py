@@ -4432,9 +4432,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     spacing.set(qn('w:after'), '0')
     pPr.append(spacing)
     run = p.add_run('This Medication Assistance Plan is for:')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
-    set_font_size_12(run)
     
     # First box
     first_box = create_boxed_section()
@@ -4503,9 +4503,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Signature of Individual (or person responsible for consent)')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
-    set_font_size_12(run)
     
     sig_box1 = create_boxed_section()
     remove_all_spacing_from_cell(sig_box1)
@@ -4524,9 +4524,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Plan Developed By')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
-    set_font_size_12(run)
     
     plan_box = create_boxed_section()
     remove_all_spacing_from_cell(plan_box)
@@ -4549,9 +4549,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Signature of Authorised Medication Delegate (Neighbourhood Care)')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
-    set_font_size_12(run)
     
     sig_box2 = create_boxed_section()
     remove_all_spacing_from_cell(sig_box2)
@@ -4570,9 +4570,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Reason For Plan')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
-    set_font_size_12(run)
     
     reason_box = create_boxed_section()
     remove_all_spacing_from_cell(reason_box)
@@ -4591,9 +4591,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Assistance Required')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
-    set_font_size_12(run)
     
     assist_box = create_boxed_section()
     remove_all_spacing_from_cell(assist_box)
@@ -4658,9 +4658,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Important things to remember')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
-    set_font_size_12(run)
     
     important_box = create_boxed_section()
     remove_all_spacing_from_cell(important_box)
@@ -4679,6 +4679,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Allergies & reactions')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
     set_font_size_12(run)
@@ -4713,6 +4714,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Medications prescribed & Potential Side Effects')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
     set_font_size_12(run)
@@ -4742,6 +4744,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Medication List - Prescribed - Update when changed by prescribing physician')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
     set_font_size_12(run)
@@ -4783,248 +4786,9 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     
     set_table_border_color(prescribed_table)
     
-    # Add a data row with nested table in "When to take it" column
-    data_row = prescribed_table.add_row()
-    # Leave first 2 cells empty for now
-    when_cell = data_row.cells[2]  # "When to take it" column
-    when_cell.paragraphs[0].clear()
-    
-    # Remove all spacing and margins from the cell
-    remove_all_spacing_from_cell(when_cell)
-    
-    # Set explicit width for the cell - just enough for the nested table
-    # Nested table is 128 twips wide, so set cell to match
-    tc_pr = when_cell._element.get_or_add_tcPr()
-    # Remove existing width
-    for width_elem in tc_pr.xpath('.//w:tcW'):
-        tc_pr.remove(width_elem)
-    tc_width = OxmlElement('w:tcW')
-    tc_width.set(qn('w:w'), '140')  # Just enough for nested table (128 twips) + minimal padding
-    tc_width.set(qn('w:type'), 'dxa')
-    tc_pr.append(tc_width)
-    
-    # Create nested table for "When to take it"
-    # Structure: Mini table
-    # Row 1 (Heading 1): "Time" (spanning 2 cols) | "Day" (spanning 7 cols) = 9 columns total
-    # Row 2 (Heading 2): AM | PM | S | M | T | W | T | F | S (all as horizontal headers)
-    nested_table = when_cell.add_table(rows=2, cols=9)
-    nested_table.style = 'Table Grid'
-    
-    # Column widths: AM (10), PM (10), S (16), M (16), T (16), W (16), T (16), F (16), S (16)
-    # Time columns (AM/PM) smaller to reduce box size, letter columns bigger to prevent squishing
-    # Widths sized to fit 12pt text with appropriate padding
-    col_widths = [10, 10, 16, 16, 16, 16, 16, 16, 16]
-    total_width = sum(col_widths)  # 128 twips
-    
-    # Set table properties FIRST - this is critical for nested tables
-    tbl_pr = nested_table._element.tblPr
-    if tbl_pr is None:
-        tbl_pr = OxmlElement('w:tblPr')
-        nested_table._element.insert(0, tbl_pr)
-    
-    # Remove any existing grid or width settings - be very aggressive
-    for existing_grid in list(tbl_pr.xpath('.//w:tblGrid')):
-        tbl_pr.remove(existing_grid)
-    for existing_width in list(tbl_pr.xpath('.//w:tblW')):
-        tbl_pr.remove(existing_width)
-    for existing_layout in list(tbl_pr.xpath('.//w:tblLayout')):
-        tbl_pr.remove(existing_layout)
-    
-    # Set table layout to fixed FIRST - CRITICAL for width enforcement
-    tbl_layout = OxmlElement('w:tblLayout')
-    tbl_layout.set(qn('w:type'), 'fixed')
-    tbl_pr.append(tbl_layout)
-    
-    # Set table grid column widths - THIS IS THE PRIMARY SOURCE OF TRUTH FOR COLUMN WIDTHS
-    # The grid defines the column structure
-    tblGrid = OxmlElement('w:tblGrid')
-    for width in col_widths:
-        gridCol = OxmlElement('w:gridCol')
-        gridCol.set(qn('w:w'), str(width))
-        gridCol.set(qn('w:type'), 'dxa')
-        tblGrid.append(gridCol)
-    tbl_pr.append(tblGrid)
-    
-    # Set table width to match grid - use exact sum
-    tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), str(total_width))
-    tbl_width.set(qn('w:type'), 'dxa')
-    tbl_pr.append(tbl_width)
-    
-    # NOW set widths on ALL cells in ALL rows to match the grid (after grid is set)
-    # This must be done BEFORE any merging or content is added
-    for row_idx, row in enumerate(nested_table.rows):
-        for col_idx, cell in enumerate(row.cells):
-            if col_idx < len(col_widths):
-                tc_pr = cell._element.get_or_add_tcPr()
-                # Remove ALL existing width elements - be very aggressive
-                for width_elem in list(tc_pr.xpath('.//w:tcW')):
-                    tc_pr.remove(width_elem)
-                # Set width to match grid - MUST use 'dxa' type
-                tc_width = OxmlElement('w:tcW')
-                tc_width.set(qn('w:w'), str(col_widths[col_idx]))
-                tc_width.set(qn('w:type'), 'dxa')
-                tc_pr.append(tc_width)
-    
-    # Header row 1: "Time" spanning 2 columns (first), "Day" spanning 7 columns (second) - no gap between them
-    row0 = nested_table.rows[0]
-    
-    # Merge cells for "Time" first (cells 0-1) - merge sequentially to ensure proper adjacency
-    time_cell = row0.cells[0]
-    if len(row0.cells) > 1:
-        time_cell.merge(row0.cells[1])
-    
-    # Now merge "Day" cells - should be directly adjacent to Time with no gap
-    # After merging Time (cells 0-1), get fresh reference to the row
-    row0 = nested_table.rows[0]  # Get fresh reference after merging
-    # After merging Time, we should have exactly 2 cells: merged Time (cell 0), then Day cells (cell 1+)
-    # We need to merge all remaining cells (originally cells 2-8) into one Day cell
-    if len(row0.cells) >= 2:
-        day_cell = row0.cells[1]  # This should be the first Day cell (originally cell 2)
-        # Merge all remaining cells into cell 1 - merge one at a time to ensure proper adjacency
-        remaining_cells = list(row0.cells[2:])  # Get all cells after the Day start cell
-        for cell_to_merge in remaining_cells:
-            try:
-                day_cell.merge(cell_to_merge)
-            except:
-                # If merge fails, the cell may already be merged or removed
-                pass
-    
-    # NOW add text to both cells AFTER all merging is complete - critical for Google Docs
-    row0 = nested_table.rows[0]  # Get fresh reference after all merging
-    
-    # Add "Time" text - ensure it's definitely there for Google Docs
-    # Use a more direct approach that Google Docs will recognize
-    if len(row0.cells) >= 1:
-        time_cell = row0.cells[0]
-        # Remove all existing paragraphs first
-        for para in list(time_cell.paragraphs):
-            time_cell._element.remove(para._element)
-        # Create a fresh paragraph
-        time_para = time_cell.add_paragraph()
-        time_run = time_para.add_run('Time')
-        time_run.font.size = Pt(12)  # Standard font (12pt)
-        time_run.bold = False
-        time_para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
-        # Now remove spacing
-        remove_all_spacing_from_nested_cell(time_cell)
-    
-    # Add "Day" text
-    if len(row0.cells) >= 2:
-        day_cell = row0.cells[1]
-        # Remove all existing paragraphs first
-        for para in list(day_cell.paragraphs):
-            day_cell._element.remove(para._element)
-        # Create a fresh paragraph
-        day_para = day_cell.add_paragraph()
-        day_run = day_para.add_run('Day')
-        day_run.font.size = Pt(12)  # Standard font (12pt)
-        day_run.bold = False
-        day_para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize space
-        # Now remove spacing
-        remove_all_spacing_from_nested_cell(day_cell)
-    
-    # Second row (Heading 2): AM, PM (under Time), then S, M, T, W, T, F, S (under Day)
-    nested_data = nested_table.rows[1].cells
-    labels = ['AM', 'PM', 'S', 'M', 'T', 'W', 'T', 'F', 'S']  # Time fields first, then Day fields
-    for i, label in enumerate(labels):
-        # Remove spacing and margins from each cell using nested cell function
-        remove_all_spacing_from_nested_cell(nested_data[i])
-        nested_data[i].paragraphs[0].clear()
-        label_run = nested_data[i].paragraphs[0].add_run(label)
-        label_run.font.size = Pt(12)  # Standard font (12pt)
-        label_run.bold = False
-        nested_data[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center to minimize spacing
-        # Remove spacing again after adding content
-        remove_all_spacing_from_nested_cell(nested_data[i])
-        
-        # CRITICAL: Re-apply width AFTER adding content to ensure it sticks
-        # Use the same col_widths array defined earlier: [10, 10, 16, 16, 16, 16, 16, 16, 16]
-        expected_widths = [10, 10, 16, 16, 16, 16, 16, 16, 16]
-        if i < len(expected_widths):
-            tc_pr = nested_data[i]._element.get_or_add_tcPr()
-            # Remove ALL existing width elements
-            for width_elem in tc_pr.xpath('.//w:tcW'):
-                tc_pr.remove(width_elem)
-            # Set explicit width
-            tc_width = OxmlElement('w:tcW')
-            tc_width.set(qn('w:w'), str(expected_widths[i]))
-            tc_width.set(qn('w:type'), 'dxa')
-            tc_pr.append(tc_width)
-    
-    set_table_border_color(nested_table)
-    
-    # FINAL: Force widths on row 1 cells one last time - use direct XML manipulation
-    # Column widths: AM (10), PM (10), S (16), M (16), T (16), W (16), T (16), F (16), S (16)
-    # Time columns smaller, letter columns bigger
-    final_widths = [10, 10, 16, 16, 16, 16, 16, 16, 16]
-    row1 = nested_table.rows[1]
-    for i, cell in enumerate(row1.cells):
-        if i < len(final_widths):
-            # Get the cell's XML element directly
-            tc = cell._element
-            tc_pr = tc.get_or_add_tcPr()
-            
-            # Remove ALL existing width elements - be very aggressive
-            for width_elem in list(tc_pr.xpath('.//w:tcW')):
-                tc_pr.remove(width_elem)
-            
-            # Create and append width element
-            tc_width = OxmlElement('w:tcW')
-            tc_width.set(qn('w:w'), str(final_widths[i]))
-            tc_width.set(qn('w:type'), 'dxa')
-            tc_pr.append(tc_width)
-            
-            # Verify it was added
-            verify_width = tc_pr.xpath('.//w:tcW')
-            if not verify_width:
-                # If it wasn't added, try inserting it directly
-                tc_pr.insert(0, tc_width)
-    
-    # Set widths on row 0 merged cells AFTER merging
-    row0 = nested_table.rows[0]
-    if len(row0.cells) >= 2:
-        # Time cell (first merged cell - spans columns 0-1)
-        time_tc_pr = row0.cells[0]._element.get_or_add_tcPr()
-        for width_elem in time_tc_pr.xpath('.//w:tcW'):
-            time_tc_pr.remove(width_elem)
-        time_width = OxmlElement('w:tcW')
-        time_width.set(qn('w:w'), '20')  # 10 + 10 = 20 twips (compact box for "Time")
-        time_width.set(qn('w:type'), 'dxa')
-        time_tc_pr.append(time_width)
-        
-        # Day cell (second merged cell - spans columns 2-8, directly adjacent to Time)
-        day_tc_pr = row0.cells[1]._element.get_or_add_tcPr()
-        for width_elem in day_tc_pr.xpath('.//w:tcW'):
-            day_tc_pr.remove(width_elem)
-        day_width = OxmlElement('w:tcW')
-        day_width.set(qn('w:w'), '112')  # 16 * 7 = 112 twips (letters have more space, compact box for "Day")
-        day_width.set(qn('w:type'), 'dxa')
-        day_tc_pr.append(day_width)
-    
-    # FINAL VERIFICATION: Force add text unconditionally after all width manipulations (critical for Google Docs)
-    row0 = nested_table.rows[0]
-    if len(row0.cells) >= 1:
-        time_cell = row0.cells[0]
-        # ALWAYS add Time text - remove all existing content first
-        for para in list(time_cell.paragraphs):
-            time_cell._element.remove(para._element)
-        time_para = time_cell.add_paragraph()
-        time_run = time_para.add_run('Time')
-        time_run.font.size = Pt(12)
-        time_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        remove_all_spacing_from_nested_cell(time_cell)
-    
-    if len(row0.cells) >= 2:
-        day_cell = row0.cells[1]
-        # ALWAYS add Day text - remove all existing content first
-        for para in list(day_cell.paragraphs):
-            day_cell._element.remove(para._element)
-        day_para = day_cell.add_paragraph()
-        day_run = day_para.add_run('Day')
-        day_run.font.size = Pt(12)
-        day_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        remove_all_spacing_from_nested_cell(day_cell)
+    # Add 5 empty data rows to the prescribed medications table
+    for _ in range(5):
+        prescribed_table.add_row()
     
     doc.add_paragraph()  # Empty line
     
@@ -5032,6 +4796,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Medication List - As Needed (PRN)')
+    run.font.size = Pt(14)
     run.bold = True
     run.font.color.rgb = text_color  # #007bc4
     set_font_size_12(run)
@@ -5061,8 +4826,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run('Observed Practice Checklist to be attached to this plan and records maintained by all parties involved in the medication assistance.')
+    run.font.size = Pt(14)
     run.bold = True
-    set_font_size_12(run)
     
     # Save document
     doc.save(output_path)
