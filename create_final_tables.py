@@ -2861,9 +2861,9 @@ def create_emergency_disaster_plan_from_data(csv_data, output_path, contact_name
     story.append(Spacer(1, 0.2*inch))
     
     # Final table with signatures (4 columns, 3 rows)
-    # Get modification date - try to get from PDF file modification time or use current date
+    # Date field left empty as requested
     from datetime import datetime
-    mod_date = datetime.now().strftime('%d/%m/%Y')
+    mod_date = ''  # Empty date as requested
     
     final_data = [
         [Paragraph("<b>Client's Name</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white)), Paragraph(client_name, table_text_style), Paragraph("<b>Team member's name</b>", ParagraphStyle('TableHeader', parent=table_text_style, fontSize=11, textColor=colors.white)), Paragraph(team_member_name, table_text_style)],
@@ -3134,7 +3134,7 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
     participant_name = ' '.join([p for p in [first_name, surname] if p]).strip() or ''
     person_completing = contact_name or ''
     role = 'Support Worker'
-    assessment_date = datetime.now().strftime('%d/%m/%Y')
+    assessment_date = ''  # Empty date as requested
     
     # Create style for white text labels (bold)
     white_label_style = ParagraphStyle(
