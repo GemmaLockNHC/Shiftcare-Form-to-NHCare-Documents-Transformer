@@ -3462,24 +3462,17 @@ def create_risk_assessment_from_data(csv_data, output_path, contact_name=None, a
 
 def create_support_plan_from_data(csv_data, output_path, contact_name=None, active_users=None):
     """
-    Create a Support Plan Word document (.docx) from provided data dictionary.
+    Create a Support Plan PDF document from provided data dictionary.
     
     Args:
         csv_data: Dictionary containing form data
-        output_path: Path where the .docx should be saved
+        output_path: Path where the PDF should be saved
         contact_name: Optional name to use for Key Contact lookup
         active_users: Optional pre-loaded active users (for performance)
     """
-    try:
-        from docx import Document
-        from docx.shared import Pt, RGBColor, Inches
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.oxml.ns import qn
-        from docx.oxml import OxmlElement
-        from datetime import datetime
-        import re
-    except ImportError:
-        raise ImportError("python-docx is required for Support Plan generation. Please install it: pip install python-docx")
+    # Define colors
+    border_color = colors.HexColor('#256eb7')  # #256eb7 for borders and text
+    title_bg_color = colors.HexColor('#256eb7')  # #256eb7 for title background
     
     # Get team value to determine which active users CSV to use
     team_value = csv_data.get('Neighbourhood Care representative team', '')
@@ -3500,8 +3493,91 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     dob_str = csv_data.get('Date of birth (Details of the Client)', '').strip()
     home_address = csv_data.get('Home address (Contact Details of the Client)', '').strip()
     
-    # Create Word document
-    doc = Document()
+    # Create PDF document
+    doc = SimpleDocTemplate(output_path, pagesize=A4)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Create custom styles
+    centered_style = ParagraphStyle(
+        'Centered',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=border_color,
+        alignment=TA_CENTER,
+        spaceAfter=0,
+        leading=14,
+        fontName='Helvetica'
+    )
+    
+    centered_bold_style = ParagraphStyle(
+        'CenteredBold',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=border_color,
+        alignment=TA_CENTER,
+        spaceAfter=0,
+        leading=14,
+        fontName='Helvetica-Bold'
+    )
+    
+    box_heading_style = ParagraphStyle(
+        'BoxHeading',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=border_color,
+        alignment=TA_LEFT,
+        spaceAfter=6,
+        leading=14,
+        fontName='Helvetica-Bold'
+    )
+    
+    box_text_style = ParagraphStyle(
+        'BoxText',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=14,
+        leftIndent=6,
+        rightIndent=6,
+        fontName='Helvetica'
+    )
+    
+    box_text_centered_style = ParagraphStyle(
+        'BoxTextCentered',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_CENTER,
+        spaceAfter=0,
+        leading=14,
+        leftIndent=6,
+        rightIndent=6,
+        fontName='Helvetica'
+    )
+    
+    box_text_italic_style = ParagraphStyle(
+        'BoxTextItalic',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        leading=14,
+        leftIndent=6,
+        rightIndent=6,
+        fontName='Helvetica-Oblique'
+    )
+    
+    title_style = ParagraphStyle(
+        'Title',
+        parent=styles['Normal'],
+        fontSize=18,
+        textColor=colors.white,
+        alignment=TA_CENTER,
+        spaceAfter=0,
+        leading=22,
+        fontName='Helvetica-Bold'
+    )
     
     # Set default font to Calibri, size 12, centered
     style = doc.styles['Normal']
@@ -4121,9 +4197,9 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     set_font_size_12(run1)
     # Date field left blank - no data added
     
-    # Save document
-    doc.save(output_path)
-    print(f"Support Plan Word document created successfully: {output_path}")
+    # Build PDF with headers and footers
+    doc.build(story, onFirstPage=_add_first_page_header, onLaterPages=_add_header_footer)
+    print(f"Support Plan PDF created successfully: {output_path}")
 
 def create_medication_assistance_plan_from_data(csv_data, output_path, contact_name=None, active_users=None):
     """
@@ -4536,7 +4612,7 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     story.append(Spacer(1, 12))
     
     # Final text
-    story.append(Paragraph('<b>Observed Practice Checklist to be attached to this plan and records maintained by all parties involved in the medication assistance.</b>', heading_style))
+    story.append(Paragraph('<b>Observed Practice Checklist to be attached to this plan and records maintained by all parties involved in the medication assistance.</b>', normal_bold_style))
     
     # Build PDF with headers and footers
     doc.build(story, onFirstPage=_add_first_page_header, onLaterPages=_add_header_footer)
