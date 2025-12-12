@@ -647,10 +647,10 @@ def upload_file():
                     client_id = datetime.now().strftime('%H%M%S')
                 
                 name_part = f"{first_name} {surname}".strip() if (first_name or surname) else "test test"
-                mp_filename = f"Medication Assistance Plan - {name_part} {year} - {client_id}.docx"
+                mp_filename = f"Medication Assistance Plan - {name_part} {year} - {client_id}.pdf"
                 mp_path = os.path.join(app.config['UPLOAD_FOLDER'], mp_filename)
                 create_medication_assistance_plan_from_data(pdf_data, mp_path, contact_name, active_users)
-                output_files.append(('docx', mp_path, mp_filename))
+                output_files.append(('pdf', mp_path, mp_filename))
             
             # Clean up input file
             os.remove(filepath)
