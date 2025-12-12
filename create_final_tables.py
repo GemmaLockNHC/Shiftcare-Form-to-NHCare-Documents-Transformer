@@ -4751,9 +4751,8 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
     prescribed_table.style = 'Table Grid'
     
     # Set explicit column widths for the parent table
-    # Total width should be ~7.5 inches (10800 twips) to fit on page
     # Column widths: Medication (1.3"), Dose (0.8"), When to take it (2.0"), How to take it (1.2"), Where (1.0"), Additional (0.7")
-    col_widths = [1872, 1152, 60, 1728, 1440, 1008]  # In twips - "When to take it" is now minimal (60 twips)
+    col_widths = [1872, 1152, 2880, 1728, 1440, 1008]  # In twips
     for i, width in enumerate(col_widths):
         header_cell = prescribed_table.rows[0].cells[i]
         tc_pr = header_cell._element.get_or_add_tcPr()
@@ -5003,45 +5002,29 @@ def create_medication_assistance_plan_from_data(csv_data, output_path, contact_n
         day_width.set(qn('w:type'), 'dxa')
         day_tc_pr.append(day_width)
     
-    # FINAL VERIFICATION: Ensure text is present after all width manipulations (critical for Google Docs)
+    # FINAL VERIFICATION: Force add text unconditionally after all width manipulations (critical for Google Docs)
     row0 = nested_table.rows[0]
     if len(row0.cells) >= 1:
         time_cell = row0.cells[0]
-        # Check if Time text exists, if not add it
-        has_time_text = False
-        for para in time_cell.paragraphs:
-            for run in para.runs:
-                if 'Time' in run.text:
-                    has_time_text = True
-                    break
-        if not has_time_text:
-            # Remove all paragraphs and add fresh one with Time
-            for para in list(time_cell.paragraphs):
-                time_cell._element.remove(para._element)
-            time_para = time_cell.add_paragraph()
-            time_run = time_para.add_run('Time')
-            time_run.font.size = Pt(12)
-            time_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            remove_all_spacing_from_nested_cell(time_cell)
+        # ALWAYS add Time text - remove all existing content first
+        for para in list(time_cell.paragraphs):
+            time_cell._element.remove(para._element)
+        time_para = time_cell.add_paragraph()
+        time_run = time_para.add_run('Time')
+        time_run.font.size = Pt(12)
+        time_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        remove_all_spacing_from_nested_cell(time_cell)
     
     if len(row0.cells) >= 2:
         day_cell = row0.cells[1]
-        # Check if Day text exists, if not add it
-        has_day_text = False
-        for para in day_cell.paragraphs:
-            for run in para.runs:
-                if 'Day' in run.text:
-                    has_day_text = True
-                    break
-        if not has_day_text:
-            # Remove all paragraphs and add fresh one with Day
-            for para in list(day_cell.paragraphs):
-                day_cell._element.remove(para._element)
-            day_para = day_cell.add_paragraph()
-            day_run = day_para.add_run('Day')
-            day_run.font.size = Pt(12)
-            day_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            remove_all_spacing_from_nested_cell(day_cell)
+        # ALWAYS add Day text - remove all existing content first
+        for para in list(day_cell.paragraphs):
+            day_cell._element.remove(para._element)
+        day_para = day_cell.add_paragraph()
+        day_run = day_para.add_run('Day')
+        day_run.font.size = Pt(12)
+        day_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        remove_all_spacing_from_nested_cell(day_cell)
     
     doc.add_paragraph()  # Empty line
     
