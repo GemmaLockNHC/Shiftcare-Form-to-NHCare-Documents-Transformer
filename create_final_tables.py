@@ -3579,623 +3579,286 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         fontName='Helvetica-Bold'
     )
     
-    # Set default font to Calibri, size 12, centered
-    style = doc.styles['Normal']
-    font = style.font
-    font.name = 'Calibri'
-    font.size = Pt(12)
-    style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
-    # Add header and footer
-    section = doc.sections[0]
-    
-    # Header
-    header = section.header
-    header_para = header.paragraphs[0]
-    header_para.clear()
-    header_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    
-    # Try to add image to header
-    image_filename = 'image.png'
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = None
-    search_dirs = [script_dir, os.getcwd(), '.']
-    
-    for search_dir in search_dirs:
-        if os.path.exists(search_dir):
-            try:
-                test_path = os.path.join(search_dir, image_filename)
-                if os.path.exists(test_path):
-                    image_path = os.path.abspath(test_path)
-                    break
-                for filename in os.listdir(search_dir):
-                    if filename.lower() == image_filename.lower() or (filename.lower().startswith('image') and filename.lower().endswith('.png')):
-                        full_path = os.path.join(search_dir, filename)
-                        if os.path.exists(full_path):
-                            image_path = os.path.abspath(full_path)
-                            break
-                if image_path:
-                    break
-            except Exception:
-                continue
-    
-    if image_path and os.path.exists(image_path):
-        try:
-            from docx.shared import Inches
-            run = header_para.add_run()
-            run.add_picture(image_path, width=Inches(1.5))
-        except Exception:
-            pass
-    
-    # Footer
-    footer = section.footer
-    footer_para = footer.paragraphs[0]
-    footer_para.clear()
-    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    footer_run = footer_para.add_run("Neighbourhood Care | Suite 103, 19 Ogilvie Road, Mount Pleasant, WA 6153 | ABN 40 634 832 607")
-    footer_run.font.size = Pt(8)
-    footer_run.font.color.rgb = RGBColor(0x7F, 0x7F, 0x7F)  # #7F7F7F
-    
-    # Add page number to footer (right side)
-    footer_para.add_run("  ")
-    page_num_run = footer_para.add_run()
-    page_num_run._element.text = ""
-    # Add page number field
-    fldChar1 = OxmlElement('w:fldChar')
-    fldChar1.set(qn('w:fldCharType'), 'begin')
-    instrText = OxmlElement('w:instrText')
-    instrText.set(qn('xml:space'), 'preserve')
-    instrText.text = 'PAGE'
-    fldChar2 = OxmlElement('w:fldChar')
-    fldChar2.set(qn('w:fldCharType'), 'end')
-    page_num_run._element.append(fldChar1)
-    page_num_run._element.append(instrText)
-    page_num_run._element.append(fldChar2)
-    
-    # Define the color for text and borders
-    border_color = RGBColor(0x25, 0x6e, 0xb7)  # #256eb7
-    
-    # Helper function to create a boxed section
-    def create_boxed_section():
-        """Create a table with one cell that acts as a box"""
-        table = doc.add_table(rows=1, cols=1)
-        table.style = 'Table Grid'
-        cell = table.rows[0].cells[0]
-        
-        # Set cell padding
-        tc_pr = cell._element.get_or_add_tcPr()
-        tc_mar = OxmlElement('w:tcMar')
-        for margin in ['top', 'left', 'bottom', 'right']:
-            margin_elem = OxmlElement(f'w:{margin}')
-            margin_elem.set(qn('w:w'), '144')  # 0.1 inch
-            margin_elem.set(qn('w:type'), 'dxa')
-            tc_mar.append(margin_elem)
-        tc_pr.append(tc_mar)
-        
-        # Set border color to #256eb7
-        tc_borders = OxmlElement('w:tcBorders')
-        for border_name in ['top', 'left', 'bottom', 'right']:
-            border = OxmlElement(f'w:{border_name}')
-            border.set(qn('w:val'), 'single')
-            border.set(qn('w:sz'), '4')
-            border.set(qn('w:space'), '0')
-            border.set(qn('w:color'), '256EB7')  # #256eb7
-            tc_borders.append(border)
-        tc_pr.append(tc_borders)
-        
-        return cell
-    
-    # Helper function to add paragraph with no spacing
-    def add_paragraph_no_spacing(cell, text=None, alignment=WD_ALIGN_PARAGRAPH.LEFT):
-        """Add a paragraph with no space before or after"""
-        if text:
-            p = cell.add_paragraph(text)
-        else:
-            p = cell.add_paragraph()
-        p.alignment = alignment
-        # Force zero spacing using XML to override any style defaults
-        p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(0)
-        p.paragraph_format.line_spacing = 1.0  # Single line spacing
-        # Also set via XML to ensure it's truly zero
-        pPr = p._element.get_or_add_pPr()
-        # Remove any existing spacing
-        for spacing_elem in pPr.xpath('.//w:spacing'):
-            pPr.remove(spacing_elem)
-        # Add explicit zero spacing
-        spacing = OxmlElement('w:spacing')
-        spacing.set(qn('w:before'), '0')
-        spacing.set(qn('w:after'), '0')
-        spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
-        spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing instead of auto
-        pPr.append(spacing)
-        return p
-    
-    # Helper function to ensure font size 12 for runs
-    def set_font_size_12(run):
-        """Set font size to 12 for a run"""
-        run.font.size = Pt(12)
-    
-    # Helper function to add an empty paragraph that's actually visible (for spacing)
-    def add_empty_line(cell):
-        """Add an empty paragraph that will be visible as a blank line"""
-        p = cell.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        # Set minimal spacing to ensure the empty line is visible
-        p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(0)
-        p.paragraph_format.line_spacing = 1.0
-        # Set line height via XML to ensure it's visible
-        pPr = p._element.get_or_add_pPr()
-        spacing = OxmlElement('w:spacing')
-        spacing.set(qn('w:before'), '0')
-        spacing.set(qn('w:after'), '0')
-        spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
-        spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing instead of auto
-        pPr.append(spacing)
-        return p
+    # Helper function to create a boxed section (PDF table)
+    def create_boxed_section(content_paragraphs, bg_color=None):
+        """Create a PDF table with one cell that acts as a box"""
+        if not content_paragraphs:
+            content_paragraphs = [Paragraph('', box_text_style)]
+        box_data = [[content_paragraphs]]
+        box_table = Table(box_data, colWidths=[6*inch])
+        box_style = [
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('GRID', (0, 0), (-1, -1), 1, border_color),
+        ]
+        if bg_color:
+            box_style.append(('BACKGROUND', (0, 0), (-1, -1), bg_color))
+        box_table.setStyle(TableStyle(box_style))
+        return box_table
     
     # Title box - "My Support Plan"
-    title_cell = create_boxed_section()
-    # Fill background with #256eb7
-    tc_pr = title_cell._element.get_or_add_tcPr()
-    shd = OxmlElement('w:shd')
-    shd.set(qn('w:fill'), '256EB7')  # #256eb7
-    tc_pr.append(shd)
+    title_content = [Paragraph('My Support Plan', title_style)]
+    title_box = create_boxed_section(title_content, bg_color=title_bg_color)
+    story.append(title_box)
+    story.append(Spacer(1, 12))
     
-    p = add_paragraph_no_spacing(title_cell)
-    run = p.add_run('My Support Plan')
-    run.font.color.rgb = RGBColor(255, 255, 255)  # White
-    run.bold = True
-    run.font.size = Pt(18)
+    # Header section - centered text
+    story.append(Paragraph(f'My Name: {first_name} {surname}'.strip() if (first_name or surname) else 'My Name:', centered_style))
+    story.append(Paragraph(f'My Date of Birth: {dob_str}' if dob_str else 'My Date of Birth:', centered_style))
+    story.append(Paragraph(f'My Address: {home_address}' if home_address else 'My Address:', centered_style))
+    story.append(Spacer(1, 12))
     
-    doc.add_paragraph()  # Empty line after title
-    
-    # Header section - no spaces between paragraphs
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(0)
-    run1 = p.add_run('My Name: ')
-    run1.font.color.rgb = border_color
-    run1.font.size = Pt(12)
-    run2 = p.add_run(f'{first_name} {surname}'.strip() if (first_name or surname) else '')
-    run2.font.color.rgb = border_color
-    run2.font.size = Pt(12)
-    
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.space_after = Pt(0)
-    run1 = p.add_run('My Date of Birth: ')
-    run1.font.color.rgb = border_color
-    run1.font.size = Pt(12)
-    run2 = p.add_run(dob_str if dob_str else '')
-    run2.font.color.rgb = border_color
-    run2.font.size = Pt(12)
-    
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(0)
-    run1 = p.add_run('My Address: ')
-    run1.font.color.rgb = border_color
-    run1.font.size = Pt(12)
-    run2 = p.add_run(home_address if home_address else '')
-    run2.font.color.rgb = border_color
-    run2.font.size = Pt(12)
-    
-    doc.add_paragraph()  # One empty line between "My Address:" and "About this Plan" box
-    
-    # About this Plan section - in one box
-    about_plan_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(about_plan_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    run = p.add_run('About this Plan')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    
-    bullet_points = [
-        'This plan lets you share information about who you are, what your life is like and your dreams',
-        'You can make this plan by yourself, with your support worker or with someone you choose',
-        'This plan contains your goals and what supports you need to help you achieve them',
-        'This plan has the supports you have now around you and how they can help you achieve your goals'
+    # About this Plan section
+    about_plan_content = [
+        Paragraph('<b>About this Plan</b>', box_heading_style),
+        Paragraph('• This plan lets you share information about who you are, what your life is like and your dreams', box_text_centered_style),
+        Paragraph('• You can make this plan by yourself, with your support worker or with someone you choose', box_text_centered_style),
+        Paragraph('• This plan contains your goals and what supports you need to help you achieve them', box_text_centered_style),
+        Paragraph('• This plan has the supports you have now around you and how they can help you achieve your goals', box_text_centered_style),
     ]
-    for i, point in enumerate(bullet_points):
-        p = about_plan_cell.add_paragraph(point, style='List Bullet')
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(0)  # Remove space below all bullet points
-        p.paragraph_format.line_spacing = 1.0  # Single line spacing
-        # Force zero spacing via XML to override style defaults
-        pPr = p._element.get_or_add_pPr()
-        existing_spacing = pPr.xpath('.//w:spacing')
-        for spacing_elem in existing_spacing:
-            pPr.remove(spacing_elem)
-        spacing = OxmlElement('w:spacing')
-        spacing.set(qn('w:before'), '0')
-        spacing.set(qn('w:after'), '0')
-        spacing.set(qn('w:line'), '240')  # Single line spacing (240 twips = 12pt)
-        spacing.set(qn('w:lineRule'), 'exact')  # Use exact line spacing instead of auto
-        pPr.append(spacing)
-        for run in p.runs:
-            set_font_size_12(run)
+    about_plan_box = create_boxed_section(about_plan_content)
+    story.append(about_plan_box)
+    story.append(Spacer(1, 12))
     
-    doc.add_paragraph()  # Empty line between boxes
-    
-    # My Support Team section - in one box
-    support_team_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(support_team_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    run1 = p.add_run('My Support Team: ')  # Not bold
-    set_font_size_12(run1)
-    run2 = p.add_run(key_contact_data.get('team', '') if key_contact_data.get('team') else '')
-    set_font_size_12(run2)
-    
-    p = add_paragraph_no_spacing(support_team_cell)
-    run1 = p.add_run('My Key Contact: ')  # Not bold
-    set_font_size_12(run1)
-    run2 = p.add_run(key_contact_data.get('name', '') if key_contact_data.get('name') and key_contact_data.get('name') != '[Not Found]' else '')
-    set_font_size_12(run2)
-    
-    p = add_paragraph_no_spacing(support_team_cell)
-    run1 = p.add_run('Contact Number: ')  # Not bold
-    set_font_size_12(run1)
-    run2 = p.add_run(key_contact_data.get('mobile', '') if key_contact_data.get('mobile') and key_contact_data.get('mobile') != '[Not Found]' else '')
-    set_font_size_12(run2)
-    
-    p = add_paragraph_no_spacing(support_team_cell)
-    run1 = p.add_run('Email: ')  # Not bold
-    set_font_size_12(run1)
-    run2 = p.add_run(key_contact_data.get('email', '') if key_contact_data.get('email') and key_contact_data.get('email') != '[Not Found]' else '')
-    set_font_size_12(run2)
-    
-    doc.add_paragraph()  # Empty line
+    # My Support Team section
+    support_team_content = [
+        Paragraph(f"My Support Team: {key_contact_data.get('team', '') if key_contact_data.get('team') else ''}", box_text_style),
+        Paragraph(f"My Key Contact: {key_contact_data.get('name', '') if key_contact_data.get('name') and key_contact_data.get('name') != '[Not Found]' else ''}", box_text_style),
+        Paragraph(f"Contact Number: {key_contact_data.get('mobile', '') if key_contact_data.get('mobile') and key_contact_data.get('mobile') != '[Not Found]' else ''}", box_text_style),
+        Paragraph(f"Email: {key_contact_data.get('email', '') if key_contact_data.get('email') and key_contact_data.get('email') != '[Not Found]' else ''}", box_text_style),
+    ]
+    support_team_box = create_boxed_section(support_team_content)
+    story.append(support_team_box)
+    story.append(Spacer(1, 12))
     
     # What are some of the things section
-    p = doc.add_paragraph('What are some of the things that you want the people supporting you to know about you?')
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for run in p.runs:
-        set_font_size_12(run)
-    
-    doc.add_paragraph()  # Empty line between boxes
+    story.append(Paragraph('What are some of the things that you want the people supporting you to know about you?', centered_style))
+    story.append(Spacer(1, 12))
     
     # About Me box
-    about_me_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(about_me_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    run = p.add_run('About Me')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    p = add_paragraph_no_spacing(about_me_cell)
-    run = p.add_run('For example, your living situation, study, friends, family/relationships, your personality, things that are important to you, how you spend your leisure time')
-    run.italic = True
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(about_me_cell)
-    
-    doc.add_paragraph()  # Empty line between boxes
+    about_me_content = [
+        Paragraph('<b>About Me</b>', box_heading_style),
+        Paragraph('<i>For example, your living situation, study, friends, family/relationships, your personality, things that are important to you, how you spend your leisure time</i>', box_text_italic_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+    ]
+    about_me_box = create_boxed_section(about_me_content)
+    story.append(about_me_box)
+    story.append(Spacer(1, 12))
     
     # My NDIS Goals box
-    ndis_goals_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(ndis_goals_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    run = p.add_run('My NDIS Goals')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    p = add_paragraph_no_spacing(ndis_goals_cell)
-    run = p.add_run('Short term goals')
-    run.font.color.rgb = border_color
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(ndis_goals_cell)
-    p = add_paragraph_no_spacing(ndis_goals_cell)
-    run = p.add_run('Medium & Long term goals')
-    run.font.color.rgb = border_color
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(ndis_goals_cell)
-    
-    doc.add_paragraph()  # Empty line between boxes
+    ndis_goals_content = [
+        Paragraph('<b>My NDIS Goals</b>', box_heading_style),
+        Paragraph('Short term goals', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('Medium & Long term goals', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+    ]
+    ndis_goals_box = create_boxed_section(ndis_goals_content)
+    story.append(ndis_goals_box)
+    story.append(Spacer(1, 12))
     
     # Gift of the Head, Heart & Hand box
-    gift_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(gift_cell)
-    run = p.add_run('Gift of the Head, Heart & Hand')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    add_paragraph_no_spacing(gift_cell)  # Empty line after "Gift of the Head, Heart & Hand"
-    p = add_paragraph_no_spacing(gift_cell)
-    run = p.add_run('GIFTS OF THE HEAD')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    p = add_paragraph_no_spacing(gift_cell)
-    run = p.add_run('(What special knowledge, expertise, life experience do you have that you can share with others?)')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(gift_cell)
-    p = add_paragraph_no_spacing(gift_cell)
-    run = p.add_run('GIFTS OF THE HEART')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    p = add_paragraph_no_spacing(gift_cell)
-    run = p.add_run('(What things are really important to you, that you deeply care about and would welcome to share with others?)')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(gift_cell)
-    p = add_paragraph_no_spacing(gift_cell)
-    run = p.add_run('GIFTS OF THE HAND')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    p = add_paragraph_no_spacing(gift_cell)
-    run = p.add_run('(What practical skill do you bring with you, that you are good at, proud of and you may wish to share with others?)')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(gift_cell)
-    
-    doc.add_paragraph()  # Empty line between boxes
+    gift_content = [
+        Paragraph('<b>Gift of the Head, Heart & Hand</b>', box_heading_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<b>GIFTS OF THE HEAD</b>', box_heading_style),
+        Paragraph('(What special knowledge, expertise, life experience do you have that you can share with others?)', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<b>GIFTS OF THE HEART</b>', box_heading_style),
+        Paragraph('(What things are really important to you, that you deeply care about and would welcome to share with others?)', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<b>GIFTS OF THE HAND</b>', box_heading_style),
+        Paragraph('(What practical skill do you bring with you, that you are good at, proud of and you may wish to share with others?)', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+    ]
+    gift_box = create_boxed_section(gift_content)
+    story.append(gift_box)
+    story.append(Spacer(1, 12))
     
     # My Dreams box
-    dreams_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(dreams_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    run = p.add_run('My Dreams')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(dreams_cell)
-    
-    doc.add_paragraph()  # Empty line between boxes
+    dreams_content = [
+        Paragraph('<b>My Dreams</b>', box_heading_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+    ]
+    dreams_box = create_boxed_section(dreams_content)
+    story.append(dreams_box)
+    story.append(Spacer(1, 12))
     
     # People in My Life box
-    people_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(people_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    run = p.add_run('People in My Life')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(people_cell)
+    people_content = [
+        Paragraph('<b>People in My Life</b>', box_heading_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+    ]
+    people_box = create_boxed_section(people_content)
+    story.append(people_box)
+    story.append(Spacer(1, 12))
     
-    doc.add_paragraph()  # Empty line between boxes
+    # My Week box with nested table
+    week_description = Paragraph('Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports', box_text_style)
     
-    # My Week box
-    week_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(week_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    run = p.add_run('My Week')
-    run.font.color.rgb = border_color
-    run.bold = True
-    add_paragraph_no_spacing(week_cell)  # Empty line after "My Week"
-    p = add_paragraph_no_spacing(week_cell)
-    p.paragraph_format.space_after = Pt(12)  # Add space after description text
-    run = p.add_run('Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports')
-    set_font_size_12(run)
-    
-    # Add table inside the box - centered with proper spacing
-    # Add a paragraph before table for spacing
-    p = add_paragraph_no_spacing(week_cell)
-    p.paragraph_format.space_after = Pt(6)  # Small space before table
-    
-    week_table = week_cell.add_table(rows=6, cols=8)
-    week_table.style = 'Table Grid'
-    # Center the table by setting alignment on the table element
-    tbl_pr = week_table._element.tblPr
-    if tbl_pr is None:
-        tbl_pr = OxmlElement('w:tblPr')
-        week_table._element.insert(0, tbl_pr)
-    jc = OxmlElement('w:jc')
-    jc.set(qn('w:val'), 'center')
-    tbl_pr.append(jc)
-    
-    # Set table width to be smaller so it's not squished and center it
-    tbl_width = OxmlElement('w:tblW')
-    tbl_width.set(qn('w:w'), '7200')  # 5 inches (smaller to prevent squishing)
-    tbl_width.set(qn('w:type'), 'dxa')
-    tbl_pr.append(tbl_width)
-    
-    # Set table border color to #256eb7 for all cells
-    for row in week_table.rows:
-        for cell in row.cells:
-            tc_pr = cell._element.get_or_add_tcPr()
-            tc_borders = OxmlElement('w:tcBorders')
-            for border_name in ['top', 'left', 'bottom', 'right']:
-                border = OxmlElement(f'w:{border_name}')
-                border.set(qn('w:val'), 'single')
-                border.set(qn('w:sz'), '4')
-                border.set(qn('w:space'), '0')
-                border.set(qn('w:color'), '256EB7')  # #256eb7
-                tc_borders.append(border)
-            tc_pr.append(tc_borders)
-    
-    # Header row
+    # Create the week table
     days = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    header_cells = week_table.rows[0].cells
-    for i, day in enumerate(days):
-        p = header_cells[i].paragraphs[0]
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        if day:  # Only bold the day names, not the empty first cell
-            run = p.add_run(day)
-            run.font.color.rgb = border_color
-            run.bold = True
+    times = ['Early Morning', 'Morning', 'Afternoon', 'Evening', 'Overnight']
+    
+    week_table_data = []
+    # Header row
+    header_row = [Paragraph('', box_text_centered_style)] + [Paragraph(f'<b>{day}</b>', box_text_centered_style) for day in days[1:]]
+    week_table_data.append(header_row)
     
     # Time rows
-    times = ['Early Morning', 'Morning', 'Afternoon', 'Evening', 'Overnight']
-    for i, time in enumerate(times):
-        p = week_table.rows[i + 1].cells[0].paragraphs[0]
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run(time)
-        run.font.color.rgb = border_color
-        # Center align all other cells in this row
-        for j in range(1, 8):
-            week_table.rows[i + 1].cells[j].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for time in times:
+        row = [Paragraph(f'<b>{time}</b>', box_text_centered_style)] + [Paragraph('', box_text_centered_style) for _ in range(7)]
+        week_table_data.append(row)
     
-    doc.add_paragraph()  # Empty line between boxes
+    week_table = Table(week_table_data, colWidths=[1*inch] + [0.7*inch]*7)
+    week_table.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 1, border_color),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    
+    week_content = [
+        Paragraph('<b>My Week</b>', box_heading_style),
+        Paragraph('<br/>', box_text_style),
+        week_description,
+        Paragraph('<br/>', box_text_style),
+        week_table,
+    ]
+    week_box = create_boxed_section(week_content)
+    story.append(week_box)
+    story.append(Spacer(1, 12))
     
     # My Safety box
-    safety_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(safety_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    p.paragraph_format.space_after = Pt(0)  # Ensure no space below
-    run = p.add_run('My Safety')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    p = add_paragraph_no_spacing(safety_cell)
-    run = p.add_run('Following on from the risk assessment, were there people, places or times that you feel unsafe? What changes need to be made and what support is needed so that you feel safe? Is there a formal safety plan in place? Is one needed?')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(safety_cell)
-    
-    doc.add_paragraph()  # Empty line between boxes
+    safety_content = [
+        Paragraph('<b>My Safety</b>', box_heading_style),
+        Paragraph('Following on from the risk assessment, were there people, places or times that you feel unsafe? What changes need to be made and what support is needed so that you feel safe? Is there a formal safety plan in place? Is one needed?', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+    ]
+    safety_box = create_boxed_section(safety_content)
+    story.append(safety_box)
+    story.append(Spacer(1, 12))
     
     # My Medications box
-    med_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(med_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    p.paragraph_format.space_after = Pt(0)  # Ensure no space below
-    run = p.add_run('My Medications and how I manage them')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    p = add_paragraph_no_spacing(med_cell)
-    run = p.add_run('Do you need assistance with organising and taking your medication?')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(med_cell)
-    
-    doc.add_paragraph()  # Empty line between boxes
+    med_content = [
+        Paragraph('<b>My Medications and how I manage them</b>', box_heading_style),
+        Paragraph('Do you need assistance with organising and taking your medication?', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+    ]
+    med_box = create_boxed_section(med_content)
+    story.append(med_box)
+    story.append(Spacer(1, 12))
     
     # My special supports box
-    special_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(special_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    p.paragraph_format.space_after = Pt(0)  # Ensure no space below
-    run = p.add_run('My special supports')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    p = add_paragraph_no_spacing(special_cell)
-    run = p.add_run('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(special_cell)
-    
-    doc.add_paragraph()  # Empty line between boxes
+    special_content = [
+        Paragraph('<b>My special supports</b>', box_heading_style),
+        Paragraph('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+    ]
+    special_box = create_boxed_section(special_content)
+    story.append(special_box)
+    story.append(Spacer(1, 12))
     
     # My Goals box
-    goals_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(goals_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    run = p.add_run('My Goals')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    add_paragraph_no_spacing(goals_cell)  # Empty line after "My Goals"
-    p = add_paragraph_no_spacing(goals_cell)
-    run = p.add_run('My SMART Goal 1')
-    set_font_size_12(run)
-    add_paragraph_no_spacing(goals_cell)  # Empty line
-    p = add_paragraph_no_spacing(goals_cell)
-    run = p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(goals_cell)
-    p = add_paragraph_no_spacing(goals_cell)
-    run = p.add_run('My SMART Goal 2')
-    set_font_size_12(run)
-    add_paragraph_no_spacing(goals_cell)  # Empty line
-    p = add_paragraph_no_spacing(goals_cell)
-    run = p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(goals_cell)
-    p = add_paragraph_no_spacing(goals_cell)
-    run = p.add_run('My SMART Goal 3')
-    set_font_size_12(run)
-    add_paragraph_no_spacing(goals_cell)  # Empty line
-    p = add_paragraph_no_spacing(goals_cell)
-    run = p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(goals_cell)
-    p = add_paragraph_no_spacing(goals_cell)
-    run = p.add_run('My SMART Goal 4')
-    set_font_size_12(run)
-    p = add_paragraph_no_spacing(goals_cell)
-    run = p.add_run('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?')
-    set_font_size_12(run)
-    for _ in range(4):
-        add_paragraph_no_spacing(goals_cell)
-    
-    doc.add_paragraph()  # Empty line between My Goals and How I Will Celebrate
+    goals_content = [
+        Paragraph('<b>My Goals</b>', box_heading_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('My SMART Goal 1', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('My SMART Goal 2', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('My SMART Goal 3', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('My SMART Goal 4', box_text_style),
+        Paragraph('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+    ]
+    goals_box = create_boxed_section(goals_content)
+    story.append(goals_box)
+    story.append(Spacer(1, 12))  # Empty line between My Goals and How I Will Celebrate
     
     # How I Will Celebrate box
-    celebrate_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(celebrate_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    run = p.add_run('How I Will Celebrate Achieving My Goals')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    add_empty_line(celebrate_cell)  # Empty line after "How I Will Celebrate Achieving My Goals"
-    p = add_paragraph_no_spacing(celebrate_cell)
-    run = p.add_run('Goal 1')
-    run.font.color.rgb = border_color
-    set_font_size_12(run)
-    add_empty_line(celebrate_cell)  # Empty line between goals
-    p = add_paragraph_no_spacing(celebrate_cell)
-    run = p.add_run('Goal 2')
-    run.font.color.rgb = border_color
-    set_font_size_12(run)
-    add_empty_line(celebrate_cell)  # Empty line between goals
-    p = add_paragraph_no_spacing(celebrate_cell)
-    run = p.add_run('Goal 3')
-    run.font.color.rgb = border_color
-    set_font_size_12(run)
-    add_empty_line(celebrate_cell)  # Empty line between goals
-    p = add_paragraph_no_spacing(celebrate_cell)
-    run = p.add_run('Goal 4')
-    run.font.color.rgb = border_color
-    set_font_size_12(run)
+    celebrate_content = [
+        Paragraph('<b>How I Will Celebrate Achieving My Goals</b>', box_heading_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('Goal 1', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('Goal 2', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('Goal 3', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('Goal 4', box_text_style),
+    ]
+    celebrate_box = create_boxed_section(celebrate_content)
+    story.append(celebrate_box)
+    story.append(Spacer(1, 12))
     
-    doc.add_paragraph()  # Empty line between boxes
-    
-    # Final signature section - in a box
-    signature_cell = create_boxed_section()
-    p = add_paragraph_no_spacing(signature_cell)
-    p.paragraph_format.space_before = Pt(0)  # Ensure no space above
-    p.paragraph_format.space_after = Pt(12)  # One space below "This Is My Plan"
-    run = p.add_run('This Is My Plan')
-    run.font.color.rgb = border_color
-    run.bold = True
-    set_font_size_12(run)
-    
-    p = add_paragraph_no_spacing(signature_cell)
-    run1 = p.add_run('Signature: ')
-    run1.font.color.rgb = border_color
-    run1.bold = True
-    set_font_size_12(run1)
-    run2 = p.add_run(f'{first_name} {surname}'.strip() if (first_name or surname) else '')
-    run2.font.color.rgb = border_color  # Data following Signature: should be colored
-    run2.bold = True  # Bold the data
-    set_font_size_12(run2)
-    
-    add_paragraph_no_spacing(signature_cell)  # Empty line between Signature and Date
-    
-    p = add_paragraph_no_spacing(signature_cell)
-    run1 = p.add_run('Date: ')
-    run1.font.color.rgb = border_color
-    run1.bold = True
-    set_font_size_12(run1)
-    # Date field left blank - no data added
+    # Final signature section
+    signature_content = [
+        Paragraph('<b>This Is My Plan</b>', box_heading_style),
+        Paragraph(f'<b>Signature:</b> {first_name} {surname}'.strip() if (first_name or surname) else '<b>Signature:</b>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<b>Date:</b>', box_text_style),
+    ]
+    signature_box = create_boxed_section(signature_content)
+    story.append(signature_box)
     
     # Build PDF with headers and footers
     doc.build(story, onFirstPage=_add_first_page_header, onLaterPages=_add_header_footer)
