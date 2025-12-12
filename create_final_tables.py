@@ -3720,8 +3720,8 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     story.append(people_box)
     story.append(Spacer(1, 12))
     
-    # My Week box with nested table
-    week_description = Paragraph('Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports', box_text_style)
+    # My Week box - avoid nested tables by putting table outside the box
+    week_description_text = 'Identify when you currently have support with day to day activities and when you feel you need additional support. This might be from formal or informal supports'
     
     # Create the week table
     days = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -3748,15 +3748,29 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
     
+    # Create box with header and description
     week_content = [
         Paragraph('<b>My Week</b>', box_heading_style),
         Paragraph('<br/>', box_text_style),
-        week_description,
+        Paragraph(week_description_text, box_text_style),
         Paragraph('<br/>', box_text_style),
-        week_table,
     ]
     week_box = create_boxed_section(week_content)
     story.append(week_box)
+    
+    # Add week table directly to story with its own border (not nested to avoid performance issues)
+    # Create a wrapper table with border to visually connect it to the box above
+    week_table_wrapper_data = [[week_table]]
+    week_table_wrapper = Table(week_table_wrapper_data, colWidths=[6*inch])
+    week_table_wrapper.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 1, border_color),
+    ]))
+    story.append(week_table_wrapper)
     story.append(Spacer(1, 12))
     
     # My Safety box
