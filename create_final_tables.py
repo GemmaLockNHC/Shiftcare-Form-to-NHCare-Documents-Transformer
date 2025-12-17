@@ -3647,6 +3647,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
     ]
     about_me_box = create_boxed_section(about_me_content)
     story.append(about_me_box)
@@ -3659,9 +3660,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
-        Paragraph('<br/>', box_text_style),
         Paragraph('Medium & Long term goals', box_text_style),
-        Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
@@ -3679,16 +3678,13 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
-        Paragraph('<br/>', box_text_style),
         Paragraph('<b>GIFTS OF THE HEART</b>', box_heading_style),
         Paragraph('(What things are really important to you, that you deeply care about and would welcome to share with others?)', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
-        Paragraph('<br/>', box_text_style),
         Paragraph('<b>GIFTS OF THE HAND</b>', box_heading_style),
         Paragraph('(What practical skill do you bring with you, that you are good at, proud of and you may wish to share with others?)', box_text_style),
-        Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
@@ -3704,6 +3700,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
     ]
     dreams_box = create_boxed_section(dreams_content)
     story.append(dreams_box)
@@ -3712,6 +3709,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # People in My Life box
     people_content = [
         Paragraph('<b>People in My Life</b>', box_heading_style),
+        Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
@@ -3782,6 +3780,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
     ]
     safety_box = create_boxed_section(safety_content)
     story.append(safety_box)
@@ -3795,6 +3794,7 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
     ]
     med_box = create_boxed_section(med_content)
     story.append(med_box)
@@ -3803,7 +3803,8 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
     # My special supports box
     special_content = [
         Paragraph('<b>My special supports</b>', box_heading_style),
-        Paragraph('Do you have any special needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:', box_text_style),
+        Paragraph('Do you have any support needs or equipment and do you have plans already to help make sure your support workers know how to care for you such as:', box_text_style),
+        Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
@@ -3823,11 +3824,9 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
-        Paragraph('<br/>', box_text_style),
         Paragraph('My SMART Goal 2', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?', box_text_style),
-        Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
@@ -3837,10 +3836,9 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
-        Paragraph('<br/>', box_text_style),
         Paragraph('My SMART Goal 4', box_text_style),
-        Paragraph('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?', box_text_style),
         Paragraph('<br/>', box_text_style),
+        Paragraph('Strategies - What will help me achieve my goal? Who will help me achieve my goal? What supports will I need?', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
@@ -3855,11 +3853,20 @@ def create_support_plan_from_data(csv_data, output_path, contact_name=None, acti
         Paragraph('<br/>', box_text_style),
         Paragraph('Goal 1', box_text_style),
         Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
         Paragraph('Goal 2', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
         Paragraph('<br/>', box_text_style),
         Paragraph('Goal 3', box_text_style),
         Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
         Paragraph('Goal 4', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
+        Paragraph('<br/>', box_text_style),
     ]
     celebrate_box = create_boxed_section(celebrate_content)
     story.append(celebrate_box)
