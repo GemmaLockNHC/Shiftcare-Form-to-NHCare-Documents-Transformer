@@ -227,6 +227,9 @@ def build_output_row(row):
     work_phone = get_value_from_normalized_row(row_norm, "work phone")
     mobile_phone = get_value_from_normalized_row(row_norm, "mobile phone")
     email_address = get_value_from_normalized_row(row_norm, "email address")
+    # For client export, only use the first email if multiple are present
+    if email_address and ';' in email_address:
+        email_address = email_address.split(';')[0].strip()
     
     # Build display name from first name + surname
     display_name = " ".join([p for p in [first_name, surname] if p]).strip()
@@ -511,6 +514,11 @@ def upload_file():
             # Generate CSV if requested
             if generate_csv:
                 # Convert pdf_data format to the format expected by build_output_row
+                # For client export, only use the first email if multiple are present
+                email_address = pdf_data.get('Email address (Contact Details of the Client)', '')
+                if email_address and ';' in email_address:
+                    email_address = email_address.split(';')[0].strip()
+                
                 parsed = {
                     'first name': pdf_data.get('First name (Details of the Client)', ''),
                     'middle name': pdf_data.get('Middle name (Details of the Client)', ''),
@@ -522,7 +530,7 @@ def upload_file():
                     'home phone': pdf_data.get('Home phone (Contact Details of the Client)', ''),
                     'work phone': pdf_data.get('Work phone (Contact Details of the Client)', ''),
                     'mobile phone': pdf_data.get('Mobile phone (Contact Details of the Client)', ''),
-                    'email address': pdf_data.get('Email address (Contact Details of the Client)', '')
+                    'email address': email_address
                 }
                 
                 output_filename = f"transformed_{unique_filename}.csv"
