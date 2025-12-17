@@ -1980,7 +1980,8 @@ def _build_service_agreement_content(doc, csv_data, ndis_items, active_users, co
     story.append(Spacer(1, 12))
     
     # Neighbourhood Care Representative
-    nc_rep_text = f"<b>Neighbourhood Care Representative:</b><br/><b>Name:</b> [To be filled with NC representative name]<br/><b>Date:</b> <br/><b>Signed:</b>"
+    nc_rep_name = contact_name if contact_name else ""
+    nc_rep_text = f"<b>Neighbourhood Care Representative:</b><br/><b>Name:</b> {nc_rep_name}<br/><b>Date:</b> <br/><b>Signed:</b>"
     story.append(Paragraph(nc_rep_text, normal_no_space_style))
     
     # Add NC representative signature image if available
