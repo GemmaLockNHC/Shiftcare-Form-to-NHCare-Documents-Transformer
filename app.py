@@ -554,19 +554,34 @@ def upload_file():
             
             # Strategy 1: Normal import
             import_error_details = None
+            module_execution_error = None
             try:
                 from create_final_tables import parse_pdf_to_data, load_ndis_support_items, load_active_users
             except (ImportError, AttributeError) as e:
                 import_error_details = str(e)
                 import traceback
                 import_error_details += f"\n{traceback.format_exc()}"
+                print(f"Strategy 1 failed: {import_error_details}")
+                
                 # Strategy 2: Import module first, then get attributes
                 try:
                     # Try importing from current directory
+                    print("Trying Strategy 2: Import module then get attributes...")
                     import create_final_tables
-                    parse_pdf_to_data = getattr(create_final_tables, 'parse_pdf_to_data', None)
-                    load_ndis_support_items = getattr(create_final_tables, 'load_ndis_support_items', None)
-                    load_active_users = getattr(create_final_tables, 'load_active_users', None)
+                    print(f"Module imported. File: {getattr(create_final_tables, '__file__', 'unknown')}")
+                    print(f"Module dir: {dir(create_final_tables)[:10]}")
+                    
+                    # Try to access functions - this might fail if module execution was incomplete
+                    try:
+                        parse_pdf_to_data = getattr(create_final_tables, 'parse_pdf_to_data', None)
+                        load_ndis_support_items = getattr(create_final_tables, 'load_ndis_support_items', None)
+                        load_active_users = getattr(create_final_tables, 'load_active_users', None)
+                        print(f"After getattr - parse_pdf_to_data: {parse_pdf_to_data is not None}")
+                    except Exception as attr_err:
+                        module_execution_error = f"Error accessing attributes: {attr_err}"
+                        import traceback
+                        module_execution_error += f"\n{traceback.format_exc()}"
+                        print(f"Error accessing attributes: {module_execution_error}")
                 except Exception:
                     # Strategy 3: Try from parent directory (if we're in src/)
                     try:
@@ -640,24 +655,64 @@ def upload_file():
                 module_contents = []
                 module_file_path = None
                 module_load_error = None
+                module_compile_error = None
                 try:
+                    # First, try to compile the file to check for syntax errors
+                    file_path = os.path.join(current_dir, 'create_final_tables.py')
+                    if os.path.exists(file_path):
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                code = f.read()
+                            compile(code, file_path, 'exec')
+                            print("✓ File compiles successfully (no syntax errors)")
+                        except SyntaxError as syn_err:
+                            module_compile_error = f"Syntax error in file: {syn_err}"
+                            import traceback
+                            module_compile_error += f"\n{traceback.format_exc()}"
+                            print(f"✗ Syntax error: {module_compile_error}")
+                        except Exception as compile_err:
+                            module_compile_error = f"Error compiling file: {compile_err}"
+                            print(f"✗ Compile error: {module_compile_error}")
+                    
                     # Try to reload the module fresh
                     if 'create_final_tables' in sys.modules:
                         del sys.modules['create_final_tables']
+                        print("Removed module from cache")
                     
+                    print("Attempting to import module...")
                     import create_final_tables
                     module_file_path = getattr(create_final_tables, '__file__', 'unknown')
-                    module_contents = [attr for attr in dir(create_final_tables) if not attr.startswith('_')][:20]
+                    print(f"Module imported. File: {module_file_path}")
+                    
+                    # Get all attributes
+                    all_attrs = dir(create_final_tables)
+                    module_contents = [attr for attr in all_attrs if not attr.startswith('_')][:30]
+                    print(f"Module has {len(all_attrs)} total attributes, {len(module_contents)} public")
                     
                     # Check if functions exist but are None or not callable
                     if hasattr(create_final_tables, 'parse_pdf_to_data'):
                         func = getattr(create_final_tables, 'parse_pdf_to_data')
-                        print(f"parse_pdf_to_data type: {type(func)}, value: {func}")
+                        print(f"parse_pdf_to_data found - type: {type(func)}, callable: {callable(func)}")
+                    else:
+                        print("✗ parse_pdf_to_data NOT found in module")
+                    
+                    if hasattr(create_final_tables, 'load_ndis_support_items'):
+                        func = getattr(create_final_tables, 'load_ndis_support_items')
+                        print(f"load_ndis_support_items found - type: {type(func)}, callable: {callable(func)}")
+                    else:
+                        print("✗ load_ndis_support_items NOT found in module")
+                        
+                    if hasattr(create_final_tables, 'load_active_users'):
+                        func = getattr(create_final_tables, 'load_active_users')
+                        print(f"load_active_users found - type: {type(func)}, callable: {callable(func)}")
+                    else:
+                        print("✗ load_active_users NOT found in module")
+                        
                 except Exception as module_err:
                     module_load_error = str(module_err)
                     import traceback
                     module_load_error += f"\n{traceback.format_exc()}"
-                    print(f"ERROR loading module: {module_load_error}")
+                    print(f"✗ ERROR loading module: {module_load_error}")
                 
                 # Try to read the file and check for syntax errors
                 file_content_check = "Not checked"
@@ -684,6 +739,8 @@ def upload_file():
                     f"Python files in current directory: {', '.join(files_in_dir) if files_in_dir else 'None found'}\n"
                     f"Python path (first 5): {python_path}\n"
                     f"Initial import error: {import_error_details or 'None'}\n"
+                    f"Module execution error: {module_execution_error or 'None'}\n"
+                    f"Module compile error: {module_compile_error or 'None'}\n"
                     f"Module file path: {module_file_path or 'Module not loaded'}\n"
                     f"Module load error: {module_load_error or 'None'}\n"
                     f"File content check: {file_content_check}\n"
@@ -694,21 +751,32 @@ def upload_file():
                     f"\nTROUBLESHOOTING:\n"
                     f"1. If current dir ends with '/src', check Render 'Root Directory' setting (should be '.' or empty, NOT 'src')\n"
                     f"2. Verify create_final_tables.py is in the root of your GitHub repo (not in src/ subdirectory)\n"
-                    f"3. Check Render build logs for any errors during deployment - look for syntax/import errors in create_final_tables.py\n"
-                    f"4. The module may have import errors - check if all dependencies in create_final_tables.py are installed\n"
-                    f"5. Try 'Clear build cache & deploy' in Render dashboard\n"
-                    f"6. Visit /debug endpoint for more diagnostic information"
+                    f"3. Check Render build logs AND startup logs for any errors during deployment\n"
+                    f"4. Look for 'STARTUP: Verifying create_final_tables imports...' in logs to see what happened at startup\n"
+                    f"5. The module may have import errors - check if all dependencies in create_final_tables.py are installed\n"
+                    f"6. The module may fail during execution (e.g., trying to open CSV files that don't exist)\n"
+                    f"7. Try 'Clear build cache & deploy' in Render dashboard\n"
+                    f"8. Visit /debug endpoint for more diagnostic information"
                 )
+                # Print full diagnostics to logs
+                print("=" * 80)
+                print("DETAILED DIAGNOSTICS:")
                 print(diagnostic_msg)
-                raise ImportError(
-                    f"Failed to import required functions from create_final_tables. "
-                    f"parse_pdf_to_data={parse_pdf_to_data is not None}, "
-                    f"load_ndis_support_items={load_ndis_support_items is not None}, "
-                    f"load_active_users={load_active_users is not None}. "
+                print("=" * 80)
+                
+                # Also include key info in the user-facing error
+                error_summary = (
+                    f"Failed to import functions from create_final_tables. "
                     f"Current dir: {current_dir}. "
-                    f"File in current: {file_in_current}, File in parent: {file_in_parent}. "
-                    f"See RENDER_SETUP.md for troubleshooting steps."
+                    f"File exists: {file_in_current}. "
                 )
+                if module_load_error:
+                    error_summary += f"Module load error: {module_load_error[:200]}. "
+                if import_error_details:
+                    error_summary += f"Import error: {import_error_details[:200]}. "
+                error_summary += "Check Render logs for full details. See RENDER_FIX_STEPS.md"
+                
+                raise ImportError(error_summary)
             
             pdf_data = parse_pdf_to_data(filepath)
             
@@ -922,45 +990,74 @@ def verify_imports():
     """Verify that required functions can be imported - helps catch deployment issues early"""
     try:
         import sys
+        import traceback
         current_dir = os.getcwd()
+        
+        print("=" * 80)
+        print("STARTUP: Verifying create_final_tables imports...")
+        print(f"Current directory: {current_dir}")
         
         # Ensure paths are set up (same as in main code)
         if current_dir.endswith('/src') or current_dir.endswith('\\src'):
             parent_dir = os.path.dirname(current_dir)
             if parent_dir and parent_dir not in sys.path:
                 sys.path.insert(0, parent_dir)
+                print(f"Added parent directory to path: {parent_dir}")
         if current_dir not in sys.path:
             sys.path.insert(0, current_dir)
+            print(f"Added current directory to path: {current_dir}")
+        
+        print(f"Python path (first 5): {sys.path[:5]}")
+        
+        # Check if file exists
+        file_path = os.path.join(current_dir, 'create_final_tables.py')
+        file_exists = os.path.exists(file_path)
+        print(f"File exists at {file_path}: {file_exists}")
+        
+        if file_exists:
+            file_size = os.path.getsize(file_path)
+            print(f"File size: {file_size} bytes")
         
         # Try to import the module
         try:
+            # Remove from cache if already loaded (might be broken)
+            if 'create_final_tables' in sys.modules:
+                del sys.modules['create_final_tables']
+                print("Removed create_final_tables from cache")
+            
+            print("Attempting to import create_final_tables...")
             import create_final_tables
             module_file = getattr(create_final_tables, '__file__', 'unknown')
-            print(f"✓ create_final_tables module loaded from: {module_file}")
+            print(f"✓ Module loaded from: {module_file}")
             
             # Check if functions exist
             has_parse = hasattr(create_final_tables, 'parse_pdf_to_data')
             has_ndis = hasattr(create_final_tables, 'load_ndis_support_items')
             has_users = hasattr(create_final_tables, 'load_active_users')
             
+            print(f"Function checks:")
+            print(f"  parse_pdf_to_data: {has_parse} (type: {type(getattr(create_final_tables, 'parse_pdf_to_data', None))})")
+            print(f"  load_ndis_support_items: {has_ndis} (type: {type(getattr(create_final_tables, 'load_ndis_support_items', None))})")
+            print(f"  load_active_users: {has_users} (type: {type(getattr(create_final_tables, 'load_active_users', None))})")
+            
             if has_parse and has_ndis and has_users:
                 print("✓ All required functions found in create_final_tables")
             else:
                 print(f"⚠ WARNING: Some functions missing!")
-                print(f"  parse_pdf_to_data: {has_parse}")
-                print(f"  load_ndis_support_items: {has_ndis}")
-                print(f"  load_active_users: {has_users}")
-                print(f"  Available attributes: {[a for a in dir(create_final_tables) if not a.startswith('_')][:15]}")
+                print(f"  Available attributes (first 20): {[a for a in dir(create_final_tables) if not a.startswith('_')][:20]}")
         except Exception as e:
-            import traceback
-            print(f"✗ ERROR: Could not import create_final_tables module: {e}")
-            print(f"  Current directory: {current_dir}")
-            print(f"  File exists in current: {os.path.exists(os.path.join(current_dir, 'create_final_tables.py'))}")
+            print(f"✗ ERROR: Could not import create_final_tables module")
+            print(f"  Error type: {type(e).__name__}")
+            print(f"  Error message: {str(e)}")
+            print(f"  Full traceback:")
+            print(traceback.format_exc())
+            
             parent_dir = os.path.dirname(current_dir)
             if parent_dir:
-                print(f"  File exists in parent: {os.path.exists(os.path.join(parent_dir, 'create_final_tables.py'))}")
-            print(f"  Python path: {sys.path[:5]}")
-            print(f"  Traceback: {traceback.format_exc()}")
+                parent_file = os.path.join(parent_dir, 'create_final_tables.py')
+                print(f"  File exists in parent ({parent_file}): {os.path.exists(parent_file)}")
+        
+        print("=" * 80)
     except Exception as e:
         import traceback
         print(f"✗ ERROR during import verification: {e}")
