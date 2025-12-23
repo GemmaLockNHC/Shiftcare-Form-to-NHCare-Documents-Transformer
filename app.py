@@ -680,33 +680,44 @@ def upload_file():
                         print("Removed module from cache")
                     
                     print("Attempting to import module...")
-                    import create_final_tables
-                    module_file_path = getattr(create_final_tables, '__file__', 'unknown')
-                    print(f"Module imported. File: {module_file_path}")
+                    # Try importing with explicit error handling
+                    try:
+                        import create_final_tables
+                        module_file_path = getattr(create_final_tables, '__file__', 'unknown')
+                        print(f"✓ Module imported successfully. File: {module_file_path}")
+                    except Exception as import_ex:
+                        print(f"✗ Module import failed: {import_ex}")
+                        import traceback
+                        print(traceback.format_exc())
+                        raise
                     
                     # Get all attributes
                     all_attrs = dir(create_final_tables)
                     module_contents = [attr for attr in all_attrs if not attr.startswith('_')][:30]
-                    print(f"Module has {len(all_attrs)} total attributes, {len(module_contents)} public")
+                    print(f"Module has {len(all_attrs)} total attributes, {len(module_contents)} public attributes")
+                    print(f"Public attributes: {module_contents}")
                     
                     # Check if functions exist but are None or not callable
-                    if hasattr(create_final_tables, 'parse_pdf_to_data'):
-                        func = getattr(create_final_tables, 'parse_pdf_to_data')
-                        print(f"parse_pdf_to_data found - type: {type(func)}, callable: {callable(func)}")
-                    else:
-                        print("✗ parse_pdf_to_data NOT found in module")
+                    funcs_to_check = ['parse_pdf_to_data', 'load_ndis_support_items', 'load_active_users']
+                    for func_name in funcs_to_check:
+                        if hasattr(create_final_tables, func_name):
+                            func = getattr(create_final_tables, func_name)
+                            print(f"✓ {func_name} found - type: {type(func)}, callable: {callable(func) if func else 'N/A'}")
+                        else:
+                            print(f"✗ {func_name} NOT found in module")
                     
-                    if hasattr(create_final_tables, 'load_ndis_support_items'):
-                        func = getattr(create_final_tables, 'load_ndis_support_items')
-                        print(f"load_ndis_support_items found - type: {type(func)}, callable: {callable(func)}")
-                    else:
-                        print("✗ load_ndis_support_items NOT found in module")
-                        
-                    if hasattr(create_final_tables, 'load_active_users'):
-                        func = getattr(create_final_tables, 'load_active_users')
-                        print(f"load_active_users found - type: {type(func)}, callable: {callable(func)}")
-                    else:
-                        print("✗ load_active_users NOT found in module")
+                    # Try to search for the function definition in the file
+                    print("\nSearching file for function definitions...")
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            file_content = f.read()
+                            for func_name in funcs_to_check:
+                                if f'def {func_name}' in file_content:
+                                    print(f"✓ Found 'def {func_name}' in file content")
+                                else:
+                                    print(f"✗ 'def {func_name}' NOT found in file content")
+                    except Exception as file_read_err:
+                        print(f"Could not read file to check function definitions: {file_read_err}")
                         
                 except Exception as module_err:
                     module_load_error = str(module_err)
