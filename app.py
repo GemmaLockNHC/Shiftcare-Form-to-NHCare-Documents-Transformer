@@ -555,13 +555,51 @@ def upload_file():
             # Strategy 1: Normal import
             import_error_details = None
             module_execution_error = None
-            try:
-                from create_final_tables import parse_pdf_to_data, load_ndis_support_items, load_active_users
-            except (ImportError, AttributeError) as e:
-                import_error_details = str(e)
-                import traceback
-                import_error_details += f"\n{traceback.format_exc()}"
-                print(f"Strategy 1 failed: {import_error_details}")
+            
+            # First, try to find and load the file directly
+            current_dir = os.getcwd()
+            file_path = os.path.join(current_dir, 'create_final_tables.py')
+            parent_dir = os.path.dirname(current_dir)
+            parent_file_path = os.path.join(parent_dir, 'create_final_tables.py') if parent_dir else None
+            
+            # Try direct file import first (most reliable)
+            if os.path.exists(file_path):
+                try:
+                    import importlib.util
+                    if 'create_final_tables' in sys.modules:
+                        del sys.modules['create_final_tables']
+                    
+                    spec = importlib.util.spec_from_file_location("create_final_tables", file_path)
+                    if spec and spec.loader:
+                        create_final_tables_module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(create_final_tables_module)
+                        
+                        # Now try to get the functions
+                        parse_pdf_to_data = getattr(create_final_tables_module, 'parse_pdf_to_data', None)
+                        load_ndis_support_items = getattr(create_final_tables_module, 'load_ndis_support_items', None)
+                        load_active_users = getattr(create_final_tables_module, 'load_active_users', None)
+                        
+                        if parse_pdf_to_data and load_ndis_support_items and load_active_users:
+                            print("✓ Successfully loaded functions via direct file import")
+                            # Store in sys.modules for future imports
+                            sys.modules['create_final_tables'] = create_final_tables_module
+                        else:
+                            print(f"⚠ Direct import loaded module but functions missing: parse={parse_pdf_to_data is not None}, ndis={load_ndis_support_items is not None}, users={load_active_users is not None}")
+                except Exception as direct_import_err:
+                    print(f"Direct file import failed: {direct_import_err}")
+                    import traceback
+                    print(traceback.format_exc())
+            
+            # If direct import didn't work, try normal import
+            if not parse_pdf_to_data or not load_ndis_support_items or not load_active_users:
+                try:
+                    from create_final_tables import parse_pdf_to_data, load_ndis_support_items, load_active_users
+                    print("✓ Successfully loaded functions via normal import")
+                except (ImportError, AttributeError) as e:
+                    import_error_details = str(e)
+                    import traceback
+                    import_error_details += f"\n{traceback.format_exc()}"
+                    print(f"Normal import failed: {import_error_details}")
                 
                 # Strategy 2: Import module first, then get attributes
                 try:
