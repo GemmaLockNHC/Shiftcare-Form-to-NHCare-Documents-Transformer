@@ -31,6 +31,22 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 # Create upload directory if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Handle Render's src directory structure - add parent directory to path if needed
+import sys
+current_dir = os.getcwd()
+# If we're in a src directory, add parent to path so we can import from root
+if current_dir.endswith('/src') or current_dir.endswith('\\src'):
+    parent_dir = os.path.dirname(current_dir)
+    if parent_dir and parent_dir not in sys.path:
+        sys.path.insert(0, parent_dir)
+    # Also ensure current directory is in path
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+else:
+    # Ensure current directory is in path
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+
 OUTPUT_FIELDS = [
     "Salutation",
     "First Name",
@@ -539,25 +555,23 @@ def upload_file():
             # Strategy 1: Normal import
             try:
                 from create_final_tables import parse_pdf_to_data, load_ndis_support_items, load_active_users
-            except ImportError:
+            except (ImportError, AttributeError) as e:
                 # Strategy 2: Import module first, then get attributes
                 try:
+                    # Try importing from current directory
                     import create_final_tables
                     parse_pdf_to_data = getattr(create_final_tables, 'parse_pdf_to_data', None)
                     load_ndis_support_items = getattr(create_final_tables, 'load_ndis_support_items', None)
                     load_active_users = getattr(create_final_tables, 'load_active_users', None)
-                    
-                    if not parse_pdf_to_data:
-                        # Strategy 3: Add current directory to path and try again
+                except Exception:
+                    # Strategy 3: Try from parent directory (if we're in src/)
+                    try:
                         current_dir = os.getcwd()
-                        if current_dir not in sys.path:
-                            sys.path.insert(0, current_dir)
-                        # Also try parent directory in case we're in a subdirectory
                         parent_dir = os.path.dirname(current_dir)
                         if parent_dir and parent_dir not in sys.path:
                             sys.path.insert(0, parent_dir)
                         
-                        # Try importing again
+                        # Reload module from parent
                         import importlib
                         if 'create_final_tables' in sys.modules:
                             del sys.modules['create_final_tables']
@@ -565,19 +579,51 @@ def upload_file():
                         parse_pdf_to_data = getattr(create_final_tables, 'parse_pdf_to_data', None)
                         load_ndis_support_items = getattr(create_final_tables, 'load_ndis_support_items', None)
                         load_active_users = getattr(create_final_tables, 'load_active_users', None)
-                except Exception as e:
-                    pass
+                    except Exception:
+                        pass
+                
+                # Strategy 4: Try direct file import if module import worked but functions missing
+                if not parse_pdf_to_data:
+                    try:
+                        current_dir = os.getcwd()
+                        # Check if file exists in current directory
+                        if os.path.exists(os.path.join(current_dir, 'create_final_tables.py')):
+                            import importlib.util
+                            spec = importlib.util.spec_from_file_location(
+                                "create_final_tables", 
+                                os.path.join(current_dir, 'create_final_tables.py')
+                            )
+                            if spec and spec.loader:
+                                create_final_tables = importlib.util.module_from_spec(spec)
+                                spec.loader.exec_module(create_final_tables)
+                                parse_pdf_to_data = getattr(create_final_tables, 'parse_pdf_to_data', None)
+                                load_ndis_support_items = getattr(create_final_tables, 'load_ndis_support_items', None)
+                                load_active_users = getattr(create_final_tables, 'load_active_users', None)
+                    except Exception:
+                        pass
             
             # If still not found, provide detailed diagnostics
             if not parse_pdf_to_data or not load_ndis_support_items or not load_active_users:
                 current_dir = os.getcwd()
-                files_in_dir = ', '.join([f for f in os.listdir('.') if f.endswith('.py')][:10])
+                files_in_dir = []
+                try:
+                    files_in_dir = [f for f in os.listdir('.') if f.endswith('.py')][:10]
+                except Exception:
+                    pass
+                
+                # Check if file exists in current or parent directory
+                file_in_current = os.path.exists(os.path.join(current_dir, 'create_final_tables.py'))
+                parent_dir = os.path.dirname(current_dir)
+                file_in_parent = os.path.exists(os.path.join(parent_dir, 'create_final_tables.py')) if parent_dir else False
+                
                 python_path = ', '.join(sys.path[:5])
                 
                 # Try to see what's actually in the module
                 module_contents = []
+                module_file_path = None
                 try:
                     import create_final_tables
+                    module_file_path = getattr(create_final_tables, '__file__', 'unknown')
                     module_contents = [attr for attr in dir(create_final_tables) if not attr.startswith('_')][:20]
                 except Exception:
                     pass
@@ -585,17 +631,22 @@ def upload_file():
                 diagnostic_msg = (
                     f"CRITICAL: Cannot import required functions from create_final_tables\n"
                     f"Current directory: {current_dir}\n"
-                    f"Python files in directory: {files_in_dir}\n"
+                    f"Parent directory: {parent_dir}\n"
+                    f"File exists in current dir: {file_in_current}\n"
+                    f"File exists in parent dir: {file_in_parent}\n"
+                    f"Python files in current directory: {', '.join(files_in_dir) if files_in_dir else 'None found'}\n"
                     f"Python path (first 5): {python_path}\n"
+                    f"Module file path: {module_file_path}\n"
                     f"Module attributes found: {', '.join(module_contents) if module_contents else 'Could not load module'}\n"
                     f"Functions found: parse_pdf_to_data={parse_pdf_to_data is not None}, "
                     f"load_ndis_support_items={load_ndis_support_items is not None}, "
                     f"load_active_users={load_active_users is not None}\n"
-                    f"TROUBLESHOOTING:\n"
-                    f"1. Check Render 'Root Directory' setting (should be '.' or empty, NOT 'src')\n"
-                    f"2. Verify create_final_tables.py is in the root of your GitHub repo\n"
+                    f"\nTROUBLESHOOTING:\n"
+                    f"1. If current dir ends with '/src', check Render 'Root Directory' setting (should be '.' or empty, NOT 'src')\n"
+                    f"2. Verify create_final_tables.py is in the root of your GitHub repo (not in src/ subdirectory)\n"
                     f"3. Check Render build logs for any errors during deployment\n"
-                    f"4. Ensure all files are committed and pushed to GitHub"
+                    f"4. Try 'Clear build cache & deploy' in Render dashboard\n"
+                    f"5. Visit /debug endpoint for more diagnostic information"
                 )
                 print(diagnostic_msg)
                 raise ImportError(
@@ -604,6 +655,7 @@ def upload_file():
                     f"load_ndis_support_items={load_ndis_support_items is not None}, "
                     f"load_active_users={load_active_users is not None}. "
                     f"Current dir: {current_dir}. "
+                    f"File in current: {file_in_current}, File in parent: {file_in_parent}. "
                     f"See RENDER_SETUP.md for troubleshooting steps."
                 )
             
@@ -820,26 +872,48 @@ def verify_imports():
     try:
         import sys
         current_dir = os.getcwd()
+        
+        # Ensure paths are set up (same as in main code)
+        if current_dir.endswith('/src') or current_dir.endswith('\\src'):
+            parent_dir = os.path.dirname(current_dir)
+            if parent_dir and parent_dir not in sys.path:
+                sys.path.insert(0, parent_dir)
         if current_dir not in sys.path:
             sys.path.insert(0, current_dir)
         
         # Try to import the module
         try:
             import create_final_tables
+            module_file = getattr(create_final_tables, '__file__', 'unknown')
+            print(f"✓ create_final_tables module loaded from: {module_file}")
+            
             # Check if functions exist
-            if not hasattr(create_final_tables, 'parse_pdf_to_data'):
-                print(f"WARNING: create_final_tables module loaded but 'parse_pdf_to_data' function not found!")
-                print(f"Available attributes: {[a for a in dir(create_final_tables) if not a.startswith('_')][:10]}")
-            if not hasattr(create_final_tables, 'load_ndis_support_items'):
-                print(f"WARNING: 'load_ndis_support_items' function not found!")
-            if not hasattr(create_final_tables, 'load_active_users'):
-                print(f"WARNING: 'load_active_users' function not found!")
+            has_parse = hasattr(create_final_tables, 'parse_pdf_to_data')
+            has_ndis = hasattr(create_final_tables, 'load_ndis_support_items')
+            has_users = hasattr(create_final_tables, 'load_active_users')
+            
+            if has_parse and has_ndis and has_users:
+                print("✓ All required functions found in create_final_tables")
+            else:
+                print(f"⚠ WARNING: Some functions missing!")
+                print(f"  parse_pdf_to_data: {has_parse}")
+                print(f"  load_ndis_support_items: {has_ndis}")
+                print(f"  load_active_users: {has_users}")
+                print(f"  Available attributes: {[a for a in dir(create_final_tables) if not a.startswith('_')][:15]}")
         except Exception as e:
-            print(f"ERROR: Could not import create_final_tables module: {e}")
-            print(f"Current directory: {os.getcwd()}")
-            print(f"Python path: {sys.path[:5]}")
+            import traceback
+            print(f"✗ ERROR: Could not import create_final_tables module: {e}")
+            print(f"  Current directory: {current_dir}")
+            print(f"  File exists in current: {os.path.exists(os.path.join(current_dir, 'create_final_tables.py'))}")
+            parent_dir = os.path.dirname(current_dir)
+            if parent_dir:
+                print(f"  File exists in parent: {os.path.exists(os.path.join(parent_dir, 'create_final_tables.py'))}")
+            print(f"  Python path: {sys.path[:5]}")
+            print(f"  Traceback: {traceback.format_exc()}")
     except Exception as e:
-        print(f"ERROR during import verification: {e}")
+        import traceback
+        print(f"✗ ERROR during import verification: {e}")
+        print(f"  Traceback: {traceback.format_exc()}")
 
 # Run verification when module loads (but don't fail if it doesn't work)
 try:
